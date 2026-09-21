@@ -84,11 +84,13 @@ function linkify(text) {
   if (nick) { const re = new RegExp('(^|[^\\w])(@?' + nick.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?![\\w])', 'gi'); out = out.replace(re, '$1<span class="mention">$2</span>'); }
   return out;
 }
+// hops + (bij 2/3-byte hashes) de hash-grootte waarmee de afzender het pad opbouwde
+function hopsText(b) { const n = b & 63, sz = (b >> 6) + 1; return (n === 0 ? '0 hops' : n + ' hop' + (n > 1 ? 's' : '')) + (sz > 1 ? ' (' + sz + ' B)' : ''); }
 function metaText(m) {
   const parts = [];
   if (m.snr != null && !m.self) parts.push('SNR ' + m.snr.toFixed(1));
   if (m.rssi != null) parts.push(m.rssi + ' dBm');
-  if (m.pathLen != null) parts.push(m.pathLen === 0xFF ? 'direct' : ((m.pathLen & 63) === 0 ? '0 hops' : (m.pathLen & 63) + ' hop' + ((m.pathLen & 63) > 1 ? 's' : '')));
+  if (m.pathLen != null) parts.push(m.pathLen === 0xFF ? 'direct' : hopsText(m.pathLen));
   if (m.self && m.flood != null) parts.push(m.flood ? 'flood' : 'direct');
   if (m.self && m.scope) parts.push(m.scope);
   const sc = scopeLabelFor(m); if (sc && !m.self) parts.push(sc);
@@ -114,7 +116,7 @@ function renderMsg(m) {
   switch (m.kind) {
     case 'notice': case 'error': body = `<span class="x">${linkify(m.text)}</span>`; break;
     case 'action': body = `<span class="x"><b class="${m.self ? '' : nickColor(m.nick)}">${esc(m.nick)}</b> ${linkify(m.text)}</span>`; break;
-    case 'cli': body = `<span class="n">${esc(m.nick)}</span><span class="x">${m.cmd ? `<span class="cmd">${esc(m.cmd)}</span>` : ''}${m.text ? `<pre>${annotateKeys(m.text)}</pre>${/^neighbou?rs\b/i.test(m.cmd || '') && /[0-9a-f]{6}/i.test(m.text) ? `<button class="btn sm nb-btn" data-nb="${m.id}">${esc(t('nb.btn'))}</button>` : ''}` : (m.ack === 'pending' ? `<span class="dim">${esc(t('msg.waitingReply'))}</span>` : '')}</span>`; break;
+    case 'cli': body = `<span class="n">${esc(m.nick)}</span><span class="x">${m.cmd ? `<span class="cmd">${esc(m.cmd)}</span>` : ''}${m.text ? `<pre>${annotateKeys(m.text)}</pre>${m.stats ? `<button class=\"btn sm st-btn\" data-st=\"${m.id}\">${esc(t('stat.details'))}</button>` : ''}${/^neighbou?rs\b/i.test(m.cmd || '') && /[0-9a-f]{6}/i.test(m.text) ? `<button class="btn sm nb-btn" data-nb="${m.id}">${esc(t('nb.btn'))}</button>` : ''}` : (m.ack === 'pending' ? `<span class="dim">${esc(t('msg.waitingReply'))}</span>` : '')}</span>`; break;
     default: body = `<span class="n ${m.self ? '' : nickColor(m.nick)}">${esc(m.nick)}</span><span class="x">${linkify(m.text)}</span>`;
   }
   return `<div class="${cls.join(' ')}" data-id="${m.id}">${ts}${body}${meta}</div>`;
@@ -255,6 +257,7 @@ function renderInfo(cv) {
     ${x.note ? `<dt>${esc(t('info.note'))}</dt><dd>${esc(x.note)}</dd>` : ''}
   </dl><div class="acts">
     ${c.type === 2 ? `<button class="btn sm" data-act="neighbors">${esc(t('nb.discover'))}</button>` : ''}
+    ${c.type >= 2 ? `<button class="btn sm" data-act="statusdlg">${esc(t('stat.btn'))}</button>` : ''}
     ${c.type >= 2 ? `<button class="btn sm" data-act="status">${esc(t('info.status'))}</button>` : ''}
     <button class="btn sm" data-act="telemetry">${esc(t('info.telemetry'))}</button>
     ${p.hashes.length ? `<button class="btn sm" data-act="trace">${esc(t('info.trace'))}</button>` : ''}

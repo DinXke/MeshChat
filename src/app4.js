@@ -193,7 +193,7 @@ async function applyDiscovered() {
 function scopeModeUpdate() { const m = $('#s-scope-mode').value; $('#s-scope-custom').hidden = m !== 'custom'; }
 async function saveNode() {
   if (!requireConn(activeConv())) return;
-  const name = val('#s-name').slice(0, 31); if (name && name !== S.self.name) { await C.setName(name); S.self.name = name; renderNick(); }
+  const name = utf8Trunc(val('#s-name').trim(), 31); if (name && name !== S.self.name) { await C.setName(name); S.self.name = name; renderNick(); }
   const tm = (parseInt(val('#s-telem-base')) & 3) | ((parseInt(val('#s-telem-loc')) & 3) << 2) | ((parseInt(val('#s-telem-env')) & 3) << 4);
   await C.setOtherParams($('#s-manual-add').checked ? 1 : 0, tm, parseInt(val('#s-locpolicy')), $('#s-multiacks').checked ? 1 : 0);
   S.self.manualAdd = $('#s-manual-add').checked ? 1 : 0; S.self.telemetryMode = tm; S.self.locPolicy = parseInt(val('#s-locpolicy')); S.self.multiAcks = $('#s-multiacks').checked ? 1 : 0;
@@ -296,6 +296,46 @@ function msgContextItems(m, cv) {
     { label: t('ctx.deleteLocal'), danger: true, run: () => { cv.msgs = cv.msgs.filter(x => x.id !== m.id); renderMessages(cv, true); saveState(); } },
   ];
 }
+// ---------- status/radio-venster voor repeaters en rooms ----------
+const RADIO_CMDS = [['radio', 'get radio'], ['tx', 'get tx'], ['af', 'get af'], ['repeat', 'get repeat'], ['flood.max', 'get flood.max'], ['advert.interval', 'get advert.interval'], ['flood.advert.interval', 'get flood.advert.interval'], ['rxdelay', 'get rxdelay'], ['txdelay', 'get txdelay'], ['direct.txdelay', 'get direct.txdelay'], ['lat', 'get lat'], ['lon', 'get lon'], ['ver', 'ver'], ['clock', 'clock']];
+function fmtRadioVal(k, v) {
+  if (v == null) return null; v = String(v).replace(/^\s*-?>\s*/, '').replace(new RegExp('^' + k.replace(/\./g, '\\.') + '\\s*[:=]\\s*', 'i'), '').trim();
+  if (!v) return null;
+  if (k === 'radio') { const p = v.split(','); if (p.length >= 4) return p[0].trim() + ' MHz · BW ' + p[1].trim() + ' kHz · SF ' + p[2].trim() + ' · CR ' + p[3].trim(); }
+  if (k === 'tx' && /^-?\d+$/.test(v)) return v + ' dBm';
+  if ((k === 'advert.interval' || k === 'flood.advert.interval') && /^\d+$/.test(v)) return v === '0' ? t('stat.off') : v + ' min';
+  return v;
+}
+function openStatusDlg(c) { S.statusDlgPub = c.pub; renderStatusDlg(); $('#rs-auto').checked = S.settings.statusPopup === 'auto'; const d = $('#dlg-rstat'); if (!d.open) d.showModal(); }
+function renderStatusDlg() {
+  const c = S.contacts.get(S.statusDlgPub); if (!c) return; const x = S.extras[c.pub] || {}; const s = x.stats;
+  $('#rs-title').textContent = t('stat.title', displayName(c));
+  let rows = []; const add = (k, v) => v != null && v !== '' && rows.push(`<dt>${esc(k)}</dt><dd>${v}</dd>`);
+  let html = `<div class="rs-h">${esc(t('stat.sec.status'))}${x.statsT ? ` <span class="mute">${esc(t('stat.received', fmtTime(x.statsT)))}</span>` : ''}</div>`;
+  if (!s) html += `<p class="dim">${esc(t('stat.noStats'))}</p>`;
+  else {
+    add(t('stat.batt'), (s.batt / 1000).toFixed(2) + ' V'); add(t('stat.uptime'), fmtDur(s.uptime)); add(t('stat.txq'), s.txQueue);
+    add(t('stat.noise'), s.noise + ' dBm'); add(t('stat.rssi'), s.rssi + ' dBm'); if (s.snr != null) add(t('stat.snr'), s.snr.toFixed(1) + ' dB');
+    add(t('stat.recv'), t('stat.fd', s.recv, s.recvFlood ?? '?', s.recvDirect ?? '?')); add(t('stat.sent'), t('stat.fd', s.sent, s.sentFlood, s.sentDirect));
+    add(t('stat.airtime'), fmtDur(s.airtime) + (s.rxAirtime != null ? ' / ' + fmtDur(s.rxAirtime) : ''));
+    if (s.fullEvents != null) add(t('stat.full'), s.fullEvents); if (s.directDups != null) add(t('stat.dups'), s.directDups + ' / ' + s.floodDups);
+    html += `<dl class="rs-grid">${rows.join('')}</dl>`;
+  }
+  rows = [];
+  html += `<div class="rs-h">${esc(t('stat.sec.radio'))}${x.radioT ? ` <span class="mute">${esc(t('stat.r.updated', fmtTime(x.radioT)))}</span>` : ''}</div>`;
+  if (x.radio) { for (const [k] of RADIO_CMDS) { const v = fmtRadioVal(k, x.radio[k]); if (v != null) add(t('stat.r.' + k), esc(v)); } html += rows.length ? `<dl class="rs-grid">${rows.join('')}</dl>` : `<p class="dim">${esc(t('stat.noRadio'))}</p>`; }
+  else html += `<p class="dim">${esc(t('stat.noRadio'))}</p>`;
+  if (S.radioBusy === c.pub) html += `<p class="dim">${esc(t('stat.fetching', S.radioProgress || 0, RADIO_CMDS.length))}</p>`;
+  $('#rs-body').innerHTML = html; $('#rs-radio').disabled = S.radioBusy === c.pub || !C.connected; $('#rs-refresh').disabled = !C.connected;
+}
+async function fetchRadioSettings(c) {
+  if (S.radioBusy) return; S.radioBusy = c.pub; S.radioProgress = 0; const out = { ...((S.extras[c.pub] || {}).radio || {}) }; renderStatusDlg();
+  for (const [k, cmd] of RADIO_CMDS) {
+    try { out[k] = await askCli(c, cmd, 12000); } catch (e) { if (!(k in out)) out[k] = null; }
+    S.radioProgress++; S.extras[c.pub] = { ...(S.extras[c.pub] || {}), radio: out, radioT: nowSecs() }; if (S.statusDlgPub === c.pub) renderStatusDlg();
+  }
+  S.radioBusy = null; saveState(); if (S.statusDlgPub === c.pub) renderStatusDlg();
+}
 function showMsgInfo(m, cv) {
   const rows = []; const add = (k, v) => v != null && v !== '' && rows.push(`<dt>${esc(k)}</dt><dd>${v}</dd>`);
   add(t('mi.time'), fmtDateTime(m.t) + (m.recvT ? esc(t('mi.received', fmtTime(m.recvT))) : ''));
@@ -358,6 +398,23 @@ function wire() {
   on('#messages', 'contextmenu', (e) => { const el = e.target.closest('.m'); if (!el) return; const m = msgFromEl(el); if (!m) return; e.preventDefault(); showCtx(e.clientX, e.clientY, msgContextItems(m, activeConv())); });
   on('#messages', 'click', (e) => { const b = e.target.closest('.nb-btn'); if (!b) return; const cv = activeConv(); const m = cv.msgs.find(x => x.id === b.dataset.nb); const c = cv.pub ? S.contacts.get(cv.pub) : null; if (m && c) mapShowNeighbors(c, parseNeighbors(m.text)); });
   on('#map-nb-clear', 'click', mapClearNeighbors);
+  // tropo-overlay (standaard uit, alleen online)
+  on('#map-tropo', 'change', (e) => tropoSetEnabled(e.target.checked));
+  on('#map-tropo-h', 'change', (e) => { S.settings.tropoH = +e.target.value; saveState(); tropoRefresh(true); });
+  $('#map-tropo').checked = !!S.settings.tropo; $('#map-tropo-h').value = String(S.settings.tropoH || 0); $('#map-tropo-h').hidden = !S.settings.tropo;
+  // status-popup: knop onder een status-antwoord, en de knoppen in het venster zelf
+  on('#messages', 'click', (e) => { const b = e.target.closest('.st-btn'); if (!b) return; const cv = activeConv(); const c = cv.pub ? S.contacts.get(cv.pub) : null; if (c) openStatusDlg(c); });
+  on('#rs-auto', 'change', (e) => { S.settings.statusPopup = e.target.checked ? 'auto' : 'manual'; saveState(); });
+  on('#rs-refresh', 'click', async () => { const c = S.contacts.get(S.statusDlgPub); if (!c || !C.connected) return; try { await C.statusReq(c.pub); notice(t('status.sent', displayName(c)), convForContact(c), false); toast(t('stat.requested'), 'ok'); } catch (err) { toast(err.message, 'err'); } });
+  on('#rs-radio', 'click', () => { const c = S.contacts.get(S.statusDlgPub); if (c && C.connected) fetchRadioSettings(c); });
+  // vlaggen/emoji bij de node-naam + bytes-teller (firmware: max. 31 UTF-8-bytes)
+  const nameFlags = $('#s-name-flags'), nameInp = $('#s-name');
+  if (nameFlags) {
+    nameFlags.innerHTML = '🇧🇪 🇳🇱 🇱🇺 🇫🇷 🇩🇪 🇬🇧 🇪🇺 📡 🗼 ⚡ 🏠 🚗 🚲 🏔️'.split(' ').map(e => `<button type="button" class="flag" data-e="${e}" title="${e}">${e}</button>`).join('');
+    const upd = () => { const n = utf8Len(nameInp.value); const el = $('#s-name-bytes'); el.textContent = t('h.nameBytes', n); el.classList.toggle('over', n > 31); };
+    on(nameFlags, 'click', (e) => { const b = e.target.closest('button[data-e]'); if (!b) return; const s0 = nameInp.selectionStart ?? nameInp.value.length, s1 = nameInp.selectionEnd ?? s0; nameInp.value = nameInp.value.slice(0, s0) + b.dataset.e + nameInp.value.slice(s1); nameInp.selectionStart = nameInp.selectionEnd = s0 + b.dataset.e.length; nameInp.focus(); upd(); });
+    on(nameInp, 'input', upd); on('#btn-settings', 'click', () => setTimeout(upd, 0)); nameInp.addEventListener('focus', upd);
+  }
   on('#messages', 'dblclick', (e) => { const el = e.target.closest('.m'); const m = el && msgFromEl(el); if (m) showMsgInfo(m, activeConv()); });
   let pressTimer; on('#messages', 'touchstart', (e) => { const el = e.target.closest('.m'); if (!el) return; pressTimer = setTimeout(() => { const m = msgFromEl(el); if (m) { const t = e.touches[0]; showCtx(t.clientX, t.clientY, msgContextItems(m, activeConv())); } }, 550); }, { passive: true }); on('#messages', 'touchend', () => clearTimeout(pressTimer)); on('#messages', 'touchmove', () => clearTimeout(pressTimer));
   on('#messages', 'scroll', () => { const box = $('#messages'); if (box.scrollHeight - box.scrollTop - box.clientHeight < 40) document.body.classList.remove('unread-below'); });
@@ -369,6 +426,7 @@ function wire() {
   on('#info', 'click', async (e) => { const b = e.target.closest('[data-act]'); if (!b) return; const cv = activeConv(); const c = cv.pub ? S.contacts.get(cv.pub) : null; const act = b.dataset.act;
     const map = { status: '/status', telemetry: '/telemetry', trace: '/trace', discover: '/path', 'path-reset': '/resetpath', logout: '/logout', 'advert-flood': '/advert flood', 'advert-0': '/advert' };
     if (act === 'neighbors' && c) { S.autoNbFor = c.pub; sendCli(cv, c, 'neighbors'); }
+    else if (act === 'statusdlg' && c) openStatusDlg(c);
     else if (act === 'path-set' && c) openPathDlg(c); else if (act === 'map' && c) mapFocus(c.pub); else if (act === 'resync' && c) resyncRoom(c); else if (act === 'sync') handleInput('/sync'); else if (act === 'map-fit') mapFitAll(); else if (act === 'map-settings') openMapSettings();
     else if (act === 'login' && c) openLoginDlg(c); else if (act === 'edit' && c) openContactDlg(c); else if (act === 'contacts') { renderContactsDlg(); $('#dlg-contacts').showModal(); } else if (act === 'download') downloadSelf(); else if (act === 'copy-key') { const ch = channelByConv(cv); if (ch) copyText(ch.secret); } else if (act === 'leave') closeConv(cv); else if (map[act]) handleInput(map[act]); });
   // composer
@@ -384,7 +442,7 @@ function wire() {
     if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && h.hidden && (inp.value === '' || S.histIdx >= 0)) { const hist = S.inputHist || []; if (!hist.length) return; e.preventDefault(); S.histIdx = e.key === 'ArrowUp' ? Math.min(hist.length - 1, (S.histIdx ?? -1) + 1) : Math.max(-1, S.histIdx - 1); inp.value = S.histIdx < 0 ? '' : hist[S.histIdx]; updateCounter(); }
   });
   // emoji-kiezer: recent gebruikt bovenaan, invoegen op de cursorpositie
-  const EMOJI = { smileys: '😀 😁 😂 🤣 😊 😉 😍 😘 😎 🤔 😅 😬 🙄 😢 😭 😡 🤯 🥳 🤝 👍 👎 👋 🙏 💪 👀 🤷 🤦', mesh: '📡 📻 🔋 🔌 ☀️ 🌧️ ⛈️ ❄️ 🌡️ 🛰️ 🗼 🏔️ 🚗 🚲 🏠 🔧 🧰 ⚡ 🔥 💡 📶 📍 🗺️ 🧭 ⏰ 📦 ✅ ❌ ⚠️ ❓ ❗ 🆗', hearts: '❤️ 🧡 💛 💚 💙 💜 🖤 🤍 💯 🎉 🎶 ☕ 🍺 🍕' };
+  const EMOJI = { smileys: '😀 😁 😂 🤣 😊 😉 😍 😘 😎 🤔 😅 😬 🙄 😢 😭 😡 🤯 🥳 🤝 👍 👎 👋 🙏 💪 👀 🤷 🤦', mesh: '📡 📻 🔋 🔌 ☀️ 🌧️ ⛈️ ❄️ 🌡️ 🛰️ 🗼 🏔️ 🚗 🚲 🏠 🔧 🧰 ⚡ 🔥 💡 📶 📍 🗺️ 🧭 ⏰ 📦 ✅ ❌ ⚠️ ❓ ❗ 🆗', hearts: '❤️ 🧡 💛 💚 💙 💜 🖤 🤍 💯 🎉 🎶 ☕ 🍺 🍕', flags: '🇧🇪 🇳🇱 🇱🇺 🇫🇷 🇩🇪 🇬🇧 🇪🇺 🇪🇸 🇮🇹 🇵🇹 🇨🇭 🇦🇹 🇩🇰 🇵🇱 🇮🇪 🇺🇸' };
   const emojiPop = $('#emoji-pop');
   const renderEmoji = () => { const recent = S.settings.recentEmoji || []; let html = recent.length ? `<div class="grp">${esc(t('emoji.recent'))}</div>` + recent.map(e => `<button type="button" data-e="${e}">${e}</button>`).join('') : ''; for (const [g, list] of Object.entries(EMOJI)) html += `<div class="grp">${esc(t('emoji.' + g))}</div>` + list.split(' ').map(e => `<button type="button" data-e="${e}">${e}</button>`).join(''); emojiPop.innerHTML = html; };
   on('#btn-emoji', 'click', (e) => { e.preventDefault(); if (emojiPop.hidden) { renderEmoji(); emojiPop.hidden = false; } else emojiPop.hidden = true; });

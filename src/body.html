@@ -64,8 +64,8 @@
   <div id="mapwrap" hidden>
     <div id="map"></div>
     <div id="map-notice" hidden></div>
-    <div id="map-tools"><input id="map-search" class="inp mono" list="map-search-list" placeholder="Zoek node…" data-i18n-ph="map.searchPh" aria-label="Zoek node op de kaart" data-i18n-aria="map.searchPh" style="width:150px;height:26px;font-size:12px"><datalist id="map-search-list"></datalist><button class="btn sm" id="map-fit" data-i18n="map.tools.fit">Alles tonen</button><button class="btn sm" id="map-me" data-i18n="map.tools.me">Mijn node</button><label class="btn sm" style="gap:6px"><input type="checkbox" id="map-live" checked> <span data-i18n="map.tools.live">Live pakketten</span></label><button class="btn sm ghost" id="map-settings" data-i18n="map.tools.settings">Offline kaarten…</button><button class="btn sm ghost" id="map-nb-clear" hidden data-i18n="map.tools.clearNb">Buren wissen</button></div>
-    <div id="map-legend"><span><i style="background:#3ccf83"></i><span data-i18n="map.legend.you">jij</span></span><span><i style="background:#f7b955"></i><span data-i18n="map.legend.repeater">repeater</span></span><span><i style="background:#c4a3ff"></i>room</span><span><i style="background:#5cc8ff"></i>chat</span><span><i style="background:#5fd6c5"></i><span data-i18n="map.legend.sensor">sensor</span></span><span><i style="background:transparent;border:2px solid #8e9baa"></i><span data-i18n="map.legend.pending">wachtend advert</span></span></div>
+    <div id="map-tools"><input id="map-search" class="inp mono" list="map-search-list" placeholder="Zoek node…" data-i18n-ph="map.searchPh" aria-label="Zoek node op de kaart" data-i18n-aria="map.searchPh" style="width:150px;height:26px;font-size:12px"><datalist id="map-search-list"></datalist><button class="btn sm" id="map-fit" data-i18n="map.tools.fit">Alles tonen</button><button class="btn sm" id="map-me" data-i18n="map.tools.me">Mijn node</button><label class="btn sm" style="gap:6px"><input type="checkbox" id="map-live" checked> <span data-i18n="map.tools.live">Live pakketten</span></label><button class="btn sm ghost" id="map-settings" data-i18n="map.tools.settings">Offline kaarten…</button><button class="btn sm ghost" id="map-nb-clear" hidden data-i18n="map.tools.clearNb">Buren wissen</button><label class="btn sm" style="gap:6px" data-i18n-title="tropo.help" title="Tropo-ducting-schatting (Open-Meteo, vraagt internet)"><input type="checkbox" id="map-tropo"> <span data-i18n="map.tools.tropo">Tropo</span></label><select id="map-tropo-h" class="inp" hidden style="height:26px;font-size:12px"><option value="0" data-i18n="tropo.h0">nu</option><option value="6">+6 h</option><option value="12">+12 h</option><option value="24">+24 h</option></select></div>
+    <div id="map-legend"><span><i style="background:#3ccf83"></i><span data-i18n="map.legend.you">jij</span></span><span><i style="background:#f7b955"></i><span data-i18n="map.legend.repeater">repeater</span></span><span><i style="background:#c4a3ff"></i>room</span><span><i style="background:#5cc8ff"></i>chat</span><span><i style="background:#5fd6c5"></i><span data-i18n="map.legend.sensor">sensor</span></span><span><i style="background:transparent;border:2px solid #8e9baa"></i><span data-i18n="map.legend.pending">wachtend advert</span></span><span id="map-tropo-legend" hidden><i style="background:#ffd54a"></i><span data-i18n="tropo.legend.super">superrefractie</span> <i style="background:#ff4d4d"></i><span data-i18n="tropo.legend.duct">ducting</span> <span id="map-tropo-ts" class="dim"></span></span></div>
   </div>
   <button class="btn sm" id="scroll-bottom" aria-label="Naar nieuwste berichten" data-i18n-aria="h.toNewest"><svg class="i"><use href="#i-down"/></svg><span data-i18n="h.newMessages">Nieuwe berichten</span></button>
   <div id="compose">
@@ -191,7 +191,7 @@
   </div>
   <div class="dlg-body">
     <section class="pane active" data-pane="node">
-      <div class="field"><label for="s-name" data-i18n="h.nameNick">Naam (nick)</label><input id="s-name" class="mono" maxlength="31" data-needs-conn><span class="help" data-i18n="h.nameHelp">Zichtbaar in adverts en kanaalberichten. Verstuur na wijziging een advert.</span></div>
+      <div class="field"><label for="s-name" data-i18n="h.nameNick">Naam (nick)</label><input id="s-name" class="mono" data-needs-conn><div class="row" id="s-name-flags" style="gap:2px;flex-wrap:wrap;margin-top:4px"></div><span class="help" id="s-name-bytes"></span><span class="help" data-i18n="h.nameHelp">Zichtbaar in adverts en kanaalberichten. Verstuur na wijziging een advert.</span></div>
       <div class="field"><label for="s-pub" data-i18n="h.pubKey">Publieke sleutel</label><input id="s-pub" class="mono" readonly style="font-size:11px"></div>
       <h4 class="sub" data-i18n="h.contacts">Contacten</h4>
       <label class="check"><input type="checkbox" id="s-manual-add" data-needs-conn><span data-i18n="h.manualAdd"> Contacten handmatig toevoegen (nieuwe adverts eerst goedkeuren)</span></label>
@@ -366,6 +366,13 @@
     <div class="row" style="margin-top:10px;gap:8px"><label for="pd-size" class="dim" style="font-size:12px" data-i18n="h.pathHashSize">Hash-grootte</label><select id="pd-size"><option value="1">1 byte</option><option value="2">2 bytes</option><option value="3">3 bytes</option></select><span id="pd-info" class="dim" style="font-size:11.5px"></span></div>
   </div>
   <div class="dlg-foot"><button class="btn" data-close data-i18n="h.cancel">Annuleren</button><button class="btn primary" id="pd-save" data-i18n="h.save">Opslaan</button></div>
+</dialog>
+
+<!-- Status/radio van een repeater of room -->
+<dialog class="dlg" id="dlg-rstat" aria-labelledby="rs-title">
+  <div class="dlg-head"><h2 id="rs-title">Status</h2><button class="btn icon ghost" data-close aria-label="Sluiten" data-i18n-aria="h.close"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="dlg-body" id="rs-body"></div>
+  <div class="dlg-foot" style="flex-wrap:wrap;gap:8px"><label class="check" style="margin-right:auto;font-size:12px"><input type="checkbox" id="rs-auto"><span data-i18n="stat.auto"> Automatisch openen bij een status-antwoord</span></label><button class="btn" id="rs-refresh" data-i18n="stat.refresh">Status vernieuwen</button><button class="btn" id="rs-radio" data-i18n="stat.fetch">Radio-instellingen ophalen</button><button class="btn primary" data-close data-i18n="h.close">Sluiten</button></div>
 </dialog>
 
 <!-- Berichtinfo -->

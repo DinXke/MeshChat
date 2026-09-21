@@ -27,6 +27,8 @@ Geen server, geen installatie, geen externe bronnen: open `meshchat.html` in Chr
 - **Berichtinfo** (rechtsklik / dubbelklik / lang indrukken): SNR, RSSI, hops, bezorgstatus, transportcodes, volledig pad met repeaternamen en het ruwe pakket in hex (als de firmware rx-logging doorstuurt).
 - **Contactbeheer**: zoeken, filteren, sorteren (ook op afstand), favorieten (gesynchroniseerd met de node), alias en notitie, type/rechten aanpassen, deel-URI, delen op het mesh, handmatig toevoegen, `meshcore://`-import, wachtende adverts goedkeuren, oude contacten opruimen.
 - **Zijbalk**: zoekveld dat tijdens het typen filtert, ★-filter voor favorieten.
+- **Kaart** (MapLibre, tiles van meshmanager.net, offline per land te bewaren): nodes en wachtende adverts, live pakketten langs het pad, buren van een repeater met SNR, "Toon op kaart", zoeken, en een **tropo-ducting-overlay** (Open-Meteo, aan/uit, alleen online).
+- **Statusvenster** voor repeaters en rooms met status en radio-instellingen in één overzicht, automatisch of via een knop.
 - **Instellingen** zoals in de officiële Android-app: naam, telemetrie-rechten, multi-ACK, auto-add, radio met voorinstellingen en client-repeat, tuning, pad-hashgrootte, locatie, BLE-pincode, tijd, herstart, fabrieksreset, privésleutel, **volledige configuratie exporteren en importeren** (JSON).
 - Donker en licht thema, werkt op smartphonebreedte, alles wordt alleen lokaal in de browser bewaard.
 

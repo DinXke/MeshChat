@@ -4,6 +4,13 @@ De versie staat in `src/app1.js` (`APP_VERSION`) en in het Over-venster van de a
 
 Elke release krijgt een git-tag `vX.Y.Z` en een GitHub-release met `meshchat.html` als bijlage. Schema: MINOR bij nieuwe functies, PATCH bij correcties, MAJOR bij een breuk in opslagformaat of protocol.
 
+## 0.3.0 - 2026-09-22
+
+- **Tropo-overlay** op de kaart (aan/uit in de kaartbalk, standaard uit, alleen online): schatting van tropo-ducting uit het Open-Meteo-weermodel (refractiviteitsgradiënt onder 1,5 km); geel = superrefractie, rood = ducting; keuze nu / +6 / +12 / +24 uur; volgt het kaartbeeld.
+- **Statusvenster** voor repeaters en rooms: overzichtelijke weergave van de status (batterij, uptime, ruisvloer, tellers, airtime, duplicaten) en de radio-instellingen (`get radio`, `get tx`, `get af`, `get repeat`, intervallen, vertragingen, positie, `ver`, `clock`); knop "Statusvenster" in het infopaneel, knop "Details" onder elk status-antwoord, en een keuze om het venster automatisch te openen bij een status-antwoord.
+- **Emoji en vlaggen in de node-naam**: vlaggenstrip bij het naamveld, bytes-teller (firmware: max. 31 UTF-8-bytes, een vlag telt 8), afkappen op tekengrens; groep "Vlaggen" in de emoji-kiezer.
+- **Hops**: bij paden met 2- of 3-byte hashes staat de hash-grootte achter het aantal hops (bv. `4 hops (2 B)`).
+
 ## 0.2.1 - 2026-09-22
 
 - **Bluetooth**: na een mislukte of verbroken verbinding bleef een oude notificatielistener hangen, waardoor elk frame dubbel binnenkwam (dubbele kanalen en meldingen, onleesbare kanaalnamen, verschoven antwoorden). Listeners worden nu netjes opgeruimd en frames van een oud transport genegeerd; onleesbare kanalen/contacten worden overgeslagen.

@@ -152,7 +152,8 @@ C.addEventListener('status', (e) => {
   const c = contactByPrefix(e.detail.prefix); const cv = c ? convForContact(c) : S.convs.get('status'); const s = e.detail.stats;
   if (!s) { addMsg(cv, { kind: 'cli', nick: c ? displayName(c) : '?', cmd: 'status', text: t('stats.raw', hex(e.detail.raw.subarray(8))) }); return; }
   const lines = [t('stats.line1', (s.batt / 1000).toFixed(2), fmtDur(s.uptime), s.txQueue), t('stats.line2', s.noise, s.rssi, s.snr != null ? t('stats.lastSnr', s.snr.toFixed(1)) : ''), t('stats.line3', s.recv, s.recvFlood ?? '?', s.recvDirect ?? '?', s.sent, s.sentFlood, s.sentDirect), t('stats.line4', fmtDur(s.airtime), s.rxAirtime != null ? t('stats.rx', fmtDur(s.rxAirtime)) : '', s.fullEvents != null ? t('stats.fullEvents', s.fullEvents) : '', s.directDups != null ? t('stats.dups', s.directDups, s.floodDups) : '')];
-  addMsg(cv, { kind: 'cli', nick: c ? displayName(c) : '?', cmd: 'status', text: lines.join('\n') });
+  addMsg(cv, { kind: 'cli', nick: c ? displayName(c) : '?', cmd: 'status', text: lines.join('\n'), stats: c ? s : null });
+  if (c) { S.extras[c.pub] = { ...(S.extras[c.pub] || {}), stats: s, statsT: nowSecs() }; saveState(); if (S.statusDlgPub === c.pub && $('#dlg-rstat').open) renderStatusDlg(); else if (S.settings.statusPopup === 'auto') openStatusDlg(c); }
 });
 C.addEventListener('telemetry', (e) => {
   const c = contactByPrefix(e.detail.prefix); const self = isSelfPub(e.detail.prefix); const cv = c ? convForContact(c) : S.convs.get('status');

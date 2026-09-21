@@ -59,7 +59,9 @@ Direct messages are acknowledged (✓). Delivery is retried automatically: "atte
 
 ![Repeater console](screenshots/repeater.png)
 
-Plain text in a repeater window is sent as a CLI command (`ver`, `get radio`, `neighbors`, `advert`, …). Log in first with the admin password. Quick-command chips sit above the input. The info panel offers **Status** (statistics), **Telemetry**, **Trace** (SNR per hop), **Find path**, **Set path** and **Reset path**.
+Plain text in a repeater window is sent as a CLI command (`ver`, `get radio`, `neighbors`, `advert`, …). Log in first with the admin password. Quick-command chips sit above the input. The info panel offers **Status** (statistics), **Neighbours** (sends `neighbors` and draws them on the map), **Status window**, **Telemetry**, **Trace** (SNR per hop), **Find path**, **Set path** and **Reset path**.
+
+The **status window** shows the last status reply as a table (battery, uptime, noise floor, counters, airtime, duplicates) and, after *Fetch radio settings*, the radio configuration (`get radio`, `get tx`, `get af`, `get repeat`, advert intervals, delays, position, `ver`, `clock`; some values need an admin login). A **Details** button appears under every status reply in the window; tick *Open automatically on a status reply* inside the window if you prefer it to pop up by itself. Key prefixes in CLI replies (for example in `neighbors`) are annotated with the contact name when known.
 
 ## 3. Messages
 
@@ -88,13 +90,15 @@ The Contacts dialog supports searching, filtering by type, sorting (recent, name
 
 The map shows every contact with a known position (from its advert) plus your own node, coloured by type. Pending adverts appear as hollow markers with a "?". Click a marker for a popup with *Open* and *Info*; right-click a contact anywhere for *Show on map*. With **Live packets** enabled, packets your node hears are animated along the path of repeaters towards you.
 
+**Tropo** (off by default, needs internet) overlays an estimate of tropospheric ducting from the Open-Meteo weather model: for every grid point the refractivity gradient dN/dh is computed between the 1000 and 850 hPa levels; yellow marks super-refraction (below -79 N/km, extended range), red marks ducting (below -157 N/km). Pick *now* or +6/+12/+24 hours. The overlay follows the map view and the legend shows the model hour and the steepest gradient in view. It is a coarse model estimate, not a measurement.
+
 Tiles come from the self-hosted OpenStreetMap vector tiles of meshmanager.net and are cached in the browser. **Settings › Map** lets you preload the whole of Western Europe at overview zoom plus selected countries in high resolution; the size is shown next to each country, with a total and a progress bar. Pin the storage so the browser never evicts it. Offline without a cache, the map shows a notice; the rest of the app keeps working.
 
 ![Offline maps](screenshots/settings-map.png)
 
 ## 7. Settings
 
-- **Node**: name, manual/auto add of contacts, telemetry sharing, multi-ACK, automatic resend attempts.
+- **Node**: name (emoji and flags allowed, max. 31 UTF-8 bytes, a flag counts 8), manual/auto add of contacts, telemetry sharing, multi-ACK, automatic resend attempts.
 - **Radio**: frequency, bandwidth, spreading factor, coding rate, TX power, presets, client repeat, path-hash size, tuning.
 - **Regions**: the node's default region (flood scope), your list of regions with keys, *fetch regions from a repeater* (CLI `region`), and the send scope for this session.
 - **Location**: your position (also from the browser) and whether adverts include it.

@@ -2,7 +2,7 @@
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const APP_BUILD = '__BUILD__'; // wordt door build.sh vervangen door datum+commit; basis van de updatecheck
-const APP_VERSION = '0.2.1', APP_REPO = 'https://github.com/DinXke/MeshChat', APP_AUTHOR = 'DinX';
+const APP_VERSION = '0.3.0', APP_REPO = 'https://github.com/DinXke/MeshChat', APP_AUTHOR = 'DinX';
 const LS_KEY = 'mcirc.v1';
 const MAX_HIST = 400;
 
@@ -21,7 +21,7 @@ const S = {
   deviceScopeKey: undefined,   // wat er nu op de node als verzendscope staat (null = zonder scope)
   extras: {},                  // pub -> {alias, note, fav}
   roomPw: {},                  // pub -> {pw, auto}
-  settings: { theme: 'auto', ts: true, compact: false, meta: true, notif: true, debug: false, showSensorsAsRepeaters: true, staleDays: 7, favOnly: true, regions: [] },
+  settings: { theme: 'auto', ts: true, compact: false, meta: true, notif: true, debug: false, showSensorsAsRepeaters: true, staleDays: 7, favOnly: true, regions: [], tropo: false, tropoH: 0, statusPopup: 'manual' },
   connecting: false, syncing: false, msgSeq: 0,
 };
 
@@ -68,6 +68,13 @@ function convForContact(c) { return mkConv(convKeyFor(c), TYPE_KIND[c.type] || '
 function convForChannel(ch) { return mkConv(convKeyForChannel(ch), 'channel', channelLabel(ch), null, ch.secret); }
 function channelLabel(ch) { if (ch.secret === PUBLIC_KEY_HEX) return ch.name || 'Public'; return ch.name; }
 function channelByConv(cv) { return S.channels.find(c => c && c.secret === cv.secret && c.name); }
+// UTF-8-lengte en afkappen op grafeemgrens (node-naam: max. 31 bytes; een vlag telt 8 bytes)
+function utf8Len(s) { return te.encode(s || '').length; }
+function utf8Trunc(s, max) {
+  if (utf8Len(s) <= max) return s;
+  const parts = (typeof Intl !== 'undefined' && Intl.Segmenter) ? Array.from(new Intl.Segmenter().segment(s), x => x.segment) : Array.from(s);
+  let out = ''; for (const p of parts) { if (utf8Len(out + p) > max) break; out += p; } return out;
+}
 function contactByPrefix(prefixHex) { for (const c of S.contacts.values()) if (c.pub.startsWith(prefixHex)) return c; return null; }
 function contactByName(name) {
   if (!name) return null; const n = name.replace(/^[&@]/, '').toLowerCase();
