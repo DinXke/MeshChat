@@ -44,7 +44,7 @@ function saveState(now) {
       for (const [k, cv] of S.convs) { if (k === 'status') continue; convs[k] = { kind: cv.kind, name: cv.name, pub: cv.pub, secret: cv.secret, lastRead: cv.lastRead }; history[k] = cv.msgs.slice(-MAX_HIST).map(m => { const { _timer, ...rest } = m; return rest; }); }
       const contacts = Array.from(S.contacts.values()).map(c => ({ ...c, loggedIn: false }));
       localStorage.setItem(LS_KEY, JSON.stringify({ settings: S.settings, extras: S.extras, roomPw: S.roomPw, sendScope: S.sendScope, contactsSync: S.contactsSync, chanScope: S.chanScope, contacts, channels: S.channels, convs, history }));
-    } catch (e) { console.warn('state save', e); toast('Opslaan in browser mislukt: ' + e.message, 'err'); }
+    } catch (e) { console.warn('state save', e); toast(t('state.saveFail', e.message), 'err'); }
   };
   if (now) doSave(); else saveTimer = setTimeout(doSave, 800);
 }
@@ -84,7 +84,7 @@ function pathInfo(c, hashMode) {
   if (c.outPathLen < 0) return { text: 'flood', hops: null, hashes: [] };
   const hashes = []; const bytes = c.outPath.slice(0, c.outPathLen * 2);
   for (let i = 0; i < bytes.length; i += sz * 2) hashes.push(bytes.slice(i, i + sz * 2));
-  return { text: hashes.length ? hashes.length + ' hop' + (hashes.length > 1 ? 's' : '') + ' via ' + hashes.join(',') : 'direct (0 hops)', hops: hashes.length, hashes };
+  return { text: hashes.length ? (hashes.length === 1 ? t('path.hop1', hashes.join(',')) : t('path.hopN', hashes.length, hashes.join(','))) : t('path.direct0'), hops: hashes.length, hashes };
 }
 function resolveHash(h) { // path hash -> contact names (repeaters first)
   const m = []; for (const c of S.contacts.values()) if (c.pub.startsWith(h)) m.push(c);
@@ -102,22 +102,22 @@ function distanceKm(a, b) {
 // ---------- time formatting ----------
 const pad2 = (n) => String(n).padStart(2, '0');
 function fmtTime(secs, withSecs = true) { const d = new Date(secs * 1000); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + (withSecs ? ':' + pad2(d.getSeconds()) : ''); }
-function fmtDate(secs) { return new Date(secs * 1000).toLocaleDateString('nl-BE', { weekday: 'long', day: 'numeric', month: 'long' }); }
-function fmtDateTime(secs) { const d = new Date(secs * 1000); return d.toLocaleDateString('nl-BE') + ' ' + fmtTime(secs); }
+function fmtDate(secs) { return new Date(secs * 1000).toLocaleDateString(i18nLocale(), { weekday: 'long', day: 'numeric', month: 'long' }); }
+function fmtDateTime(secs) { const d = new Date(secs * 1000); return d.toLocaleDateString(i18nLocale()) + ' ' + fmtTime(secs); }
 function fmtAgo(secs) {
-  if (!secs) return 'nooit'; const d = nowSecs() - secs;
-  if (d < 0) return 'toekomst'; if (d < 60) return d + ' s'; if (d < 3600) return Math.floor(d / 60) + ' min'; if (d < 86400) return Math.floor(d / 3600) + ' u'; return Math.floor(d / 86400) + ' d';
+  if (!secs) return t('ago.never'); const d = nowSecs() - secs;
+  if (d < 0) return t('ago.future'); if (d < 60) return t('ago.s', d); if (d < 3600) return t('ago.min', Math.floor(d / 60)); if (d < 86400) return t('ago.h', Math.floor(d / 3600)); return t('ago.d', Math.floor(d / 86400));
 }
 function fmtDur(secs) { const d = Math.floor(secs / 86400), h = Math.floor(secs % 86400 / 3600), m = Math.floor(secs % 3600 / 60); return (d ? d + 'd ' : '') + pad2(h) + ':' + pad2(m); }
 function dayKey(secs) { const d = new Date(secs * 1000); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
 
 // ---------- raw packet decoding (from rx log) ----------
-const ROUTE_NAMES = ['transport-flood (scoped)', 'flood', 'direct', 'transport-direct (scoped)'];
+const routeName = (r) => t('route.' + r); // 0..3, vertaald
 const PAYLOAD_NAMES = { 0: 'REQ', 1: 'RESPONSE', 2: 'TXT_MSG', 3: 'ACK', 4: 'ADVERT', 5: 'GRP_TXT', 6: 'GRP_DATA', 7: 'ANON_REQ', 8: 'PATH', 9: 'TRACE', 10: 'MULTIPART', 11: 'CONTROL', 15: 'RAW_CUSTOM' };
 function decodePacket(raw) {
   try {
     let i = 0; const header = raw[i++]; const route = header & 3, ptype = (header >> 2) & 15, ver = (header >> 6) & 3;
-    const p = { header, route, routeName: ROUTE_NAMES[route], ptype, ptypeName: PAYLOAD_NAMES[ptype] || ('0x' + ptype.toString(16)), ver, codes: null, hashes: [], hashSize: 1 };
+    const p = { header, route, ptype, ptypeName: PAYLOAD_NAMES[ptype] || ('0x' + ptype.toString(16)), ver, codes: null, hashes: [], hashSize: 1 };
     if (route === 0 || route === 3) { p.codes = [rdU16(raw, i), rdU16(raw, i + 2)]; i += 4; }
     const pl = raw[i++]; p.hashCount = pl & 63; p.hashSize = (pl >> 6) + 1; p.pathLenByte = pl;
     for (let k = 0; k < p.hashCount; k++) { p.hashes.push(hex(raw.subarray(i, i + p.hashSize))); i += p.hashSize; }
@@ -136,6 +136,6 @@ function correlateRx(m) { // attach the most recent, unclaimed raw packet that f
   }
 }
 function scopeLabelFor(m) {
-  if (m.rx) { if (m.rx.route === 0 || m.rx.route === 3) return 'scope ' + m.rx.codes.map(c => c.toString(16).padStart(4, '0')).join('/'); return m.rx.route === 1 ? 'zonder scope' : 'direct'; }
+  if (m.rx) { if (m.rx.route === 0 || m.rx.route === 3) return t('scope.codes', m.rx.codes.map(c => c.toString(16).padStart(4, '0')).join('/')); return m.rx.route === 1 ? t('scope.none') : 'direct'; }
   return null;
 }

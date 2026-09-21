@@ -3,7 +3,7 @@
 # Gebruik: bash build.sh
 set -e
 cd "$(dirname "$0")"
-cat core.js core2.js app1.js app2.js app3.js app4.js > .all.js
+cat core.js core2.js i18n.js app1.js app2.js app3.js app4.js > .all.js
 node --check .all.js
 {
   # <head> + CSS uit het ontwerp; titel hernoemen en de PWA/meta-regels uit head-extra.html erachter

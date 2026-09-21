@@ -45,8 +45,10 @@ function sha256js(msg) {
 const CMD = { APP_START:1, SEND_TXT_MSG:2, SEND_CHANNEL_TXT_MSG:3, GET_CONTACTS:4, GET_DEVICE_TIME:5, SET_DEVICE_TIME:6, SEND_SELF_ADVERT:7, SET_ADVERT_NAME:8, ADD_UPDATE_CONTACT:9, SYNC_NEXT_MESSAGE:10, SET_RADIO_PARAMS:11, SET_RADIO_TX_POWER:12, RESET_PATH:13, SET_ADVERT_LATLON:14, REMOVE_CONTACT:15, SHARE_CONTACT:16, EXPORT_CONTACT:17, IMPORT_CONTACT:18, REBOOT:19, GET_BATT_AND_STORAGE:20, SET_TUNING_PARAMS:21, DEVICE_QUERY:22, EXPORT_PRIVATE_KEY:23, IMPORT_PRIVATE_KEY:24, SEND_RAW_DATA:25, SEND_LOGIN:26, SEND_STATUS_REQ:27, HAS_CONNECTION:28, LOGOUT:29, GET_CONTACT_BY_KEY:30, GET_CHANNEL:31, SET_CHANNEL:32, SEND_TRACE_PATH:36, SET_DEVICE_PIN:37, SET_OTHER_PARAMS:38, SEND_TELEMETRY_REQ:39, GET_CUSTOM_VARS:40, SET_CUSTOM_VAR:41, GET_ADVERT_PATH:42, GET_TUNING_PARAMS:43, SEND_BINARY_REQ:50, FACTORY_RESET:51, SEND_PATH_DISCOVERY_REQ:52, GET_STATS:56, SET_AUTOADD_CONFIG:58, GET_AUTOADD_CONFIG:59 };
 const RESP = { OK:0, ERR:1, CONTACTS_START:2, CONTACT:3, END_OF_CONTACTS:4, SELF_INFO:5, SENT:6, CONTACT_MSG_RECV:7, CHANNEL_MSG_RECV:8, CURR_TIME:9, NO_MORE_MESSAGES:10, EXPORT_CONTACT:11, BATT_AND_STORAGE:12, DEVICE_INFO:13, PRIVATE_KEY:14, DISABLED:15, CONTACT_MSG_RECV_V3:16, CHANNEL_MSG_RECV_V3:17, CHANNEL_INFO:18, SIGN_START:19, SIGNATURE:20, CUSTOM_VARS:21, ADVERT_PATH:22, TUNING_PARAMS:23, STATS:24, AUTOADD_CONFIG:25, ALLOWED_REPEAT_FREQ:26, CHANNEL_DATA_RECV:27, DEFAULT_FLOOD_SCOPE:28 };
 const PUSH = { ADVERT:0x80, PATH_UPDATED:0x81, SEND_CONFIRMED:0x82, MSG_WAITING:0x83, RAW_DATA:0x84, LOGIN_SUCCESS:0x85, LOGIN_FAIL:0x86, STATUS_RESPONSE:0x87, LOG_RX_DATA:0x88, TRACE_DATA:0x89, NEW_ADVERT:0x8A, TELEMETRY_RESPONSE:0x8B, BINARY_RESPONSE:0x8C, PATH_DISCOVERY_RESPONSE:0x8D, CONTROL_DATA:0x8E, CONTACT_DELETED:0x8F, CONTACTS_FULL:0x90 };
-const ERR_TEXT = { 1:'commando niet ondersteund', 2:'niet gevonden', 3:'tabel/wachtrij vol', 4:'ongeldige toestand', 5:'opslagfout', 6:'ongeldig argument' };
-const ADV_TYPE = { 0:'onbekend', 1:'chat', 2:'repeater', 3:'room', 4:'sensor' };
+const ERR_CODES = [1, 2, 3, 4, 5, 6]; // vertaald via t('err.N')
+const errText = (c) => ERR_CODES.includes(c) ? t('err.' + c) : null;
+const ADV_TYPE = { 0:'unknown', 1:'chat', 2:'repeater', 3:'room', 4:'sensor' }; // interne (CSS/data-type) namen
+const advType = (ty) => t('adv.' + (ADV_TYPE[ty] ? ty : 0)); // weergavenaam
 const TXT = { PLAIN:0, CLI:1, SIGNED:2 };
 const PUBLIC_KEY_HEX = '8b3387e9c5cdea6ac9e5edbaa115cd72'; // "izOH6cXN6mrJ5e26oRXNcg=="
 const MSG_TERMINALS = new Set([RESP.CONTACT_MSG_RECV, RESP.CHANNEL_MSG_RECV, RESP.CONTACT_MSG_RECV_V3, RESP.CHANNEL_MSG_RECV_V3, RESP.NO_MORE_MESSAGES, RESP.CHANNEL_DATA_RECV, RESP.ERR]);
@@ -81,7 +83,7 @@ class SerialTransport {
     finally { try { reader.releaseLock(); } catch (e) {} this._closed(); }
   }
   async send(payload) {
-    if (!this.writer) throw new Error('niet verbonden');
+    if (!this.writer) throw new Error(t('core.notConnected'));
     await this.writer.write(cat([0x3E, payload.length & 255, payload.length >> 8], payload));
   }
   async close() {
@@ -108,24 +110,24 @@ class BleTransport {
         svc = await server.getPrimaryService(UART_SVC);
       } catch (e) { lastErr = e; try { this.device.gatt.disconnect(); } catch (_) {} }
     }
-    if (!svc) { this.device = null; throw new Error((lastErr && lastErr.message) + ' — controleer of de node niet nog met de telefoon-app verbonden is, en koppel hem eerst in Windows (Instellingen › Bluetooth › Apparaat toevoegen, pincode standaard 123456).'); }
+    if (!svc) { this.device = null; throw new Error(t('ble.hintConnect', lastErr && lastErr.message)); }
     this.device.addEventListener('gattserverdisconnected', () => this._closed());
     const step = async (name, fn) => {
       let err; for (let i = 0; i < 3; i++) { try { return await fn(); } catch (e) { err = e; await sleep(400 * (i + 1)); } }
-      throw new Error(`${err.message} (stap: ${name}). Op Windows: koppel de node eerst via Instellingen › Bluetooth met de pincode (standaard 123456), of zet de BLE-pincode van de node op 0 via een USB-verbinding (Instellingen › Apparaat). Zorg dat de telefoon-app niet verbonden is.`);
+      throw new Error(t('ble.hintStep', err.message, name));
     };
-    this.rx = await step('RX-karakteristiek', () => svc.getCharacteristic(UART_RX));
-    this.tx = await step('TX-karakteristiek', () => svc.getCharacteristic(UART_TX));
+    this.rx = await step(t('ble.stepRx'), () => svc.getCharacteristic(UART_RX));
+    this.tx = await step(t('ble.stepTx'), () => svc.getCharacteristic(UART_TX));
     this.tx.addEventListener('characteristicvaluechanged', (ev) => {
       const v = ev.target.value; const u8 = new Uint8Array(v.buffer, v.byteOffset, v.byteLength).slice();
       try { this.onFrame && this.onFrame(u8); } catch (e) { console.error(e); }
     });
-    await step('notificaties', () => this.tx.startNotifications());
+    await step(t('ble.stepNotify'), () => this.tx.startNotifications());
   }
   send(payload) {
     // serialise writes; the BLE stack rejects overlapping GATT operations
     this._q = this._q.then(async () => {
-      if (!this.rx) throw new Error('niet verbonden');
+      if (!this.rx) throw new Error(t('core.notConnected'));
       await this.rx.writeValue(payload);
     });
     return this._q;
@@ -178,31 +180,31 @@ function parseLPP(b) {
   const be24 = () => { const v = (b[i] << 16) | (b[i + 1] << 8) | b[i + 2]; i += 3; return v; }, sbe24 = () => (be24() << 8) >> 8;
   const be32 = () => { const v = ((b[i] << 24) | (b[i+1] << 16) | (b[i+2] << 8) | b[i+3]) >>> 0; i += 4; return v; };
   while (i + 2 <= b.length) {
-    const ch = b[i++], t = b[i++]; let r = { ch, type: t };
+    const ch = b[i++], ty = b[i++]; let r = { ch, type: ty };
     try {
-      switch (t) {
-        case 0x00: r.name = 'digitaal in'; r.val = b[i++]; break;
-        case 0x01: r.name = 'digitaal uit'; r.val = b[i++]; break;
-        case 0x02: r.name = 'analoog in'; r.val = sbe16() / 100; break;
-        case 0x03: r.name = 'analoog uit'; r.val = sbe16() / 100; break;
-        case 0x65: r.name = 'lichtsterkte'; r.val = be16(); r.unit = 'lux'; break;
-        case 0x66: r.name = 'aanwezigheid'; r.val = b[i++]; break;
-        case 0x67: r.name = 'temperatuur'; r.val = sbe16() / 10; r.unit = '°C'; break;
-        case 0x68: r.name = 'luchtvochtigheid'; r.val = b[i++] / 2; r.unit = '%'; break;
-        case 0x71: r.name = 'accelerometer'; r.val = [sbe16() / 1000, sbe16() / 1000, sbe16() / 1000]; r.unit = 'g'; break;
-        case 0x73: r.name = 'luchtdruk'; r.val = be16() / 10; r.unit = 'hPa'; break;
-        case 0x74: r.name = 'spanning'; r.val = be16() / 100; r.unit = 'V'; break;
-        case 0x75: r.name = 'stroom'; r.val = be16() / 1000; r.unit = 'A'; break;
-        case 0x76: r.name = 'frequentie'; r.val = be32(); r.unit = 'Hz'; break;
-        case 0x77: r.name = 'percentage'; r.val = b[i++]; r.unit = '%'; break;
-        case 0x78: r.name = 'hoogte'; r.val = sbe16(); r.unit = 'm'; break;
-        case 0x7d: r.name = 'vermogen'; r.val = be16(); r.unit = 'W'; break;
-        case 0x7f: r.name = 'afstand'; r.val = be32(); r.unit = 'mm'; break;
-        case 0x83: r.name = 'energie'; r.val = be32(); r.unit = 'Wh'; break;
-        case 0x85: r.name = 'richting'; r.val = be16(); r.unit = '°'; break;
-        case 0x86: r.name = 'gyro'; r.val = [sbe16() / 100, sbe16() / 100, sbe16() / 100]; r.unit = '°/s'; break;
-        case 0x88: r.name = 'gps'; r.val = [sbe24() / 10000, sbe24() / 10000, sbe24() / 100]; break;
-        default: r.name = 'type 0x' + t.toString(16); r.val = '?'; i = b.length;
+      switch (ty) {
+        case 0x00: r.name = t('lpp.digIn'); r.val = b[i++]; break;
+        case 0x01: r.name = t('lpp.digOut'); r.val = b[i++]; break;
+        case 0x02: r.name = t('lpp.anIn'); r.val = sbe16() / 100; break;
+        case 0x03: r.name = t('lpp.anOut'); r.val = sbe16() / 100; break;
+        case 0x65: r.name = t('lpp.lux'); r.val = be16(); r.unit = 'lux'; break;
+        case 0x66: r.name = t('lpp.presence'); r.val = b[i++]; break;
+        case 0x67: r.name = t('lpp.temp'); r.val = sbe16() / 10; r.unit = '°C'; break;
+        case 0x68: r.name = t('lpp.hum'); r.val = b[i++] / 2; r.unit = '%'; break;
+        case 0x71: r.name = t('lpp.accel'); r.val = [sbe16() / 1000, sbe16() / 1000, sbe16() / 1000]; r.unit = 'g'; break;
+        case 0x73: r.name = t('lpp.press'); r.val = be16() / 10; r.unit = 'hPa'; break;
+        case 0x74: r.name = t('lpp.volt'); r.val = be16() / 100; r.unit = 'V'; break;
+        case 0x75: r.name = t('lpp.curr'); r.val = be16() / 1000; r.unit = 'A'; break;
+        case 0x76: r.name = t('lpp.freq'); r.val = be32(); r.unit = 'Hz'; break;
+        case 0x77: r.name = t('lpp.pct'); r.val = b[i++]; r.unit = '%'; break;
+        case 0x78: r.name = t('lpp.alt'); r.val = sbe16(); r.unit = 'm'; break;
+        case 0x7d: r.name = t('lpp.power'); r.val = be16(); r.unit = 'W'; break;
+        case 0x7f: r.name = t('lpp.dist'); r.val = be32(); r.unit = 'mm'; break;
+        case 0x83: r.name = t('lpp.energy'); r.val = be32(); r.unit = 'Wh'; break;
+        case 0x85: r.name = t('lpp.dir'); r.val = be16(); r.unit = '°'; break;
+        case 0x86: r.name = t('lpp.gyro'); r.val = [sbe16() / 100, sbe16() / 100, sbe16() / 100]; r.unit = '°/s'; break;
+        case 0x88: r.name = t('lpp.gps'); r.val = [sbe24() / 10000, sbe24() / 10000, sbe24() / 100]; break;
+        default: r.name = t('lpp.unknown', ty.toString(16)); r.val = '?'; i = b.length;
       }
     } catch (e) { i = b.length; }
     out.push(r);
@@ -218,7 +220,7 @@ class MeshCoreClient extends EventTarget {
   async connect(transport) {
     this.tr = transport;
     transport.onFrame = (f) => this._onFrame(f);
-    transport.onClose = () => { const was = this.connected; this.connected = false; this.tr = null; this._failAll('verbinding verbroken'); if (was) this.emit('disconnected'); };
+    transport.onClose = () => { const was = this.connected; this.connected = false; this.tr = null; this._failAll(t('core.connLost')); if (was) this.emit('disconnected'); };
     await transport.connect();
     this.connected = true;
   }
@@ -232,9 +234,9 @@ class MeshCoreClient extends EventTarget {
   }
   async _pump() {
     if (this.pending || !this.queue.length) return;
-    if (!this.tr) { this._failAll('niet verbonden'); return; }
+    if (!this.tr) { this._failAll(t('core.notConnected')); return; }
     const job = this.queue.shift(); this.pending = { ...job, frames: [] };
-    this.pending.timer = setTimeout(() => { const p = this.pending; this.pending = null; p && p.reject(new Error('timeout (cmd ' + job.payload[0] + ')')); this._pump(); }, job.opts.timeout || 8000);
+    this.pending.timer = setTimeout(() => { const p = this.pending; this.pending = null; p && p.reject(new Error(t('core.timeout', job.payload[0]))); this._pump(); }, job.opts.timeout || 8000);
     this.emit('tx', job.payload);
     try { await this.tr.send(job.payload); }
     catch (e) { if (this.pending) clearTimeout(this.pending.timer); this.pending = null; job.reject(e); this._pump(); }
@@ -248,14 +250,14 @@ class MeshCoreClient extends EventTarget {
     if (!p) { this.emit('unsolicited', f); return; }
     const { opts } = p;
     if (opts.collect) { // multi-frame response (contact list)
-      if (code === RESP.ERR) { this._finish(p); p.reject(new Error('fout: ' + (ERR_TEXT[f[1]] || f[1]))); return; }
+      if (code === RESP.ERR) { this._finish(p); p.reject(new Error(t('core.err', errText(f[1]) || f[1]))); return; }
       p.frames.push(f);
       if (opts.collect(code, f)) { this._finish(p); p.resolve(p.frames); }
       return;
     }
     if (opts.terminals && !opts.terminals.has(code)) { this.emit('unsolicited', f); return; }
     this._finish(p);
-    if (code === RESP.ERR && !opts.allowErr) p.reject(Object.assign(new Error('fout: ' + (ERR_TEXT[f[1]] || ('code ' + f[1]))), { errCode: f[1] }));
+    if (code === RESP.ERR && !opts.allowErr) p.reject(Object.assign(new Error(t('core.err', errText(f[1]) || t('core.errCode', f[1]))), { errCode: f[1] }));
     else p.resolve(f);
   }
   _finish(p) { clearTimeout(p.timer); this.pending = null; setTimeout(() => this._pump(), 0); }
@@ -331,7 +333,7 @@ class MeshCoreClient extends EventTarget {
   async tracePath(pathHex) { const tag = (Math.random() * 0xFFFFFFFF) >>> 0, auth = (Math.random() * 0xFFFFFFFF) >>> 0; const f = await this.cmd(cat([CMD.SEND_TRACE_PATH, ...u32le(tag), ...u32le(auth), 0], unhex(pathHex))); return { tag, auth, timeoutMs: rdU32(f, 6) }; }
   async getStats(type) { return this.cmd([CMD.GET_STATS, type]); }
   async getAdvertPath(pubHex) { const f = await this.cmd(cat([CMD.GET_ADVERT_PATH, 0], unhex(pubHex))); return { ts: rdU32(f, 1), len: f[5], path: hex(f.subarray(6)) }; }
-  async exportPrivateKey() { const f = await this.cmd([CMD.EXPORT_PRIVATE_KEY], { allowErr: true }); if (f[0] !== RESP.PRIVATE_KEY) throw new Error('uitgeschakeld in firmware'); return hex(f.subarray(1)); }
+  async exportPrivateKey() { const f = await this.cmd([CMD.EXPORT_PRIVATE_KEY], { allowErr: true }); if (f[0] !== RESP.PRIVATE_KEY) throw new Error(t('core.disabledFw')); return hex(f.subarray(1)); }
   raw(bytes) { return this.cmd(bytes, { allowErr: true }); }
 }
 

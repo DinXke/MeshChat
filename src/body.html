@@ -20,32 +20,33 @@
 </svg>
 
 <header id="topbar">
-  <button class="btn icon ghost only-mobile" id="btn-sidebar" aria-label="Kanalen tonen" aria-controls="sidebar"><svg class="i"><use href="#i-menu"/></svg></button>
+  <button class="btn icon ghost only-mobile" id="btn-sidebar" aria-label="Kanalen tonen" data-i18n-aria="h.showChannels" aria-controls="sidebar"><svg class="i"><use href="#i-menu"/></svg></button>
   <div class="brand"><span class="logo">MC</span><span class="txt">MeshChat</span></div>
   <span id="status" class="st-off" role="status" aria-live="polite">Niet verbonden</span>
   <span class="sep no-mobile"></span>
-  <button class="btn sm" id="btn-usb" title="Verbinden via USB (Web Serial)"><svg class="i"><use href="#i-usb"/></svg><span class="no-mobile">USB</span></button>
-  <button class="btn sm" id="btn-bt" title="Verbinden via Bluetooth (Web Bluetooth)"><svg class="i"><use href="#i-bt"/></svg><span class="no-mobile">Bluetooth</span></button>
-  <button class="btn sm ghost no-mobile" id="btn-disconnect" disabled>Verbreken</button>
+  <button class="btn sm" id="btn-usb" title="Verbinden via USB (Web Serial)" data-i18n-title="h.usbTitle"><svg class="i"><use href="#i-usb"/></svg><span class="no-mobile">USB</span></button>
+  <button class="btn sm" id="btn-bt" title="Verbinden via Bluetooth (Web Bluetooth)" data-i18n-title="h.btTitle"><svg class="i"><use href="#i-bt"/></svg><span class="no-mobile">Bluetooth</span></button>
+  <button class="btn sm ghost no-mobile" id="btn-disconnect" disabled data-i18n="h.disconnect">Verbreken</button>
   <span class="spacer"></span>
-  <span id="battery" title="Batterijspanning" hidden><span class="cell"><i></i></span><span class="v">—</span></span>
+  <span id="battery" title="Batterijspanning" data-i18n-title="h.battTitle" hidden><span class="cell"><i></i></span><span class="v">—</span></span>
   <span class="sep no-mobile"></span>
-  <span id="nick" class="no-mobile" title="Eigen naam (nick)">—</span>
-  <button class="btn icon ghost" id="btn-theme" aria-label="Thema wisselen"><svg class="i"><use href="#i-sun"/></svg></button>
-  <button class="btn icon ghost no-mobile" id="btn-about" data-open="dlg-about" aria-label="Over MeshChat en handleiding" title="Handleiding">?</button>
-  <button class="btn icon ghost" id="btn-settings" data-open="dlg-settings" aria-label="Instellingen"><svg class="i"><use href="#i-gear"/></svg></button>
-  <button class="btn icon ghost only-mobile" id="btn-users" aria-label="Deelnemers tonen" aria-controls="users"><svg class="i"><use href="#i-users"/></svg></button>
+  <span id="nick" class="no-mobile" title="Eigen naam (nick)" data-i18n-title="h.nickTitle">—</span>
+  <select id="lang-sel" aria-label="Taal" data-i18n-aria="h.lang" title="Taal" data-i18n-title="h.lang"><option value="nl">NL</option><option value="en">EN</option><option value="fr">FR</option></select>
+  <button class="btn icon ghost" id="btn-theme" aria-label="Thema wisselen" data-i18n-aria="h.theme"><svg class="i"><use href="#i-sun"/></svg></button>
+  <button class="btn icon ghost no-mobile" id="btn-about" data-open="dlg-about" aria-label="Over MeshChat en handleiding" data-i18n-aria="h.aboutAria" title="Handleiding" data-i18n-title="h.aboutTitle">?</button>
+  <button class="btn icon ghost" id="btn-settings" data-open="dlg-settings" aria-label="Instellingen" data-i18n-aria="h.settings"><svg class="i"><use href="#i-gear"/></svg></button>
+  <button class="btn icon ghost only-mobile" id="btn-users" aria-label="Deelnemers tonen" data-i18n-aria="h.showUsers" aria-controls="users"><svg class="i"><use href="#i-users"/></svg></button>
 </header>
 
 <div id="app">
 <div id="backdrop" aria-hidden="true"></div>
 
-<nav id="sidebar" aria-label="Kanalen en contacten">
-  <div id="sb-filter"><input id="sb-search" type="search" class="mono" placeholder="Zoek kanaal of contact…" aria-label="Zoeken in zijbalk" autocomplete="off"><button class="btn sm icon" id="btn-fav" aria-label="Alleen favorieten tonen" title="Alleen favorieten tonen">★</button></div>
+<nav id="sidebar" aria-label="Kanalen en contacten" data-i18n-aria="h.sidebarAria">
+  <div id="sb-filter"><input id="sb-search" type="search" class="mono" placeholder="Zoek kanaal of contact…" data-i18n-ph="h.searchPh" aria-label="Zoeken in zijbalk" data-i18n-aria="h.searchAria" autocomplete="off"><button class="btn sm icon" id="btn-fav" aria-label="Alleen favorieten tonen" data-i18n-aria="h.favOnly" title="Alleen favorieten tonen">★</button></div>
   <div id="tree"></div>
   <div class="foot">
-    <button class="btn sm" data-open="dlg-contacts"><svg class="i"><use href="#i-users"/></svg>Contacten</button>
-    <button class="btn sm" data-open="dlg-settings"><svg class="i"><use href="#i-gear"/></svg>Instellingen</button>
+    <button class="btn sm" data-open="dlg-contacts"><svg class="i"><use href="#i-users"/></svg><span data-i18n="h.contacts">Contacten</span></button>
+    <button class="btn sm" data-open="dlg-settings"><svg class="i"><use href="#i-gear"/></svg><span data-i18n="h.settings">Instellingen</span></button>
   </div>
 </nav>
 
@@ -53,27 +54,27 @@
   <div id="chan-head" data-target="status">
     <div class="title"><div id="chan-name">MeshChat</div><div id="chan-topic"></div></div>
     <div class="actions">
-      <label id="chan-scope-wrap" class="scope-pick" hidden title="Regio (flood-scope) voor berichten in dit kanaal"><svg class="i"><use href="#i-globe"/></svg><select id="chan-scope" aria-label="Regio voor dit kanaal"></select></label>
-      <button class="btn sm ghost" id="btn-chan-info">Info</button>
-      <button class="btn sm ghost danger" id="btn-chan-leave" hidden>Verlaten</button>
+      <label id="chan-scope-wrap" class="scope-pick" hidden title="Regio (flood-scope) voor berichten in dit kanaal" data-i18n-title="h.chanScopeTitle"><svg class="i"><use href="#i-globe"/></svg><select id="chan-scope" aria-label="Regio voor dit kanaal" data-i18n-aria="h.chanScopeAria"></select></label>
+      <button class="btn sm ghost" id="btn-chan-info" data-i18n="h.info">Info</button>
+      <button class="btn sm ghost danger" id="btn-chan-leave" hidden data-i18n="h.leave">Verlaten</button>
     </div>
   </div>
-  <div id="messages" role="log" aria-live="polite" aria-label="Berichten"></div>
-  <button class="btn sm" id="scroll-bottom" aria-label="Naar nieuwste berichten"><svg class="i"><use href="#i-down"/></svg>Nieuwe berichten</button>
+  <div id="messages" role="log" aria-live="polite" aria-label="Berichten" data-i18n-aria="h.messages"></div>
+  <button class="btn sm" id="scroll-bottom" aria-label="Naar nieuwste berichten" data-i18n-aria="h.toNewest"><svg class="i"><use href="#i-down"/></svg><span data-i18n="h.newMessages">Nieuwe berichten</span></button>
   <div id="compose">
     <div class="quick-cmds" hidden></div>
-    <div id="hint" role="listbox" aria-label="Commando's" hidden></div>
+    <div id="hint" role="listbox" aria-label="Commando's" data-i18n-aria="h.commands" hidden></div>
     <form id="composer" autocomplete="off">
       <span id="target" data-target="status">status</span>
-      <input id="input" type="text" placeholder="Bericht of /commando…" aria-label="Bericht" enterkeyhint="send" autocapitalize="off" spellcheck="true">
+      <input id="input" type="text" placeholder="Bericht of /commando…" aria-label="Bericht" data-i18n-aria="h.message" enterkeyhint="send" autocapitalize="off" spellcheck="true">
       <span id="counter" aria-live="polite">160</span>
-      <button class="btn primary" id="send" type="submit" aria-label="Verzenden"><svg class="i"><use href="#i-send"/></svg><span class="no-mobile">Verzend</span></button>
+      <button class="btn primary" id="send" type="submit" aria-label="Verzenden" data-i18n-aria="h.send"><svg class="i"><use href="#i-send"/></svg><span class="no-mobile" data-i18n="h.sendBtn">Verzend</span></button>
     </form>
   </div>
 </main>
 
-<aside id="users" aria-label="Deelnemers">
-  <div class="head">Deelnemers <span class="n" id="users-count"></span></div>
+<aside id="users" aria-label="Deelnemers" data-i18n-aria="h.users">
+  <div class="head"><span data-i18n="h.users">Deelnemers</span> <span class="n" id="users-count"></span></div>
   <div id="userlist"></div>
   <div id="info"></div>
 </aside>
@@ -84,315 +85,285 @@
 <!-- Kanaal toevoegen -->
 <dialog class="dlg" id="dlg-channel" aria-labelledby="dlg-channel-t">
   <form method="dialog">
-    <div class="dlg-head"><h2 id="dlg-channel-t">Kanaal toevoegen</h2><button class="btn icon ghost" value="cancel" aria-label="Sluiten" formnovalidate><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="dlg-head"><h2 id="dlg-channel-t" data-i18n="h.addChannel">Kanaal toevoegen</h2><button class="btn icon ghost" value="cancel" aria-label="Sluiten" data-i18n-aria="h.close" formnovalidate><svg class="i"><use href="#i-x"/></svg></button></div>
     <div class="dlg-body">
       <div class="radios" role="radiogroup">
-        <label><input type="radio" name="ctype" value="hashtag" checked><span>Hashtag <code>#naam</code><small>Sleutel afgeleid van de naam · open voor iedereen die de naam kent</small></span></label>
-        <label><input type="radio" name="ctype" value="key"><span>Privé met sleutel<small>Gedeelde 128-bit sleutel (hex of base64), naam vrij</small></span></label>
-        <label><input type="radio" name="ctype" value="password"><span>Privé met wachtwoord<small>Sleutel afgeleid van een wachtwoord</small></span></label>
-        <label><input type="radio" name="ctype" value="public"><span>Publiek<small>Het standaardkanaal, vaste sleutel</small></span></label>
+        <label><input type="radio" name="ctype" value="hashtag" checked><span data-i18n-html="h.ctHashtag">Hashtag <code>#naam</code><small>Sleutel afgeleid van de naam · open voor iedereen die de naam kent</small></span></label>
+        <label><input type="radio" name="ctype" value="key"><span data-i18n-html="h.ctKey">Privé met sleutel<small>Gedeelde 128-bit sleutel (hex of base64), naam vrij</small></span></label>
+        <label><input type="radio" name="ctype" value="password"><span data-i18n-html="h.ctPassword">Privé met wachtwoord<small>Sleutel afgeleid van een wachtwoord</small></span></label>
+        <label><input type="radio" name="ctype" value="public"><span data-i18n-html="h.ctPublic">Publiek<small>Het standaardkanaal, vaste sleutel</small></span></label>
       </div>
-      <div class="field"><label for="ch-name">Naam</label><input id="ch-name" class="mono" placeholder="#hasselt" maxlength="31"><span class="help">Max. 31 tekens.</span></div>
-      <div class="field"><label for="ch-secret">Sleutel of wachtwoord</label>
-        <div class="row"><input id="ch-secret" class="mono" placeholder="32 hex-tekens of base64"><button class="btn" type="button" id="ch-gen">Genereer</button></div>
+      <div class="field"><label for="ch-name" data-i18n="h.name">Naam</label><input id="ch-name" class="mono" placeholder="#hasselt" maxlength="31"><span class="help" data-i18n="h.max31">Max. 31 tekens.</span></div>
+      <div class="field"><label for="ch-secret" data-i18n="h.keyOrPw">Sleutel of wachtwoord</label>
+        <div class="row"><input id="ch-secret" class="mono" placeholder="32 hex-tekens of base64" data-i18n-ph="h.keyPh"><button class="btn" type="button" id="ch-gen" data-i18n="h.generate">Genereer</button></div>
         <span class="help" id="ch-help"></span></div>
     </div>
-    <div class="dlg-foot"><button class="btn" value="cancel" formnovalidate>Annuleren</button><button class="btn primary" value="ok" id="ch-add">Toevoegen</button></div>
+    <div class="dlg-foot"><button class="btn" value="cancel" formnovalidate data-i18n="h.cancel">Annuleren</button><button class="btn primary" value="ok" id="ch-add" data-i18n="h.add">Toevoegen</button></div>
   </form>
 </dialog>
 
 <!-- Contacten -->
 <dialog class="dlg wide" id="dlg-contacts" aria-labelledby="dlg-contacts-t">
-  <div class="dlg-head"><h2 id="dlg-contacts-t">Contacten <span class="dim" id="contacts-count"></span></h2><button class="btn icon ghost" data-close aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="dlg-head"><h2 id="dlg-contacts-t"><span data-i18n="h.contacts">Contacten</span> <span class="dim" id="contacts-count"></span></h2><button class="btn icon ghost" data-close aria-label="Sluiten" data-i18n-aria="h.close"><svg class="i"><use href="#i-x"/></svg></button></div>
   <div class="toolbar">
-    <input class="inp mono grow" id="contacts-search" type="search" placeholder="Zoeken op naam, sleutel, notitie…" aria-label="Contacten zoeken">
-    <select id="contacts-type" aria-label="Type"><option value="">Alle types</option><option value="1">Chat</option><option value="2">Repeater</option><option value="3">Room</option><option value="4">Sensor</option></select>
-    <select id="contacts-sort" aria-label="Sorteren"><option value="recent">Recentste advert</option><option value="name">Naam</option><option value="type">Type</option><option value="dist">Afstand</option></select>
-    <label class="check"><input type="checkbox" id="contacts-stale"> Ook oude tonen</label>
+    <input class="inp mono grow" id="contacts-search" type="search" placeholder="Zoeken op naam, sleutel, notitie…" data-i18n-ph="h.ctSearchPh" aria-label="Contacten zoeken" data-i18n-aria="h.ctSearchAria">
+    <select id="contacts-type" aria-label="Type" data-i18n-aria="h.type"><option value="" data-i18n="h.allTypes">Alle types</option><option value="1" data-i18n="adv.1">Chat</option><option value="2" data-i18n="adv.2">Repeater</option><option value="3" data-i18n="adv.3">Room</option><option value="4" data-i18n="adv.4">Sensor</option></select>
+    <select id="contacts-sort" aria-label="Sorteren" data-i18n-aria="h.sort"><option value="recent" data-i18n="h.sortRecent">Recentste advert</option><option value="name" data-i18n="h.sortName">Naam</option><option value="type" data-i18n="h.sortType">Type</option><option value="dist" data-i18n="h.sortDist">Afstand</option></select>
+    <label class="check"><input type="checkbox" id="contacts-stale"><span data-i18n="h.showStale"> Ook oude tonen</span></label>
   </div>
   <div class="dlg-body" style="padding:0 6px 6px">
-    <div id="pending-adverts" hidden><h3>Wachtende adverts (handmatig toevoegen staat aan)</h3><div id="pending-list"></div></div>
+    <div id="pending-adverts" hidden><h3 data-i18n="h.pendingAdverts">Wachtende adverts (handmatig toevoegen staat aan)</h3><div id="pending-list"></div></div>
     <table class="tbl" id="contacts-table">
-      <thead><tr><th></th><th>Naam</th><th>Type</th><th class="hide-m">Laatste advert</th><th class="hide-m">Pad</th><th></th></tr></thead>
+      <thead><tr><th></th><th data-i18n="h.name">Naam</th><th data-i18n="h.type">Type</th><th class="hide-m" data-i18n="h.lastAdvert">Laatste advert</th><th class="hide-m" data-i18n="h.path">Pad</th><th></th></tr></thead>
       <tbody></tbody>
     </table>
   </div>
   <div class="dlg-foot wrap">
-    <div class="left row" style="flex-wrap:wrap"><button class="btn sm" id="ct-advert-flood">Advert (flood)</button><button class="btn sm ghost" id="ct-advert-0">Advert (0-hop)</button><button class="btn sm ghost danger" id="ct-prune">Oude verwijderen</button><button class="btn sm ghost" id="ct-refresh" title="Volledige lijst opnieuw van de node halen (normaal worden alleen wijzigingen gesynchroniseerd)">Vernieuwen</button></div>
-    <button class="btn sm" id="ct-add">Handmatig toevoegen</button>
-    <button class="btn sm" id="ct-import">Importeren (meshcore://)</button>
-    <button class="btn sm ghost" id="ct-export">Exporteren</button>
-    <button class="btn sm primary" data-close>Sluiten</button>
+    <div class="left row" style="flex-wrap:wrap"><button class="btn sm" id="ct-advert-flood" data-i18n="h.advertFlood">Advert (flood)</button><button class="btn sm ghost" id="ct-advert-0" data-i18n="h.advert0">Advert (0-hop)</button><button class="btn sm ghost danger" id="ct-prune" data-i18n="h.pruneOld">Oude verwijderen</button><button class="btn sm ghost" id="ct-refresh" title="Volledige lijst opnieuw van de node halen (normaal worden alleen wijzigingen gesynchroniseerd)" data-i18n-title="h.refreshTitle" data-i18n="h.refresh">Vernieuwen</button></div>
+    <button class="btn sm" id="ct-add" data-i18n="h.addManual">Handmatig toevoegen</button>
+    <button class="btn sm" id="ct-import" data-i18n="h.importUri">Importeren (meshcore://)</button>
+    <button class="btn sm ghost" id="ct-export" data-i18n="h.export">Exporteren</button>
+    <button class="btn sm primary" data-close data-i18n="h.close">Sluiten</button>
   </div>
 </dialog>
 
 <!-- Contact bewerken -->
 <dialog class="dlg" id="dlg-contact" aria-labelledby="ce-title">
-  <div class="dlg-head"><h2 id="ce-title">Contact</h2><button class="btn icon ghost" data-close aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="dlg-head"><h2 id="ce-title" data-i18n="h.contact">Contact</h2><button class="btn icon ghost" data-close aria-label="Sluiten" data-i18n-aria="h.close"><svg class="i"><use href="#i-x"/></svg></button></div>
   <div class="dlg-body">
     <div class="grid2">
-      <div class="field"><label for="ce-name">Naam uit advert</label><input id="ce-name" class="mono" readonly></div>
-      <div class="field"><label for="ce-alias">Alias (lokaal)</label><input id="ce-alias" class="mono" maxlength="32" placeholder="eigen naam voor dit contact"></div>
+      <div class="field"><label for="ce-name" data-i18n="h.nameFromAdvert">Naam uit advert</label><input id="ce-name" class="mono" readonly></div>
+      <div class="field"><label for="ce-alias" data-i18n="h.aliasLocal">Alias (lokaal)</label><input id="ce-alias" class="mono" maxlength="32" placeholder="eigen naam voor dit contact" data-i18n-ph="h.aliasPh"></div>
     </div>
-    <div class="field"><label for="ce-note">Notitie (lokaal)</label><textarea id="ce-note" placeholder="bv. dak van de watertoren, admin = Wim"></textarea></div>
+    <div class="field"><label for="ce-note" data-i18n="h.noteLocal">Notitie (lokaal)</label><textarea id="ce-note" placeholder="bv. dak van de watertoren, admin = Wim" data-i18n-ph="h.notePh"></textarea></div>
     <div class="grid2">
-      <div class="field"><label for="ce-type">Type (op de node)</label><select id="ce-type"><option value="1">chat</option><option value="2">repeater</option><option value="3">room</option><option value="4">sensor</option></select></div>
-      <div class="field"><label for="ce-perm">Telemetrie-rechten (0–127)</label><input id="ce-perm" class="mono" type="number" min="0" max="127"><span class="help">Gebruikt als telemetrie op "per contact" staat.</span></div>
+      <div class="field"><label for="ce-type" data-i18n="h.typeOnNode">Type (op de node)</label><select id="ce-type"><option value="1" data-i18n="adv.1">chat</option><option value="2" data-i18n="adv.2">repeater</option><option value="3" data-i18n="adv.3">room</option><option value="4" data-i18n="adv.4">sensor</option></select></div>
+      <div class="field"><label for="ce-perm" data-i18n="h.telemPerm">Telemetrie-rechten (0–127)</label><input id="ce-perm" class="mono" type="number" min="0" max="127"><span class="help" data-i18n="h.telemPermHelp">Gebruikt als telemetrie op "per contact" staat.</span></div>
     </div>
-    <label class="check"><input type="checkbox" id="ce-fav"> Favoriet (wordt niet automatisch overschreven als de node vol is)</label>
+    <label class="check"><input type="checkbox" id="ce-fav"><span data-i18n="h.favLabel"> Favoriet (wordt niet automatisch overschreven als de node vol is)</span></label>
     <div class="hr"></div>
-    <div class="field"><label for="ce-pub">Publieke sleutel</label><div class="row"><input id="ce-pub" class="mono" readonly style="font-size:11px"><button class="btn" id="ce-copy-pub" type="button">Kopiëren</button></div></div>
+    <div class="field"><label for="ce-pub" data-i18n="h.pubKey">Publieke sleutel</label><div class="row"><input id="ce-pub" class="mono" readonly style="font-size:11px"><button class="btn" id="ce-copy-pub" type="button" data-i18n="h.copy">Kopiëren</button></div></div>
     <div class="grid2">
-      <div class="field"><label for="ce-advert">Laatste advert</label><input id="ce-advert" class="mono" readonly></div>
-      <div class="field"><label for="ce-loc">Locatie</label><input id="ce-loc" class="mono" readonly></div>
+      <div class="field"><label for="ce-advert" data-i18n="h.lastAdvert">Laatste advert</label><input id="ce-advert" class="mono" readonly></div>
+      <div class="field"><label for="ce-loc" data-i18n="h.location">Locatie</label><input id="ce-loc" class="mono" readonly></div>
     </div>
-    <div class="field"><label for="ce-path">Pad (uitgaand)</label><input id="ce-path" class="mono" readonly></div>
+    <div class="field"><label for="ce-path" data-i18n="h.pathOut">Pad (uitgaand)</label><input id="ce-path" class="mono" readonly></div>
     <div class="row" style="flex-wrap:wrap;gap:6px">
-      <button class="btn sm" id="ce-discover" type="button" data-needs-conn>Pad zoeken</button>
-      <button class="btn sm ghost" id="ce-resetpath" type="button" data-needs-conn>Pad reset</button>
-      <button class="btn sm" id="ce-export" type="button" data-needs-conn>Deel-URI</button>
-      <button class="btn sm" id="ce-share" type="button" data-needs-conn>Delen op mesh</button>
+      <button class="btn sm" id="ce-discover" type="button" data-needs-conn data-i18n="h.discover">Pad zoeken</button>
+      <button class="btn sm ghost" id="ce-resetpath" type="button" data-needs-conn data-i18n="h.pathReset">Pad reset</button>
+      <button class="btn sm" id="ce-export" type="button" data-needs-conn data-i18n="h.shareUri">Deel-URI</button>
+      <button class="btn sm" id="ce-share" type="button" data-needs-conn data-i18n="h.shareMesh">Delen op mesh</button>
     </div>
   </div>
-  <div class="dlg-foot"><button class="btn danger left" id="ce-delete">Verwijderen</button><button class="btn" id="ce-chat">Openen</button><button class="btn primary" id="ce-save">Opslaan</button></div>
+  <div class="dlg-foot"><button class="btn danger left" id="ce-delete" data-i18n="h.delete">Verwijderen</button><button class="btn" id="ce-chat" data-i18n="h.open">Openen</button><button class="btn primary" id="ce-save" data-i18n="h.save">Opslaan</button></div>
 </dialog>
 
 <!-- Handmatig contact toevoegen -->
 <dialog class="dlg" id="dlg-addcontact" aria-labelledby="ac-t">
   <form method="dialog">
-    <div class="dlg-head"><h2 id="ac-t">Contact handmatig toevoegen</h2><button class="btn icon ghost" value="cancel" aria-label="Sluiten" formnovalidate><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="dlg-head"><h2 id="ac-t" data-i18n="h.addContactManual">Contact handmatig toevoegen</h2><button class="btn icon ghost" value="cancel" aria-label="Sluiten" data-i18n-aria="h.close" formnovalidate><svg class="i"><use href="#i-x"/></svg></button></div>
     <div class="dlg-body">
-      <div class="field"><label for="ac-pub">Publieke sleutel (64 hex)</label><input id="ac-pub" class="mono" placeholder="e27b14c9…" required></div>
-      <div class="grid2"><div class="field"><label for="ac-name">Naam</label><input id="ac-name" class="mono" maxlength="31"></div><div class="field"><label for="ac-type">Type</label><select id="ac-type"><option value="1">chat</option><option value="2" selected>repeater</option><option value="3">room</option><option value="4">sensor</option></select></div></div>
-      <div class="callout">Heb je een <span class="mono">meshcore://</span>-link? Gebruik dan "Importeren" in het contactenvenster; die bevat ook de handtekening en locatie.</div>
+      <div class="field"><label for="ac-pub" data-i18n="h.pubKey64">Publieke sleutel (64 hex)</label><input id="ac-pub" class="mono" placeholder="e27b14c9…" required></div>
+      <div class="grid2"><div class="field"><label for="ac-name" data-i18n="h.name">Naam</label><input id="ac-name" class="mono" maxlength="31"></div><div class="field"><label for="ac-type" data-i18n="h.type">Type</label><select id="ac-type"><option value="1" data-i18n="adv.1">chat</option><option value="2" selected data-i18n="adv.2">repeater</option><option value="3" data-i18n="adv.3">room</option><option value="4" data-i18n="adv.4">sensor</option></select></div></div>
+      <div class="callout" data-i18n-html="h.manualCallout">Heb je een <span class="mono">meshcore://</span>-link? Gebruik dan "Importeren" in het contactenvenster; die bevat ook de handtekening en locatie.</div>
     </div>
-    <div class="dlg-foot"><button class="btn" value="cancel" formnovalidate>Annuleren</button><button class="btn primary" value="ok" id="ac-ok">Toevoegen</button></div>
+    <div class="dlg-foot"><button class="btn" value="cancel" formnovalidate data-i18n="h.cancel">Annuleren</button><button class="btn primary" value="ok" id="ac-ok" data-i18n="h.add">Toevoegen</button></div>
   </form>
 </dialog>
 
 <!-- Instellingen -->
 <dialog class="dlg wide" id="dlg-settings" aria-labelledby="dlg-settings-t">
-  <div class="dlg-head"><h2 id="dlg-settings-t">Instellingen</h2><button class="btn icon ghost" data-close aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="dlg-head"><h2 id="dlg-settings-t" data-i18n="h.settings">Instellingen</h2><button class="btn icon ghost" data-close aria-label="Sluiten" data-i18n-aria="h.close"><svg class="i"><use href="#i-x"/></svg></button></div>
   <div class="tabs" role="tablist">
-    <button class="tab active" role="tab" data-tab="node">Node</button><button class="tab" role="tab" data-tab="radio">Radio</button><button class="tab" role="tab" data-tab="region">Regio's</button>
-    <button class="tab" role="tab" data-tab="location">Locatie</button><button class="tab" role="tab" data-tab="device">Apparaat</button><button class="tab" role="tab" data-tab="view">Weergave</button><button class="tab" role="tab" data-tab="data">Gegevens</button>
+    <button class="tab active" role="tab" data-tab="node" data-i18n="h.tabNode">Node</button><button class="tab" role="tab" data-tab="radio" data-i18n="h.tabRadio">Radio</button><button class="tab" role="tab" data-tab="region" data-i18n="h.tabRegion">Regio's</button>
+    <button class="tab" role="tab" data-tab="location" data-i18n="h.tabLocation">Locatie</button><button class="tab" role="tab" data-tab="device" data-i18n="h.tabDevice">Apparaat</button><button class="tab" role="tab" data-tab="view" data-i18n="h.tabView">Weergave</button><button class="tab" role="tab" data-tab="data" data-i18n="h.tabData">Gegevens</button>
   </div>
   <div class="dlg-body">
     <section class="pane active" data-pane="node">
-      <div class="field"><label for="s-name">Naam (nick)</label><input id="s-name" class="mono" maxlength="31" data-needs-conn><span class="help">Zichtbaar in adverts en kanaalberichten. Verstuur na wijziging een advert.</span></div>
-      <div class="field"><label for="s-pub">Publieke sleutel</label><input id="s-pub" class="mono" readonly style="font-size:11px"></div>
-      <h4 class="sub">Contacten</h4>
-      <label class="check"><input type="checkbox" id="s-manual-add" data-needs-conn> Contacten handmatig toevoegen (nieuwe adverts eerst goedkeuren)</label>
+      <div class="field"><label for="s-name" data-i18n="h.nameNick">Naam (nick)</label><input id="s-name" class="mono" maxlength="31" data-needs-conn><span class="help" data-i18n="h.nameHelp">Zichtbaar in adverts en kanaalberichten. Verstuur na wijziging een advert.</span></div>
+      <div class="field"><label for="s-pub" data-i18n="h.pubKey">Publieke sleutel</label><input id="s-pub" class="mono" readonly style="font-size:11px"></div>
+      <h4 class="sub" data-i18n="h.contacts">Contacten</h4>
+      <label class="check"><input type="checkbox" id="s-manual-add" data-needs-conn><span data-i18n="h.manualAdd"> Contacten handmatig toevoegen (nieuwe adverts eerst goedkeuren)</span></label>
       <div id="s-autoadd-box" hidden>
         <div class="row" style="flex-wrap:wrap;gap:4px 14px">
-          <label class="check"><input type="checkbox" id="s-aa-chat"> Chat auto-toevoegen</label><label class="check"><input type="checkbox" id="s-aa-rpt"> Repeaters</label><label class="check"><input type="checkbox" id="s-aa-room"> Rooms</label><label class="check"><input type="checkbox" id="s-aa-sensor"> Sensoren</label>
-          <label class="check"><input type="checkbox" id="s-aa-overwrite"> Oudste (niet-favoriet) overschrijven als vol</label>
+          <label class="check"><input type="checkbox" id="s-aa-chat"><span data-i18n="h.aaChat"> Chat auto-toevoegen</span></label><label class="check"><input type="checkbox" id="s-aa-rpt"><span data-i18n="h.aaRpt"> Repeaters</span></label><label class="check"><input type="checkbox" id="s-aa-room"><span data-i18n="h.aaRoom"> Rooms</span></label><label class="check"><input type="checkbox" id="s-aa-sensor"><span data-i18n="h.aaSensor"> Sensoren</span></label>
+          <label class="check"><input type="checkbox" id="s-aa-overwrite"><span data-i18n="h.aaOverwrite"> Oudste (niet-favoriet) overschrijven als vol</span></label>
         </div>
-        <div class="field" style="max-width:220px"><label for="s-aa-hops">Max. hops voor auto-toevoegen (leeg = geen limiet)</label><input id="s-aa-hops" class="mono" type="number" min="0" max="64"></div>
+        <div class="field" style="max-width:220px"><label for="s-aa-hops" data-i18n="h.aaHops">Max. hops voor auto-toevoegen (leeg = geen limiet)</label><input id="s-aa-hops" class="mono" type="number" min="0" max="64"></div>
       </div>
-      <h4 class="sub">Telemetrie delen</h4>
+      <h4 class="sub" data-i18n="h.telemShare">Telemetrie delen</h4>
       <div class="grid3">
-        <div class="field"><label for="s-telem-base">Basis (batterij, temp.)</label><select id="s-telem-base" data-needs-conn><option value="0">Nooit</option><option value="1">Per contact (rechten)</option><option value="2">Iedereen</option></select></div>
-        <div class="field"><label for="s-telem-loc">Locatie</label><select id="s-telem-loc" data-needs-conn><option value="0">Nooit</option><option value="1">Per contact</option><option value="2">Iedereen</option></select></div>
-        <div class="field"><label for="s-telem-env">Omgeving (sensoren)</label><select id="s-telem-env" data-needs-conn><option value="0">Nooit</option><option value="1">Per contact</option><option value="2">Iedereen</option></select></div>
+        <div class="field"><label for="s-telem-base" data-i18n="h.telemBase">Basis (batterij, temp.)</label><select id="s-telem-base" data-needs-conn><option value="0" data-i18n="h.never">Nooit</option><option value="1" data-i18n="h.perContactPerm">Per contact (rechten)</option><option value="2" data-i18n="h.everyone">Iedereen</option></select></div>
+        <div class="field"><label for="s-telem-loc" data-i18n="h.location">Locatie</label><select id="s-telem-loc" data-needs-conn><option value="0" data-i18n="h.never">Nooit</option><option value="1" data-i18n="h.perContact">Per contact</option><option value="2" data-i18n="h.everyone">Iedereen</option></select></div>
+        <div class="field"><label for="s-telem-env" data-i18n="h.telemEnv">Omgeving (sensoren)</label><select id="s-telem-env" data-needs-conn><option value="0" data-i18n="h.never">Nooit</option><option value="1" data-i18n="h.perContact">Per contact</option><option value="2" data-i18n="h.everyone">Iedereen</option></select></div>
       </div>
-      <label class="check"><input type="checkbox" id="s-multiacks" data-needs-conn> Meerdere ACK's sturen (betrouwbaarder, meer airtime)</label>
-      <div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn" id="s-advert" data-needs-conn>Advert versturen</button><button class="btn primary" id="s-node-save" data-needs-conn>Opslaan</button></div>
+      <label class="check"><input type="checkbox" id="s-multiacks" data-needs-conn><span data-i18n="h.multiAcks"> Meerdere ACK's sturen (betrouwbaarder, meer airtime)</span></label>
+      <div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn" id="s-advert" data-needs-conn data-i18n="h.sendAdvert">Advert versturen</button><button class="btn primary" id="s-node-save" data-needs-conn data-i18n="h.save">Opslaan</button></div>
     </section>
 
     <section class="pane" data-pane="radio">
-      <div class="callout" style="margin-bottom:12px">Alle nodes in het netwerk moeten dezelfde frequentie, bandbreedte, SF en CR gebruiken. Wijzigingen gelden direct na opslaan.</div>
-      <div class="field"><label for="s-radio-preset">Voorinstelling</label><select id="s-radio-preset"><option value="">— kies —</option><option value="eu-869">EU/UK 869.618 · BW250 · SF11 · CR5 (standaard)</option><option value="eu-868n">EU narrow 869.618 · BW62.5 · SF8 · CR8</option><option value="eu-433">EU 433.650 · BW250 · SF10 · CR5</option><option value="us-910">USA/Canada 910.525 · BW62.5 · SF7 · CR5</option><option value="au-915">AU/NZ 915.800 · BW250 · SF11 · CR5</option><option value="anz-9">ANZ 917.500 · BW250 · SF10 · CR5</option></select></div>
+      <div class="callout" style="margin-bottom:12px" data-i18n="h.radioCallout">Alle nodes in het netwerk moeten dezelfde frequentie, bandbreedte, SF en CR gebruiken. Wijzigingen gelden direct na opslaan.</div>
+      <div class="field"><label for="s-radio-preset" data-i18n="h.preset">Voorinstelling</label><select id="s-radio-preset"><option value="" data-i18n="h.choose">— kies —</option><option value="eu-869" data-i18n="h.presetEu869">EU/UK 869.618 · BW250 · SF11 · CR5 (standaard)</option><option value="eu-868n">EU narrow 869.618 · BW62.5 · SF8 · CR8</option><option value="eu-433">EU 433.650 · BW250 · SF10 · CR5</option><option value="us-910">USA/Canada 910.525 · BW62.5 · SF7 · CR5</option><option value="au-915">AU/NZ 915.800 · BW250 · SF11 · CR5</option><option value="anz-9">ANZ 917.500 · BW250 · SF10 · CR5</option></select></div>
       <div class="grid3">
-        <div class="field"><label for="s-freq">Frequentie (MHz)</label><input id="s-freq" class="mono" inputmode="decimal" data-needs-conn></div>
-        <div class="field"><label for="s-bw">Bandbreedte (kHz)</label><select id="s-bw" data-needs-conn><option>7.8</option><option>10.4</option><option>15.6</option><option>20.8</option><option>31.25</option><option>41.7</option><option>62.5</option><option>125</option><option>250</option><option>500</option></select></div>
+        <div class="field"><label for="s-freq" data-i18n="h.freq">Frequentie (MHz)</label><input id="s-freq" class="mono" inputmode="decimal" data-needs-conn></div>
+        <div class="field"><label for="s-bw" data-i18n="h.bw">Bandbreedte (kHz)</label><select id="s-bw" data-needs-conn><option>7.8</option><option>10.4</option><option>15.6</option><option>20.8</option><option>31.25</option><option>41.7</option><option>62.5</option><option>125</option><option>250</option><option>500</option></select></div>
         <div class="field"><label for="s-sf">Spreading factor</label><select id="s-sf" data-needs-conn><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option></select></div>
         <div class="field"><label for="s-cr">Coding rate</label><select id="s-cr" data-needs-conn><option>5</option><option>6</option><option>7</option><option>8</option></select></div>
-        <div class="field"><label for="s-tx">TX-vermogen (dBm)</label><input id="s-tx" class="mono" type="number" min="-9" max="30" data-needs-conn></div>
-        <div class="field"><label for="s-hashmode">Pad-hashgrootte</label><select id="s-hashmode" data-needs-conn><option value="0">1 byte (standaard)</option><option value="1">2 bytes</option><option value="2">3 bytes</option></select></div>
+        <div class="field"><label for="s-tx" data-i18n="h.txPower">TX-vermogen (dBm)</label><input id="s-tx" class="mono" type="number" min="-9" max="30" data-needs-conn></div>
+        <div class="field"><label for="s-hashmode" data-i18n="h.hashSize">Pad-hashgrootte</label><select id="s-hashmode" data-needs-conn><option value="0" data-i18n="h.hash1">1 byte (standaard)</option><option value="1" data-i18n="h.hash2">2 bytes</option><option value="2" data-i18n="h.hash3">3 bytes</option></select></div>
       </div>
-      <label class="check"><input type="checkbox" id="s-repeat" data-needs-conn> Client-repeat: deze node herhaalt ook pakketten (alleen op toegestane frequenties)</label>
+      <label class="check"><input type="checkbox" id="s-repeat" data-needs-conn><span data-i18n="h.clientRepeat"> Client-repeat: deze node herhaalt ook pakketten (alleen op toegestane frequenties)</span></label>
       <div class="help" id="s-repeat-help" style="font-size:11px;color:var(--fg-mute)"></div>
-      <div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn primary" id="s-radio-save" data-needs-conn>Radio opslaan</button></div>
+      <div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn primary" id="s-radio-save" data-needs-conn data-i18n="h.saveRadio">Radio opslaan</button></div>
       <div class="hr"></div>
-      <h4 class="sub">Tuning (geavanceerd)</h4>
+      <h4 class="sub" data-i18n="h.tuning">Tuning (geavanceerd)</h4>
       <div class="grid3">
-        <div class="field"><label for="s-tuning-rx">RX-vertraging basis</label><input id="s-tuning-rx" class="mono" inputmode="decimal" data-needs-conn></div>
-        <div class="field"><label for="s-tuning-af">Airtime-factor</label><input id="s-tuning-af" class="mono" inputmode="decimal" data-needs-conn></div>
-        <div class="field"><label>&nbsp;</label><button class="btn" id="s-tuning-save" data-needs-conn>Tuning opslaan</button></div>
+        <div class="field"><label for="s-tuning-rx" data-i18n="h.rxDelay">RX-vertraging basis</label><input id="s-tuning-rx" class="mono" inputmode="decimal" data-needs-conn></div>
+        <div class="field"><label for="s-tuning-af" data-i18n="h.airtimeFactor">Airtime-factor</label><input id="s-tuning-af" class="mono" inputmode="decimal" data-needs-conn></div>
+        <div class="field"><label>&nbsp;</label><button class="btn" id="s-tuning-save" data-needs-conn data-i18n="h.saveTuning">Tuning opslaan</button></div>
       </div>
     </section>
 
     <section class="pane" data-pane="region">
-      <div class="callout" style="margin-bottom:12px">Regio's (flood-scopes, firmware ≥ 1.10) beperken hoe ver floods reizen: repeaters herhalen alleen pakketten van hun eigen regio. De sleutel van een regio volgt uit de naam (SHA-256 van "#naam", 16 bytes), tenzij de beheerder een eigen sleutel deelt.</div>
-      <h4 class="sub">Standaardregio van de node</h4>
+      <div class="callout" style="margin-bottom:12px" data-i18n="h.regionCallout">Regio's (flood-scopes, firmware ≥ 1.10) beperken hoe ver floods reizen: repeaters herhalen alleen pakketten van hun eigen regio. De sleutel van een regio volgt uit de naam (SHA-256 van "#naam", 16 bytes), tenzij de beheerder een eigen sleutel deelt.</div>
+      <h4 class="sub" data-i18n="h.nodeDefaultRegion">Standaardregio van de node</h4>
       <div class="grid2">
-        <div class="field"><label for="s-region-name">Naam</label><input id="s-region-name" class="mono" maxlength="30" placeholder="bv. Limburg" data-needs-conn></div>
-        <div class="field"><label for="s-region-key">Sleutel (hex, 32)</label><div class="row"><input id="s-region-key" class="mono" placeholder="leeg = afleiden uit naam" data-needs-conn><button class="btn" id="s-region-derive" type="button">Afleiden</button></div></div>
+        <div class="field"><label for="s-region-name" data-i18n="h.name">Naam</label><input id="s-region-name" class="mono" maxlength="30" placeholder="bv. Limburg" data-i18n-ph="h.regionNamePh" data-needs-conn></div>
+        <div class="field"><label for="s-region-key" data-i18n="h.keyHex32">Sleutel (hex, 32)</label><div class="row"><input id="s-region-key" class="mono" placeholder="leeg = afleiden uit naam" data-i18n-ph="h.deriveFromNamePh" data-needs-conn><button class="btn" id="s-region-derive" type="button" data-i18n="h.derive">Afleiden</button></div></div>
       </div>
-      <div class="row" style="justify-content:flex-end"><button class="btn ghost" id="s-region-clear" data-needs-conn>Regio wissen</button><button class="btn primary" id="s-region-save" data-needs-conn>Regio opslaan</button></div>
+      <div class="row" style="justify-content:flex-end"><button class="btn ghost" id="s-region-clear" data-needs-conn data-i18n="h.clearRegion">Regio wissen</button><button class="btn primary" id="s-region-save" data-needs-conn data-i18n="h.saveRegion">Regio opslaan</button></div>
       <div class="hr"></div>
-      <h4 class="sub">Mijn regio's</h4>
-      <table class="tbl" id="regions-table"><thead><tr><th>Naam</th><th class="hide-m">Sleutel</th><th></th></tr></thead><tbody></tbody></table>
+      <h4 class="sub" data-i18n="h.myRegions">Mijn regio's</h4>
+      <table class="tbl" id="regions-table"><thead><tr><th data-i18n="h.name">Naam</th><th class="hide-m" data-i18n="h.key">Sleutel</th><th></th></tr></thead><tbody></tbody></table>
       <div class="row" style="margin:8px 0 4px;flex-wrap:wrap">
-        <input id="rg-name" class="inp mono" placeholder="naam, bv. be-vlg" maxlength="30" style="width:160px">
-        <input id="rg-key" class="inp mono" placeholder="sleutel (leeg = afleiden)" style="flex:1;min-width:160px">
-        <button class="btn" id="rg-add">Toevoegen</button>
+        <input id="rg-name" class="inp mono" placeholder="naam, bv. be-vlg" data-i18n-ph="h.rgNamePh" maxlength="30" style="width:160px">
+        <input id="rg-key" class="inp mono" placeholder="sleutel (leeg = afleiden)" data-i18n-ph="h.rgKeyPh" style="flex:1;min-width:160px">
+        <button class="btn" id="rg-add" data-i18n="h.add">Toevoegen</button>
       </div>
       <div class="row" style="flex-wrap:wrap;gap:6px;margin-bottom:6px">
-        <select id="rg-rpt" aria-label="Repeater" style="min-width:180px"></select>
-        <button class="btn" id="rg-discover" data-needs-conn>Regio's ophalen van repeater</button>
-        <span class="help" style="font-size:11px;color:var(--fg-mute)">Stuurt het CLI-commando <span class="mono">region</span>; login als admin is nodig.</span>
+        <select id="rg-rpt" aria-label="Repeater" data-i18n-aria="h.repeater" style="min-width:180px"></select>
+        <button class="btn" id="rg-discover" data-needs-conn data-i18n="h.discoverRegions">Regio's ophalen van repeater</button>
+        <span class="help" style="font-size:11px;color:var(--fg-mute)" data-i18n-html="h.discoverHelp">Stuurt het CLI-commando <span class="mono">region</span>; login als admin is nodig.</span>
       </div>
       <div class="hr"></div>
-      <h4 class="sub">Verzendscope voor deze sessie</h4>
-      <div class="field"><label for="s-scope-mode">Scope bij het verzenden</label><select id="s-scope-mode"><option value="default">Standaardregio van de node</option><option value="unscoped">Zonder scope (overal heen floods)</option><option value="custom">Andere regio…</option></select></div>
+      <h4 class="sub" data-i18n="h.sessionScope">Verzendscope voor deze sessie</h4>
+      <div class="field"><label for="s-scope-mode" data-i18n="h.scopeOnSend">Scope bij het verzenden</label><select id="s-scope-mode"><option value="default" data-i18n="h.scopeDefault">Standaardregio van de node</option><option value="unscoped" data-i18n="h.scopeUnscoped">Zonder scope (overal heen floods)</option><option value="custom" data-i18n="h.scopeCustom">Andere regio…</option></select></div>
       <div id="s-scope-custom" hidden class="grid2">
-        <div class="field"><label for="s-scope-name">Regionaam</label><input id="s-scope-name" class="mono" placeholder="bv. Antwerpen"></div>
-        <div class="field"><label for="s-scope-key">Sleutel (hex)</label><div class="row"><input id="s-scope-key" class="mono" placeholder="leeg = afleiden"><button class="btn" id="s-scope-derive" type="button">Afleiden</button></div></div>
+        <div class="field"><label for="s-scope-name" data-i18n="h.regionName">Regionaam</label><input id="s-scope-name" class="mono" placeholder="bv. Antwerpen" data-i18n-ph="h.regionNamePh2"></div>
+        <div class="field"><label for="s-scope-key" data-i18n="h.keyHex">Sleutel (hex)</label><div class="row"><input id="s-scope-key" class="mono" placeholder="leeg = afleiden" data-i18n-ph="h.derivePh"><button class="btn" id="s-scope-derive" type="button" data-i18n="h.derive">Afleiden</button></div></div>
       </div>
-      <div class="row" style="justify-content:flex-end"><button class="btn primary" id="s-scope-apply">Toepassen</button></div>
-      <p class="help" style="font-size:11.5px;color:var(--fg-mute)">Ook via <span class="mono">/scope &lt;naam|hex|off|default&gt;</span> en <span class="mono">/region &lt;naam&gt;</span>. Eigen berichten tonen de gebruikte scope in de meta-badge; bij ontvangen berichten is de scope zichtbaar in Berichtinfo zodra de node ruwe pakketten doorstuurt.</p>
+      <div class="row" style="justify-content:flex-end"><button class="btn primary" id="s-scope-apply" data-i18n="h.apply">Toepassen</button></div>
+      <p class="help" style="font-size:11.5px;color:var(--fg-mute)" data-i18n-html="h.scopeHelp">Ook via <span class="mono">/scope &lt;naam|hex|off|default&gt;</span> en <span class="mono">/region &lt;naam&gt;</span>. Eigen berichten tonen de gebruikte scope in de meta-badge; bij ontvangen berichten is de scope zichtbaar in Berichtinfo zodra de node ruwe pakketten doorstuurt.</p>
     </section>
 
     <section class="pane" data-pane="location">
       <div class="grid2">
-        <div class="field"><label for="s-lat">Breedtegraad</label><input id="s-lat" class="mono" inputmode="decimal" placeholder="50.93070" data-needs-conn></div>
-        <div class="field"><label for="s-lon">Lengtegraad</label><input id="s-lon" class="mono" inputmode="decimal" placeholder="5.33780" data-needs-conn></div>
+        <div class="field"><label for="s-lat" data-i18n="h.lat">Breedtegraad</label><input id="s-lat" class="mono" inputmode="decimal" placeholder="50.93070" data-needs-conn></div>
+        <div class="field"><label for="s-lon" data-i18n="h.lon">Lengtegraad</label><input id="s-lon" class="mono" inputmode="decimal" placeholder="5.33780" data-needs-conn></div>
       </div>
-      <div class="field"><label for="s-locpolicy">Locatie in adverts</label><select id="s-locpolicy" data-needs-conn><option value="0">Niet meedelen</option><option value="1">Meedelen in adverts</option></select><span class="help">Anderen zien je positie en afstand alleen als je dit aanzet.</span></div>
-      <div class="row" style="justify-content:flex-end"><button class="btn" id="s-geo">Locatie van browser</button><button class="btn primary" id="s-loc-save" data-needs-conn>Opslaan</button></div>
+      <div class="field"><label for="s-locpolicy" data-i18n="h.locInAdverts">Locatie in adverts</label><select id="s-locpolicy" data-needs-conn><option value="0" data-i18n="h.locNo">Niet meedelen</option><option value="1" data-i18n="h.locYes">Meedelen in adverts</option></select><span class="help" data-i18n="h.locHelp">Anderen zien je positie en afstand alleen als je dit aanzet.</span></div>
+      <div class="row" style="justify-content:flex-end"><button class="btn" id="s-geo" data-i18n="h.locFromBrowser">Locatie van browser</button><button class="btn primary" id="s-loc-save" data-needs-conn data-i18n="h.save">Opslaan</button></div>
     </section>
 
     <section class="pane" data-pane="device">
       <div class="grid2">
-        <div class="field"><label for="s-model">Model</label><input id="s-model" readonly></div>
-        <div class="field"><label for="s-fw">Firmware</label><input id="s-fw" class="mono" readonly></div>
-        <div class="field"><label for="s-build">Build</label><input id="s-build" class="mono" readonly></div>
-        <div class="field"><label for="s-limits">Limieten</label><input id="s-limits" class="mono" readonly></div>
-        <div class="field"><label for="s-devtime">Apparaattijd</label><input id="s-devtime" class="mono" readonly></div>
-        <div class="field"><label for="s-battery">Batterij / opslag</label><input id="s-battery" class="mono" readonly></div>
+        <div class="field"><label for="s-model" data-i18n="h.model">Model</label><input id="s-model" readonly></div>
+        <div class="field"><label for="s-fw" data-i18n="h.firmware">Firmware</label><input id="s-fw" class="mono" readonly></div>
+        <div class="field"><label for="s-build" data-i18n="h.build">Build</label><input id="s-build" class="mono" readonly></div>
+        <div class="field"><label for="s-limits" data-i18n="h.limits">Limieten</label><input id="s-limits" class="mono" readonly></div>
+        <div class="field"><label for="s-devtime" data-i18n="h.deviceTime">Apparaattijd</label><input id="s-devtime" class="mono" readonly></div>
+        <div class="field"><label for="s-battery" data-i18n="h.battStorage">Batterij / opslag</label><input id="s-battery" class="mono" readonly></div>
       </div>
-      <div class="row" style="flex-wrap:wrap"><button class="btn" id="s-sync-time" data-needs-conn>Tijd synchroniseren</button><button class="btn danger" id="s-reboot" data-needs-conn>Herstart node</button></div>
+      <div class="row" style="flex-wrap:wrap"><button class="btn" id="s-sync-time" data-needs-conn data-i18n="h.syncTime">Tijd synchroniseren</button><button class="btn danger" id="s-reboot" data-needs-conn data-i18n="h.rebootNode">Herstart node</button></div>
       <div class="hr"></div>
-      <div class="field" style="max-width:260px"><label for="s-pin">Bluetooth-pincode (6 cijfers, 0 = uit)</label><div class="row"><input id="s-pin" class="mono" type="number" min="0" max="999999" data-needs-conn><button class="btn" id="s-pin-save" data-needs-conn>Opslaan</button></div></div>
+      <div class="field" style="max-width:260px"><label for="s-pin" data-i18n="h.blePin">Bluetooth-pincode (6 cijfers, 0 = uit)</label><div class="row"><input id="s-pin" class="mono" type="number" min="0" max="999999" data-needs-conn><button class="btn" id="s-pin-save" data-needs-conn data-i18n="h.save">Opslaan</button></div></div>
       <div class="hr"></div>
-      <h4 class="sub">Identiteit</h4>
-      <div class="row" style="flex-wrap:wrap"><button class="btn" id="s-privkey-export" data-needs-conn>Privésleutel tonen</button><button class="btn" id="s-privkey-import" data-needs-conn>Privésleutel importeren</button><button class="btn danger" id="s-factory" data-needs-conn>Fabrieksinstellingen</button></div>
+      <h4 class="sub" data-i18n="h.identity">Identiteit</h4>
+      <div class="row" style="flex-wrap:wrap"><button class="btn" id="s-privkey-export" data-needs-conn data-i18n="h.showPrivKey">Privésleutel tonen</button><button class="btn" id="s-privkey-import" data-needs-conn data-i18n="h.importPrivKey">Privésleutel importeren</button><button class="btn danger" id="s-factory" data-needs-conn data-i18n="h.factory">Fabrieksinstellingen</button></div>
     </section>
 
     <section class="pane" data-pane="view">
-      <div class="field" style="max-width:260px"><label for="s-theme">Thema</label><select id="s-theme"><option value="auto">Systeem</option><option value="dark">Donker</option><option value="light">Licht</option></select></div>
-      <label class="check"><input type="checkbox" id="s-ts" checked> Tijdstempels tonen</label>
-      <label class="check"><input type="checkbox" id="s-meta" checked> SNR/hops/scope-badge per bericht tonen</label>
-      <label class="check"><input type="checkbox" id="s-compact"> Compacte weergave</label>
-      <label class="check"><input type="checkbox" id="s-notif" checked> Systeemmelding bij vermelding van mijn naam</label>
-      <label class="check"><input type="checkbox" id="s-debug"> Debug: ruwe frames in het statusvenster</label>
-      <label class="check"><input type="checkbox" id="s-favonly"> Zijbalk: alleen favoriete rooms, repeaters en sensoren tonen (favorieten van de node, ★ in Contacten)</label>
-      <div class="field" style="max-width:260px"><label for="s-stale">Contact geldt als "oud" na (dagen zonder advert)</label><input id="s-stale" type="number" min="1" max="365" class="mono"></div>
+      <div class="grid2">
+        <div class="field" style="max-width:260px"><label for="s-lang" data-i18n="h.language">Taal</label><select id="s-lang"><option value="nl">Nederlands</option><option value="en">English</option><option value="fr">Français</option></select></div>
+        <div class="field" style="max-width:260px"><label for="s-theme" data-i18n="h.themeLabel">Thema</label><select id="s-theme"><option value="auto" data-i18n="h.themeSystem">Systeem</option><option value="dark" data-i18n="h.themeDark">Donker</option><option value="light" data-i18n="h.themeLight">Licht</option></select></div>
+      </div>
+      <label class="check"><input type="checkbox" id="s-ts" checked><span data-i18n="h.showTs"> Tijdstempels tonen</span></label>
+      <label class="check"><input type="checkbox" id="s-meta" checked><span data-i18n="h.showMeta"> SNR/hops/scope-badge per bericht tonen</span></label>
+      <label class="check"><input type="checkbox" id="s-compact"><span data-i18n="h.compact"> Compacte weergave</span></label>
+      <label class="check"><input type="checkbox" id="s-notif" checked><span data-i18n="h.notif"> Systeemmelding bij vermelding van mijn naam</span></label>
+      <label class="check"><input type="checkbox" id="s-debug"><span data-i18n="h.debug"> Debug: ruwe frames in het statusvenster</span></label>
+      <label class="check"><input type="checkbox" id="s-favonly"><span data-i18n="h.favOnlySetting"> Zijbalk: alleen favoriete rooms, repeaters en sensoren tonen (favorieten van de node, ★ in Contacten)</span></label>
+      <div class="field" style="max-width:260px"><label for="s-stale" data-i18n="h.staleDays">Contact geldt als "oud" na (dagen zonder advert)</label><input id="s-stale" type="number" min="1" max="365" class="mono"></div>
     </section>
 
     <section class="pane" data-pane="data">
-      <div class="callout" style="margin-bottom:12px">Berichten, aliassen en voorkeuren staan alleen in deze browser (localStorage). Er gaat niets naar een server. Room-wachtwoorden worden alleen bewaard als "automatisch inloggen" aanstaat.</div>
-      <h4 class="sub">Volledige configuratie</h4>
-      <p class="help" style="font-size:12px;color:var(--fg-dim)">Node-instellingen (naam, radio, locatie, regio, opties, tuning), kanalen met sleutels, contacten en lokale voorkeuren. Importeren schrijft alles terug naar een (nieuwe) node.</p>
-      <label class="check"><input type="checkbox" id="s-export-key"> Privésleutel meenemen (identiteit overzetten; bewaar het bestand veilig)</label>
-      <div class="row" style="flex-wrap:wrap"><button class="btn primary" id="s-export-config">Configuratie exporteren</button><button class="btn" id="s-import-config">Configuratie importeren</button><input type="file" id="s-import-file" accept="application/json,.json" hidden></div>
+      <div class="callout" style="margin-bottom:12px" data-i18n="h.dataCallout">Berichten, aliassen en voorkeuren staan alleen in deze browser (localStorage). Er gaat niets naar een server. Room-wachtwoorden worden alleen bewaard als "automatisch inloggen" aanstaat.</div>
+      <h4 class="sub" data-i18n="h.fullConfig">Volledige configuratie</h4>
+      <p class="help" style="font-size:12px;color:var(--fg-dim)" data-i18n="h.fullConfigHelp">Node-instellingen (naam, radio, locatie, regio, opties, tuning), kanalen met sleutels, contacten en lokale voorkeuren. Importeren schrijft alles terug naar een (nieuwe) node.</p>
+      <label class="check"><input type="checkbox" id="s-export-key"><span data-i18n="h.exportKey"> Privésleutel meenemen (identiteit overzetten; bewaar het bestand veilig)</span></label>
+      <div class="row" style="flex-wrap:wrap"><button class="btn primary" id="s-export-config" data-i18n="h.exportConfig">Configuratie exporteren</button><button class="btn" id="s-import-config" data-i18n="h.importConfig">Configuratie importeren</button><input type="file" id="s-import-file" accept="application/json,.json" hidden></div>
       <div class="hr"></div>
-      <div class="row" style="flex-wrap:wrap"><button class="btn" id="s-export-history">Geschiedenis exporteren</button><button class="btn danger" id="s-clear">Geschiedenis wissen</button><button class="btn danger ghost" id="s-forget">Alles lokaal vergeten</button></div>
+      <div class="row" style="flex-wrap:wrap"><button class="btn" id="s-export-history" data-i18n="h.exportHistory">Geschiedenis exporteren</button><button class="btn danger" id="s-clear" data-i18n="h.clearHistory">Geschiedenis wissen</button><button class="btn danger ghost" id="s-forget" data-i18n="h.forgetAll">Alles lokaal vergeten</button></div>
     </section>
   </div>
-  <div class="dlg-foot"><span class="left dim" id="s-storage"></span><button class="btn primary" data-close>Sluiten</button></div>
+  <div class="dlg-foot"><span class="left dim" id="s-storage"></span><button class="btn primary" data-close data-i18n="h.close">Sluiten</button></div>
 </dialog>
 
 <!-- Login -->
 <dialog class="dlg" id="dlg-login" aria-labelledby="dlg-login-t">
   <form method="dialog">
-    <div class="dlg-head"><h2 id="dlg-login-t">Inloggen op <span class="mono" id="login-room"></span></h2><button class="btn icon ghost" value="cancel" aria-label="Sluiten" formnovalidate><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="dlg-head"><h2 id="dlg-login-t"><span data-i18n="h.loginTo">Inloggen op </span><span class="mono" id="login-room"></span></h2><button class="btn icon ghost" value="cancel" aria-label="Sluiten" data-i18n-aria="h.close" formnovalidate><svg class="i"><use href="#i-x"/></svg></button></div>
     <div class="dlg-body">
-      <div class="field"><label for="login-pw">Wachtwoord</label><input id="login-pw" type="password" class="mono" autocomplete="off"><span class="help">Room: gast- of adminwachtwoord. Repeater: adminwachtwoord (nodig voor CLI-commando's). Wordt versleuteld over het mesh verstuurd.</span></div>
-      <label class="check"><input type="checkbox" id="login-auto"> Automatisch inloggen bij verbinden (wachtwoord lokaal bewaren)</label>
+      <div class="field"><label for="login-pw" data-i18n="h.password">Wachtwoord</label><input id="login-pw" type="password" class="mono" autocomplete="off"><span class="help" data-i18n="h.pwHelp">Room: gast- of adminwachtwoord. Repeater: adminwachtwoord (nodig voor CLI-commando's). Wordt versleuteld over het mesh verstuurd.</span></div>
+      <label class="check"><input type="checkbox" id="login-auto"><span data-i18n="h.autoLogin"> Automatisch inloggen bij verbinden (wachtwoord lokaal bewaren)</span></label>
     </div>
-    <div class="dlg-foot"><button class="btn" value="cancel" formnovalidate>Annuleren</button><button class="btn primary" value="ok" id="login-ok">Inloggen</button></div>
+    <div class="dlg-foot"><button class="btn" value="cancel" formnovalidate data-i18n="h.cancel">Annuleren</button><button class="btn primary" value="ok" id="login-ok" data-i18n="h.login">Inloggen</button></div>
   </form>
 </dialog>
 
 <!-- Regio's van repeater overnemen -->
 <dialog class="dlg" id="dlg-regions" aria-labelledby="dlg-regions-t">
-  <div class="dlg-head"><h2 id="dlg-regions-t">Regio's van <span class="mono" id="rg-src"></span></h2><button class="btn icon ghost" data-close aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="dlg-head"><h2 id="dlg-regions-t"><span data-i18n="h.regionsOf">Regio's van </span><span class="mono" id="rg-src"></span></h2><button class="btn icon ghost" data-close aria-label="Sluiten" data-i18n-aria="h.close"><svg class="i"><use href="#i-x"/></svg></button></div>
   <div class="dlg-body">
-    <div class="callout" style="margin-bottom:10px">Antwoord van de repeater: <span class="mono" id="rg-raw" style="overflow-wrap:anywhere"></span></div>
-    <table class="tbl" id="rg-pick"><thead><tr><th></th><th>Regio</th><th class="hide-m">Sleutel</th><th title="Als standaardregio van mijn node instellen">Node-std.</th></tr></thead><tbody></tbody></table>
-    <label class="check" style="margin-top:10px"><input type="checkbox" id="rg-set-global" checked> Gekozen node-standaard ook als globale verzendscope gebruiken</label>
+    <div class="callout" style="margin-bottom:10px"><span data-i18n="h.repeaterReply">Antwoord van de repeater: </span><span class="mono" id="rg-raw" style="overflow-wrap:anywhere"></span></div>
+    <table class="tbl" id="rg-pick"><thead><tr><th></th><th data-i18n="h.region">Regio</th><th class="hide-m" data-i18n="h.key">Sleutel</th><th title="Als standaardregio van mijn node instellen" data-i18n-title="h.nodeStdTitle" data-i18n="h.nodeStd">Node-std.</th></tr></thead><tbody></tbody></table>
+    <label class="check" style="margin-top:10px"><input type="checkbox" id="rg-set-global" checked><span data-i18n="h.alsoGlobal"> Gekozen node-standaard ook als globale verzendscope gebruiken</span></label>
   </div>
-  <div class="dlg-foot"><button class="btn" data-close>Annuleren</button><button class="btn primary" id="rg-apply">Overnemen</button></div>
+  <div class="dlg-foot"><button class="btn" data-close data-i18n="h.cancel">Annuleren</button><button class="btn primary" id="rg-apply" data-i18n="h.takeOver">Overnemen</button></div>
 </dialog>
 
 <!-- Berichtinfo -->
 <dialog class="dlg" id="dlg-msg" aria-labelledby="dlg-msg-t">
-  <div class="dlg-head"><h2 id="dlg-msg-t">Berichtinfo</h2><button class="btn icon ghost" data-close aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="dlg-head"><h2 id="dlg-msg-t" data-i18n="h.msgInfo">Berichtinfo</h2><button class="btn icon ghost" data-close aria-label="Sluiten" data-i18n-aria="h.close"><svg class="i"><use href="#i-x"/></svg></button></div>
   <div class="dlg-body" id="msg-info"></div>
-  <div class="dlg-foot"><button class="btn primary" data-close>Sluiten</button></div>
+  <div class="dlg-foot"><button class="btn primary" data-close data-i18n="h.close">Sluiten</button></div>
 </dialog>
 
 <!-- Bevestiging / invoer -->
 <dialog class="dlg" id="dlg-confirm" aria-labelledby="confirm-t">
   <form method="dialog">
-    <div class="dlg-head"><h2 id="confirm-t">Bevestigen</h2></div>
+    <div class="dlg-head"><h2 id="confirm-t" data-i18n="h.confirm">Bevestigen</h2></div>
     <div class="dlg-body"><p id="confirm-x" style="margin:0;font-size:13px"></p></div>
-    <div class="dlg-foot"><button class="btn" value="cancel" formnovalidate>Annuleren</button><button class="btn primary" value="ok" id="confirm-ok">OK</button></div>
+    <div class="dlg-foot"><button class="btn" value="cancel" formnovalidate data-i18n="h.cancel">Annuleren</button><button class="btn primary" value="ok" id="confirm-ok" data-i18n="ui.ok">OK</button></div>
   </form>
 </dialog>
 <dialog class="dlg" id="dlg-prompt" aria-labelledby="prompt-t">
   <form method="dialog">
-    <div class="dlg-head"><h2 id="prompt-t">Invoer</h2></div>
+    <div class="dlg-head"><h2 id="prompt-t" data-i18n="h.input">Invoer</h2></div>
     <div class="dlg-body"><div class="field"><label for="prompt-v" id="prompt-l"></label><input id="prompt-v" class="mono"></div></div>
-    <div class="dlg-foot"><button class="btn" value="cancel" formnovalidate>Annuleren</button><button class="btn primary" value="ok">OK</button></div>
+    <div class="dlg-foot"><button class="btn" value="cancel" formnovalidate data-i18n="h.cancel">Annuleren</button><button class="btn primary" value="ok">OK</button></div>
   </form>
 </dialog>
 
 <!-- Over / handleiding -->
 <dialog class="dlg wide" id="dlg-about" aria-labelledby="dlg-about-t">
-  <div class="dlg-head"><h2 id="dlg-about-t">MeshChat <span class="dim app-version"></span></h2><button class="btn icon ghost" data-close aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="dlg-head"><h2 id="dlg-about-t">MeshChat <span class="dim app-version"></span></h2><button class="btn icon ghost" data-close aria-label="Sluiten" data-i18n-aria="h.close"><svg class="i"><use href="#i-x"/></svg></button></div>
   <div class="dlg-body about">
-    <p>IRC-achtige webclient voor <b>MeshCore</b>-companion-radio's. Eén HTML-bestand, geen server, geen installatie. Werkt in Chrome of Edge (desktop en Android); op iOS alleen Bluetooth via de Bluefy-browser.</p>
-    <dl class="meta"><dt>Maker</dt><dd class="app-author"></dd><dt>Broncode</dt><dd><a class="app-repo" href="#" target="_blank" rel="noopener"></a></dd><dt>Versie</dt><dd class="app-version"></dd><dt>Licentie</dt><dd>MIT</dd></dl>
-    <h4 class="sub">Verbinden</h4>
-    <ol>
-      <li><b>USB</b>: sluit de node aan, klik op USB en kies de COM-poort.</li>
-      <li><b>Bluetooth</b>: klik op Bluetooth en kies de node. Op Windows verschijnt de eerste keer een pincode-vraag (standaard 123456); mislukt de eerste poging, klik dan gewoon nog een keer. De node mag niet tegelijk met de telefoon-app verbonden zijn.</li>
-      <li>Werkt de knop niet vanaf een lokaal bestand, host het bestand dan via https of localhost.</li>
-    </ol>
-    <h4 class="sub">Vensters</h4>
-    <ul>
-      <li><b>MeshChat</b> (statusvenster): verbindingsinfo, systeemmeldingen, /commando's.</li>
-      <li><b>Kanalen</b>: #public, hashtag-kanalen (sleutel volgt uit de naam) en privékanalen met gedeelde sleutel of wachtwoord. Toevoegen met + of <code>/join</code>.</li>
-      <li><b>Rooms</b> (&amp;naam): log in met <code>/login wachtwoord</code>, daarna is gewone tekst een post.</li>
-      <li><b>Privé</b>: directe berichten met bevestiging (✓). Openen via Contacten, de deelnemerslijst of <code>/msg naam tekst</code>.</li>
-      <li><b>Repeaters &amp; sensoren</b>: gewone tekst gaat als CLI-commando (bv. <code>ver</code>, <code>get radio</code>, <code>neighbors</code>); log eerst in met het adminwachtwoord. Knoppen rechts: Status, Telemetrie, Trace, Pad zoeken, Pad reset.</li>
-    </ul>
-    <h4 class="sub">Zijbalk</h4>
-    <p>Het zoekveld filtert tijdens het typen over alle kanalen en contacten (Enter opent het eerste resultaat). De ★-knop toont alleen de favorieten die op de node staan; favorieten zet je aan of uit met de ster in Contacten. Rechtsklik op een item voor meer acties.</p>
-    <h4 class="sub">Berichten</h4>
-    <p>Rechts van elk bericht staan SNR, RSSI, hops en scope. Rechtsklik, dubbelklik of lang indrukken opent <b>Berichtinfo</b> met het volledige pad (repeaters), transportcodes en het ruwe pakket, voor zover de firmware ruwe pakketten doorstuurt. Tab vult namen aan, pijl omhoog haalt eerdere invoer terug, @naam markeert iemand.</p>
-    <h4 class="sub">Veelgebruikte commando's</h4>
-    <table class="tbl cmds"><tbody>
-      <tr><td><code>/join #naam</code> · <code>/join naam sleutel</code></td><td>kanaal toevoegen (hashtag, of privé met sleutel/wachtwoord)</td></tr>
-      <tr><td><code>/part</code></td><td>kanaal van de node verwijderen</td></tr>
-      <tr><td><code>/msg naam tekst</code> · <code>/query naam</code></td><td>privébericht / privévenster</td></tr>
-      <tr><td><code>/login ww</code> · <code>/logout</code></td><td>in- en uitloggen op room of repeater</td></tr>
-      <tr><td><code>/status</code> · <code>/telemetry</code> · <code>/trace</code> · <code>/path</code> · <code>/resetpath</code></td><td>node-diagnose voor het geopende contact</td></tr>
-      <tr><td><code>/advert</code> · <code>/advert flood</code></td><td>eigen advert versturen</td></tr>
-      <tr><td><code>/scope naam|off|default</code> · <code>/region naam</code></td><td>verzendscope en standaardregio (flood-scopes)</td></tr>
-      <tr><td><code>/nick naam</code> · <code>/whois naam</code> · <code>/names</code> · <code>/list</code></td><td>naam wijzigen, contactinfo, deelnemers, overzicht</td></tr>
-      <tr><td><code>/export</code> · <code>/import meshcore://…</code> · <code>/share naam</code> · <code>/del naam</code></td><td>contacten delen, importeren, verwijderen</td></tr>
-      <tr><td><code>/time</code> · <code>/settime</code> · <code>/battery</code> · <code>/stats</code> · <code>/debug</code> · <code>/clear</code></td><td>node-informatie en onderhoud</td></tr>
-    </tbody></table>
-    <h4 class="sub">Instellingen</h4>
-    <p>Via het tandwiel: naam, telemetrie-rechten, auto-add, radio (met voorinstellingen), regio's, locatie, apparaat (tijd, BLE-pincode, herstart, privésleutel, fabrieksreset), weergave en gegevens. Onder Gegevens exporteer je de volledige configuratie als JSON en zet je die op een andere node terug.</p>
-    <p class="mute">Alles wordt alleen lokaal in de browser opgeslagen. De sleutel van een wachtwoordkanaal is een MeshChat-conventie; deel voor andere apps de sleutel uit het infopaneel.</p>
+    <p data-i18n-html="about.intro">IRC-achtige webclient voor <b>MeshCore</b>-companion-radio's. Eén HTML-bestand, geen server, geen installatie. Werkt in Chrome of Edge (desktop en Android); op iOS alleen Bluetooth via de Bluefy-browser.</p>
+    <dl class="meta"><dt data-i18n="h.author">Maker</dt><dd class="app-author"></dd><dt data-i18n="h.source">Broncode</dt><dd><a class="app-repo" href="#" target="_blank" rel="noopener"></a></dd><dt data-i18n="h.version">Versie</dt><dd class="app-version"></dd><dt data-i18n="h.license">Licentie</dt><dd>MIT</dd></dl>
+    <div data-i18n-html="about.body"></div>
   </div>
-  <div class="dlg-foot"><span class="left dim">MeshChat is een onafhankelijk project, niet verbonden aan het MeshCore-team.</span><button class="btn only-online" id="btn-download" hidden title="Bewaar deze pagina als los HTML-bestand om hem offline of op je eigen server te gebruiken">⬇ Download meshchat.html</button><button class="btn primary" data-close>Sluiten</button></div>
+  <div class="dlg-foot"><span class="left dim" data-i18n="h.independent">MeshChat is een onafhankelijk project, niet verbonden aan het MeshCore-team.</span><button class="btn only-online" id="btn-download" hidden title="Bewaar deze pagina als los HTML-bestand om hem offline of op je eigen server te gebruiken" data-i18n-title="h.downloadTitle" data-i18n="h.download">⬇ Download meshchat.html</button><button class="btn primary" data-close data-i18n="h.close">Sluiten</button></div>
 </dialog>
 
 <div id="toasts" aria-live="polite"></div>
