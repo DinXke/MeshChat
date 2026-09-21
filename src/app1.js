@@ -2,7 +2,7 @@
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const APP_BUILD = '__BUILD__'; // wordt door build.sh vervangen door datum+commit; basis van de updatecheck
-const APP_VERSION = '0.2.0', APP_REPO = 'https://github.com/DinXke/MeshChat', APP_AUTHOR = 'DinX';
+const APP_VERSION = '0.2.1', APP_REPO = 'https://github.com/DinXke/MeshChat', APP_AUTHOR = 'DinX';
 const LS_KEY = 'mcirc.v1';
 const MAX_HIST = 400;
 
@@ -138,7 +138,21 @@ function correlateRx(m) { // attach the most recent, unclaimed raw packet that f
     r.claimed = true; m.rx = r.pkt; m.rssi = r.rssi; return;
   }
 }
+// Bekende regio's (lijst in Instellingen + standaardregio van de node) -> naam bij de transportcodes van een pakket
+function knownRegions() { const r = (S.settings.regions || []).slice(); if (S.defaultScope && !r.some(x => x.key === S.defaultScope.key)) r.push(S.defaultScope); return r; }
+async function resolveScopeNames(rx) {
+  if (!rx || !rx.codes || !rx.payloadHex) return null; const names = [];
+  for (const r of knownRegions()) { try { const code = await transportCodeFor(r.key, rx.ptype, rx.payloadHex); if (rx.codes.includes(code)) names.push(r.name); } catch (e) {} }
+  return names;
+}
 function scopeLabelFor(m) {
-  if (m.rx) { if (m.rx.route === 0 || m.rx.route === 3) return t('scope.codes', m.rx.codes.map(c => c.toString(16).padStart(4, '0')).join('/')); return m.rx.route === 1 ? t('scope.none') : 'direct'; }
+  if (m.rx) {
+    if (m.rx.route === 0 || m.rx.route === 3) {
+      if (m.rx.scopeNames === undefined) { m.rx.scopeNames = null; resolveScopeNames(m.rx).then(n => { m.rx.scopeNames = n || []; if (n && n.length) updateMsgDom(m); }); }
+      if (m.rx.scopeNames && m.rx.scopeNames.length) return t('scope.named', m.rx.scopeNames.join('+'));
+      return t('scope.codes', m.rx.codes.filter(c => c).map(c => c.toString(16).padStart(4, '0')).join('/'));
+    }
+    return m.rx.route === 1 ? t('scope.none') : 'direct';
+  }
   return null;
 }

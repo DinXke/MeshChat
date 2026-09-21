@@ -99,7 +99,7 @@ function metaText(m) {
 }
 // Sleutelprefixen in CLI-tekst (bv. 'neighbors') aanvullen met de naam van het bekende contact.
 function annotateKeys(text) {
-  return esc(text).replace(/([0-9a-f]{6,64})/gi, (hexs) => {
+  return esc(text).replace(/\b([0-9a-f]{6,64})\b/gi, (hexs) => {
     if (!/[a-f]/i.test(hexs) && hexs.length < 8) return hexs; // gewone getallen overslaan
     const c = contactByPrefix(hexs.toLowerCase()); if (!c) return hexs;
     return hexs + ' <span class="mute">(' + esc(cname(c)) + ')</span>';
@@ -254,6 +254,7 @@ function renderInfo(cv) {
     ${c.type >= 2 ? `<dt>${esc(t('info.login'))}</dt><dd>${esc(c.loggedIn ? t('info.loggedIn') + (c.perms ? t('info.admin') : '') : t('info.notLoggedIn'))}</dd>` : ''}
     ${x.note ? `<dt>${esc(t('info.note'))}</dt><dd>${esc(x.note)}</dd>` : ''}
   </dl><div class="acts">
+    ${c.type === 2 ? `<button class="btn sm" data-act="neighbors">${esc(t('nb.discover'))}</button>` : ''}
     ${c.type >= 2 ? `<button class="btn sm" data-act="status">${esc(t('info.status'))}</button>` : ''}
     <button class="btn sm" data-act="telemetry">${esc(t('info.telemetry'))}</button>
     ${p.hashes.length ? `<button class="btn sm" data-act="trace">${esc(t('info.trace'))}</button>` : ''}

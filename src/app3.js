@@ -46,7 +46,7 @@ async function refreshContacts(full) {
   const list = await C.getContacts(since);
   if (since) { for (const c of S.contacts.values()) if (c.hidden === undefined) c.hidden = false; }
   const seen = new Set();
-  for (const c of list) { seen.add(c.pub); const old = S.contacts.get(c.pub) || {}; S.contacts.set(c.pub, { ...old, ...c, hidden: false }); }
+  for (const c of list) { if (/�/.test(c.name) || !/^[0-9a-f]{64}$/.test(c.pub)) { debugLog('contact overgeslagen (onleesbaar): ' + c.pub.slice(0, 8)); continue; } seen.add(c.pub); const old = S.contacts.get(c.pub) || {}; S.contacts.set(c.pub, { ...old, ...c, hidden: false }); }
   if (!since) for (const [pub, c] of S.contacts) if (!seen.has(pub)) c.hidden = true; // not on device (anymore)
   if (list.lastmod) S.contactsSync = { pub: S.self.pub, lastmod: Math.max(list.lastmod, since || 0) };
   for (const c of S.contacts.values()) if (!c.hidden && c.type >= 2) convForContact(c);
@@ -59,7 +59,7 @@ async function refreshContact(pub) {
 }
 async function refreshChannels() {
   const max = S.dev?.maxChannels || 8; const chans = [];
-  for (let i = 0; i < max; i++) { try { const ch = await C.getChannel(i); chans[i] = ch; } catch (e) { if (i > 0) break; } }
+  for (let i = 0; i < max; i++) { try { const ch = await C.getChannel(i); if (ch.idx !== i || /�/.test(ch.name)) { debugLog('kanaal ' + i + ': onleesbaar antwoord, overgeslagen'); continue; } chans[i] = ch; } catch (e) { if (i > 0) break; } }
   S.channels = chans;
   for (const ch of chans) if (ch && ch.name) convForChannel(ch);
   renderTree(); saveState();
@@ -225,7 +225,8 @@ function handleIncoming(m) {
     if (m.txtType === TXT.CLI) { // CLI reply from repeater/sensor
       for (const w of (S.cliWaiters || []).filter(w => w.pub === c.pub)) { clearTimeout(w.timer); w.resolve(m.text); } S.cliWaiters = (S.cliWaiters || []).filter(w => w.pub !== c.pub);
       const pending = cv.msgs.slice(-20).reverse().find(x => x.kind === 'cli' && x.ack === 'pending');
-      if (pending) { pending.text = (pending.text ? pending.text + '\n' : '') + m.text; pending.ack = null; pending.snr = m.snr; pending.pathLen = m.pathLen; clearTimeout(pending._timer); updateMsgDom(pending); if (cv.key !== S.active) { cv.unread++; renderTree(); } saveState(); }
+      if (pending) { pending.text = (pending.text ? pending.text + '\n' : '') + m.text; pending.ack = null; pending.snr = m.snr; pending.pathLen = m.pathLen; clearTimeout(pending._timer); updateMsgDom(pending); if (cv.key !== S.active) { cv.unread++; renderTree(); } saveState();
+        if (S.autoNbFor === c.pub && /^neighbou?rs\b/i.test(pending.cmd || '')) { S.autoNbFor = null; const nb = parseNeighbors(pending.text); if (nb.length) mapShowNeighbors(c, nb); else toast(t('nb.none'), 'warn'); } }
       else addMsg(cv, { kind: 'cli', nick: displayName(c), cmd: '', text: m.text, t: saneTs(m.ts), snr: m.snr, pathLen: m.pathLen });
       return;
     }

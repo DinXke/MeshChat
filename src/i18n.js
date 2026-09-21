@@ -7,6 +7,7 @@ let LANG = 'nl';
 const I18N = {};
 
 I18N.nl = {
+  'scope.named': 'regio {0}', 'nb.discover': 'Buren', 'nb.none': 'De repeater meldt geen buren.',
   'users.searchPh': 'Zoek deelnemer…', 'users.searchNone': 'Geen deelnemer voor "{0}".',
   'uri.title': 'Contact importeren', 'uri.text': 'Dit contact toevoegen aan je node?\n{0}', 'uri.import': 'Importeren', 'uri.done': 'Contact geïmporteerd: {0}', 'uri.failed': 'Importeren mislukt: {0}', 'uri.known': '{0} staat al in je contacten.', 'uri.waitConnect': 'Contact-link ontvangen ({0}). Verbind eerst met je node; daarna volgt de importvraag.', 'uri.weblink': 'Weblink (opent MeshChat met importvraag):',
   'h.emoji': 'Emoji invoegen', 'emoji.recent': 'Recent', 'emoji.smileys': 'Smileys', 'emoji.mesh': 'Mesh & weer', 'emoji.hearts': 'Overig',
@@ -246,6 +247,7 @@ I18N.nl = {
 };
 
 I18N.en = {
+  'scope.named': 'region {0}', 'nb.discover': 'Neighbours', 'nb.none': 'The repeater reports no neighbours.',
   'users.searchPh': 'Find participant…', 'users.searchNone': 'No participant for "{0}".',
   'uri.title': 'Import contact', 'uri.text': 'Add this contact to your node?\n{0}', 'uri.import': 'Import', 'uri.done': 'Contact imported: {0}', 'uri.failed': 'Import failed: {0}', 'uri.known': '{0} is already in your contacts.', 'uri.waitConnect': 'Contact link received ({0}). Connect to your node first; the import prompt follows.', 'uri.weblink': 'Web link (opens MeshChat with an import prompt):',
   'h.emoji': 'Insert emoji', 'emoji.recent': 'Recent', 'emoji.smileys': 'Smileys', 'emoji.mesh': 'Mesh & weather', 'emoji.hearts': 'Other',
@@ -464,6 +466,7 @@ I18N.en = {
 };
 
 I18N.fr = {
+  'scope.named': 'région {0}', 'nb.discover': 'Voisins', 'nb.none': 'Le répéteur ne signale aucun voisin.',
   'users.searchPh': 'Chercher un participant…', 'users.searchNone': 'Aucun participant pour "{0}".',
   'uri.title': 'Importer un contact', 'uri.text': 'Ajouter ce contact à votre nœud ?\n{0}', 'uri.import': 'Importer', 'uri.done': 'Contact importé : {0}', 'uri.failed': 'Import échoué : {0}', 'uri.known': '{0} est déjà dans vos contacts.', 'uri.waitConnect': 'Lien de contact reçu ({0}). Connectez d\'abord votre nœud ; la demande d\'import suivra.', 'uri.weblink': 'Lien web (ouvre MeshChat avec une demande d\'import) :',
   'h.emoji': 'Insérer un emoji', 'emoji.recent': 'Récents', 'emoji.smileys': 'Smileys', 'emoji.mesh': 'Mesh et météo', 'emoji.hearts': 'Autres',

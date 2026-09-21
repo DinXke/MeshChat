@@ -111,17 +111,20 @@ class BleTransport {
       } catch (e) { lastErr = e; try { this.device.gatt.disconnect(); } catch (_) {} }
     }
     if (!svc) { this.device = null; throw new Error(t('ble.hintConnect', lastErr && lastErr.message)); }
-    this.device.addEventListener('gattserverdisconnected', () => this._closed());
+    this._onDisc = () => this._closed(); this.device.addEventListener('gattserverdisconnected', this._onDisc);
     const step = async (name, fn) => {
       let err; for (let i = 0; i < 3; i++) { try { return await fn(); } catch (e) { err = e; await sleep(400 * (i + 1)); } }
       throw new Error(t('ble.hintStep', err.message, name));
     };
     this.rx = await step(t('ble.stepRx'), () => svc.getCharacteristic(UART_RX));
     this.tx = await step(t('ble.stepTx'), () => svc.getCharacteristic(UART_TX));
-    this.tx.addEventListener('characteristicvaluechanged', (ev) => {
+    this._onValue = (ev) => {
+      if (!this.device || ev.target !== this.tx) return; // stale listener of a closed transport
       const v = ev.target.value; const u8 = new Uint8Array(v.buffer, v.byteOffset, v.byteLength).slice();
       try { this.onFrame && this.onFrame(u8); } catch (e) { console.error(e); }
-    });
+    };
+    if (BleTransport._lastTx && BleTransport._lastTx.tx) { try { BleTransport._lastTx.tx.removeEventListener('characteristicvaluechanged', BleTransport._lastTx.fn); } catch (e) {} }
+    this.tx.addEventListener('characteristicvaluechanged', this._onValue); BleTransport._lastTx = { tx: this.tx, fn: this._onValue };
     await step(t('ble.stepNotify'), () => this.tx.startNotifications());
   }
   send(payload) {
@@ -133,7 +136,13 @@ class BleTransport {
     return this._q;
   }
   async close() { try { this.device?.gatt?.disconnect(); } catch (e) {} this._closed(); }
-  _closed() { if (this.device) { this.device = null; this.rx = this.tx = null; this.onClose && this.onClose(); } }
+  _closed() {
+    if (!this.device) return;
+    try { this.tx && this._onValue && this.tx.removeEventListener('characteristicvaluechanged', this._onValue); } catch (e) {}
+    try { this._onDisc && this.device.removeEventListener('gattserverdisconnected', this._onDisc); } catch (e) {}
+    if (BleTransport._lastTx && BleTransport._lastTx.fn === this._onValue) BleTransport._lastTx = null;
+    this.device = null; this.rx = this.tx = null; this.onClose && this.onClose();
+  }
 }
 
 // ---------- parsers ----------
@@ -223,8 +232,8 @@ class MeshCoreClient extends EventTarget {
   get kind() { return this.tr ? this.tr.kind : null; }
   async connect(transport) {
     this.tr = transport;
-    transport.onFrame = (f) => this._onFrame(f);
-    transport.onClose = () => { const was = this.connected; this.connected = false; this.tr = null; this._failAll(t('core.connLost')); if (was) this.emit('disconnected'); };
+    transport.onFrame = (f) => { if (this.tr === transport) this._onFrame(f); };
+    transport.onClose = () => { if (this.tr !== transport) return; const was = this.connected; this.connected = false; this.tr = null; this._failAll(t('core.connLost')); if (was) this.emit('disconnected'); };
     await transport.connect();
     this.connected = true;
   }
@@ -359,6 +368,15 @@ function parseAdvertUri(uri) {
     if (flags & 0x80) r.name = td.decode(b.subarray(i)).replace(/\0.*$/, '');
     return r;
   } catch (e) { return null; }
+}
+// ---------- flood-scope: transportcode van een pakket voor een gegeven regiosleutel ----------
+// firmware (TransportKey::calcTransportCode): HMAC-SHA256 met de 16-byte sleutel over payloadtype(1) + payload, eerste 2 bytes.
+const _hmacKeys = new Map();
+async function transportCodeFor(keyHex, ptype, payloadHex) {
+  if (!globalThis.crypto || !crypto.subtle) return null;
+  let k = _hmacKeys.get(keyHex); if (!k) { k = await crypto.subtle.importKey('raw', unhex(keyHex), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']); _hmacKeys.set(keyHex, k); }
+  const mac = new Uint8Array(await crypto.subtle.sign('HMAC', k, cat([ptype & 15], unhex(payloadHex))));
+  return mac[0] | (mac[1] << 8);
 }
 // ---------- channel key derivation ----------
 async function hashtagKey(name) { const n = name.startsWith('#') ? name : '#' + name; return hex((await sha256(te.encode(n.toLowerCase()))).subarray(0, 16)); }

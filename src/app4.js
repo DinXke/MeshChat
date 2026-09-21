@@ -306,7 +306,7 @@ function showMsgInfo(m, cv) {
   add(t('mi.type'), m.txtType != null ? esc({ 0: t('mi.typeText'), 1: 'CLI', 2: t('mi.typeSigned') }[m.txtType] || m.txtType) : null);
   if (m.rx) {
     const p = m.rx; add(t('mi.rawRoute'), esc(routeName(p.route)) + esc(t('mi.payload', p.ptypeName, p.ver)));
-    if (p.codes) add(t('mi.scopeCodes'), p.codes.map(c => c.toString(16).padStart(4, '0')).join(' / ') + (S.defaultScope ? t('mi.nodeRegion', esc(S.defaultScope.name)) : ''));
+    if (p.codes) add(t('mi.scopeCodes'), (p.scopeNames && p.scopeNames.length ? `<b>${esc(p.scopeNames.join(', '))}</b> · ` : '') + p.codes.map(c => c.toString(16).padStart(4, '0')).join(' / ') + (S.defaultScope ? t('mi.nodeRegion', esc(S.defaultScope.name)) : ''));
     add(t('mi.path'), p.hashes.length ? p.hashes.map((h, i) => `<div>${i + 1}. <b>${h}</b> ${resolveHash(h).map(c => esc(cname(c)) + ' <span class="mute">(' + esc(advType(c.type)) + (c.lat ? ', ' + c.lat.toFixed(3) + ',' + c.lon.toFixed(3) : '') + ')</span>').join(', ') || `<span class="mute">${esc(t('mi.unknownNode'))}</span>`}</div>`).join('') : `<span class="mute">${esc(t('mi.noRepeaters'))}</span>`);
     add(t('mi.rawPacket'), `<div class="raw">${p.rawHex}</div>`);
   } else if (!m.self) add(t('mi.rawPacket'), `<span class="mute">${esc(t('mi.rawUnavailable'))}</span>`);
@@ -368,7 +368,8 @@ function wire() {
   on('#userlist', 'contextmenu', (e) => { const u = e.target.closest('.user'); if (!u) return; e.preventDefault(); const c = u.dataset.pub ? S.contacts.get(u.dataset.pub) : contactByName(u.dataset.nick); showCtx(e.clientX, e.clientY, [c ? { label: t('ctx.dmShort'), run: () => { const cv = convForContact(c); cv.open = true; openConv(cv.key); } } : null, c ? { label: t('ctx.contactInfoDots'), run: () => openContactDlg(c) } : null, c ? { label: t('ctx.whois'), run: () => handleInput('/whois ' + cname(c)) } : null, c && c.lat ? { label: t('ctx.onMapShort'), run: () => mapFocus(c.pub) } : null, { label: t('ctx.mention'), run: () => { const inp = $('#input'); inp.value = '@' + (u.dataset.nick || (c && cname(c))) + ' ' + inp.value; inp.focus(); } }]); });
   on('#info', 'click', async (e) => { const b = e.target.closest('[data-act]'); if (!b) return; const cv = activeConv(); const c = cv.pub ? S.contacts.get(cv.pub) : null; const act = b.dataset.act;
     const map = { status: '/status', telemetry: '/telemetry', trace: '/trace', discover: '/path', 'path-reset': '/resetpath', logout: '/logout', 'advert-flood': '/advert flood', 'advert-0': '/advert' };
-    if (act === 'path-set' && c) openPathDlg(c); else if (act === 'map' && c) mapFocus(c.pub); else if (act === 'resync' && c) resyncRoom(c); else if (act === 'sync') handleInput('/sync'); else if (act === 'map-fit') mapFitAll(); else if (act === 'map-settings') openMapSettings();
+    if (act === 'neighbors' && c) { S.autoNbFor = c.pub; sendCli(cv, c, 'neighbors'); }
+    else if (act === 'path-set' && c) openPathDlg(c); else if (act === 'map' && c) mapFocus(c.pub); else if (act === 'resync' && c) resyncRoom(c); else if (act === 'sync') handleInput('/sync'); else if (act === 'map-fit') mapFitAll(); else if (act === 'map-settings') openMapSettings();
     else if (act === 'login' && c) openLoginDlg(c); else if (act === 'edit' && c) openContactDlg(c); else if (act === 'contacts') { renderContactsDlg(); $('#dlg-contacts').showModal(); } else if (act === 'download') downloadSelf(); else if (act === 'copy-key') { const ch = channelByConv(cv); if (ch) copyText(ch.secret); } else if (act === 'leave') closeConv(cv); else if (map[act]) handleInput(map[act]); });
   // composer
   const inp = $('#input');

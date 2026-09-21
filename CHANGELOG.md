@@ -4,6 +4,13 @@ De versie staat in `src/app1.js` (`APP_VERSION`) en in het Over-venster van de a
 
 Elke release krijgt een git-tag `vX.Y.Z` en een GitHub-release met `meshchat.html` als bijlage. Schema: MINOR bij nieuwe functies, PATCH bij correcties, MAJOR bij een breuk in opslagformaat of protocol.
 
+## 0.2.1 - 2026-09-22
+
+- **Bluetooth**: na een mislukte of verbroken verbinding bleef een oude notificatielistener hangen, waardoor elk frame dubbel binnenkwam (dubbele kanalen en meldingen, onleesbare kanaalnamen, verschoven antwoorden). Listeners worden nu netjes opgeruimd en frames van een oud transport genegeerd; onleesbare kanalen/contacten worden overgeslagen.
+- **Scopes**: bij berichten staat nu de regionaam (bv. "regio be") in plaats van de hex-transportcode, voor alle regio's uit Instellingen en de standaardregio van de node; de codes blijven zichtbaar in de berichtinfo.
+- **Repeaters**: knop "Buren" in het infopaneel stuurt `neighbors` en zet de buren meteen op de kaart.
+- **Fix**: contactnamen achter sleutelprefixen in CLI-antwoorden (en de knop "Buren op kaart") werkten door een verkeerd teken in de regex niet.
+
 ## 0.2.0 - 2026-09-21
 
 - **Kaart**: MapLibre GL ingebouwd met de vector-tiles van meshmanager.net; markers per type, wachtende adverts, klik voor gesprek, "Toon op kaart" overal, zoekveld, live pakketten over het pad, buren van een repeater met SNR-lijnen, offline tiles per land met exacte groottes.
