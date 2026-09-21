@@ -381,6 +381,13 @@ function wire() {
     if (e.key === 'Escape') { h.hidden = true; return; }
     if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && h.hidden && (inp.value === '' || S.histIdx >= 0)) { const hist = S.inputHist || []; if (!hist.length) return; e.preventDefault(); S.histIdx = e.key === 'ArrowUp' ? Math.min(hist.length - 1, (S.histIdx ?? -1) + 1) : Math.max(-1, S.histIdx - 1); inp.value = S.histIdx < 0 ? '' : hist[S.histIdx]; updateCounter(); }
   });
+  // emoji-kiezer: recent gebruikt bovenaan, invoegen op de cursorpositie
+  const EMOJI = { smileys: '😀 😁 😂 🤣 😊 😉 😍 😘 😎 🤔 😅 😬 🙄 😢 😭 😡 🤯 🥳 🤝 👍 👎 👋 🙏 💪 👀 🤷 🤦', mesh: '📡 📻 🔋 🔌 ☀️ 🌧️ ⛈️ ❄️ 🌡️ 🛰️ 🗼 🏔️ 🚗 🚲 🏠 🔧 🧰 ⚡ 🔥 💡 📶 📍 🗺️ 🧭 ⏰ 📦 ✅ ❌ ⚠️ ❓ ❗ 🆗', hearts: '❤️ 🧡 💛 💚 💙 💜 🖤 🤍 💯 🎉 🎶 ☕ 🍺 🍕' };
+  const emojiPop = $('#emoji-pop');
+  const renderEmoji = () => { const recent = S.settings.recentEmoji || []; let html = recent.length ? `<div class="grp">${esc(t('emoji.recent'))}</div>` + recent.map(e => `<button type="button" data-e="${e}">${e}</button>`).join('') : ''; for (const [g, list] of Object.entries(EMOJI)) html += `<div class="grp">${esc(t('emoji.' + g))}</div>` + list.split(' ').map(e => `<button type="button" data-e="${e}">${e}</button>`).join(''); emojiPop.innerHTML = html; };
+  on('#btn-emoji', 'click', (e) => { e.preventDefault(); if (emojiPop.hidden) { renderEmoji(); emojiPop.hidden = false; } else emojiPop.hidden = true; });
+  on(emojiPop, 'click', (e) => { const b = e.target.closest('button[data-e]'); if (!b) return; const em = b.dataset.e; const s0 = inp.selectionStart ?? inp.value.length, s1 = inp.selectionEnd ?? s0; inp.value = inp.value.slice(0, s0) + em + inp.value.slice(s1); inp.selectionStart = inp.selectionEnd = s0 + em.length; inp.focus(); updateCounter(); const r = (S.settings.recentEmoji || []).filter(x => x !== em); r.unshift(em); S.settings.recentEmoji = r.slice(0, 16); saveState(); });
+  document.addEventListener('click', (e) => { if (!emojiPop.hidden && !e.target.closest('#emoji-pop') && !e.target.closest('#btn-emoji')) emojiPop.hidden = true; });
   on('#hint', 'click', (e) => { const h = e.target.closest('.h'); if (h) { inp.value = h.dataset.cmd + ' '; $('#hint').hidden = true; inp.focus(); } });
   on('.quick-cmds', 'click', (e) => { const ch = e.target.closest('.chip'); if (!ch) return; const cmd = ch.dataset.cmd; if (cmd.startsWith('/')) { inp.value = cmd + ' '; inp.focus(); if (cmd === '/login') { const c = activeContact(); if (c) openLoginDlg(c); } else if (cmd !== '/login') handleInput(cmd); inp.value = ''; } else handleInput(cmd); });
   // channel dialog

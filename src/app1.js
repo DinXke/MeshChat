@@ -65,7 +65,7 @@ function mkConv(key, kind, name, pub, secret) {
 }
 function convForContact(c) { return mkConv(convKeyFor(c), TYPE_KIND[c.type] || 'dm', displayName(c), c.pub); }
 function convForChannel(ch) { return mkConv(convKeyForChannel(ch), 'channel', channelLabel(ch), null, ch.secret); }
-function channelLabel(ch) { if (ch.secret === PUBLIC_KEY_HEX) return '#public'; return ch.name.startsWith('#') ? ch.name : ch.name; }
+function channelLabel(ch) { if (ch.secret === PUBLIC_KEY_HEX) return ch.name || 'Public'; return ch.name; }
 function channelByConv(cv) { return S.channels.find(c => c && c.secret === cv.secret && c.name); }
 function contactByPrefix(prefixHex) { for (const c of S.contacts.values()) if (c.pub.startsWith(prefixHex)) return c; return null; }
 function contactByName(name) {

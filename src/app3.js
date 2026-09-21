@@ -64,10 +64,11 @@ async function refreshChannels() {
   renderTree(); saveState();
 }
 async function drainMessages() {
-  if (S.syncing || !C.connected) return 0; S.syncing = true; let n = 0;
+  if (!C.connected) return 0; if (S.syncing) { S.syncAgain = true; return 0; } S.syncing = true; let n = 0;
   try { for (; n < 200; n++) { const m = await C.syncNext(); if (!m) break; handleIncoming(m); } }
   catch (e) { debugLog('sync: ' + e.message); }
   finally { S.syncing = false; }
+  if (S.syncAgain) { S.syncAgain = false; n += await drainMessages(); }
   return n;
 }
 // Room: synchronisatiepunt op de node resetten door het contact te verwijderen en opnieuw toe te voegen, daarna inloggen.
@@ -261,8 +262,12 @@ function parseNeighbors(text) {
   const out = [];
   for (const line of String(text).split(/\r?\n/)) {
     const m = /\b([0-9a-f]{6,64})\b/i.exec(line); if (!m) continue;
-    const nums = (line.slice(m.index + m[1].length).match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
-    const hex = m[1].toLowerCase(); out.push({ hex, snr: nums.length ? nums[0] : null, age: nums.length > 1 ? nums[1] : null, contact: contactByPrefix(hex) });
+    const hex = m[1].toLowerCase(); const rest = line.slice(m.index + m[1].length);
+    // MeshCore-repeater: "<hex>:<seconden geleden>:<snr×4>" (formatNeighborsReply); anders: eerste getal SNR, tweede ouderdom
+    const fw = /^:(-?\d+):(-?\d+)/.exec(rest); let snr = null, age = null;
+    if (fw) { age = +fw[1]; snr = +fw[2] / 4; }
+    else { const nums = (rest.match(/-?\d+(?:\.\d+)?/g) || []).map(Number); snr = nums.length ? nums[0] : null; age = nums.length > 1 ? nums[1] : null; }
+    out.push({ hex, snr, age, contact: contactByPrefix(hex) });
   }
   return out;
 }
