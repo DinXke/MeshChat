@@ -1,0 +1,4 @@
+src/.all.js
+*.log
+.DS_Store
+Thumbs.db

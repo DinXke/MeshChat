@@ -1,0 +1,373 @@
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 19c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.8 0 4.5 1.6 4.5 4"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-hash" viewBox="0 0 24 24"><path d="M9 3 7 21M17 3l-2 18M3.5 8.5h17M3.5 15.5h17"/></symbol>
+  <symbol id="i-ant" viewBox="0 0 24 24"><path d="M12 8v13M8.5 21h7"/><circle cx="12" cy="6" r="2"/><path d="M6.5 9.5a7 7 0 0 1 0-8M17.5 9.5a7 7 0 0 0 0-8M8.8 8a3.8 3.8 0 0 1 0-5M15.2 8a3.8 3.8 0 0 0 0-5"/></symbol>
+  <symbol id="i-room" viewBox="0 0 24 24"><path d="M3 20V7l9-4 9 4v13"/><path d="M9 20v-6h6v6"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M3 11.5 21 3l-7 18-3-7.5z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></symbol>
+  <symbol id="i-usb" viewBox="0 0 24 24"><path d="M12 2v18M12 20l-3-3M12 20l3-3M8 8l4-2 4 2"/><circle cx="12" cy="22" r="1"/></symbol>
+  <symbol id="i-bt" viewBox="0 0 24 24"><path d="M7 7l10 10-5 5V2l5 5L7 17"/></symbol>
+  <symbol id="i-sensor" viewBox="0 0 24 24"><path d="M12 3v6M12 9a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"/><path d="M12 12v2"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></symbol>
+</svg>
+
+<header id="topbar">
+  <button class="btn icon ghost only-mobile" id="btn-sidebar" aria-label="Kanalen tonen" aria-controls="sidebar"><svg class="i"><use href="#i-menu"/></svg></button>
+  <div class="brand"><span class="logo">MC</span><span class="txt">MeshChat</span></div>
+  <span id="status" class="st-off" role="status" aria-live="polite">Niet verbonden</span>
+  <span class="sep no-mobile"></span>
+  <button class="btn sm" id="btn-usb" title="Verbinden via USB (Web Serial)"><svg class="i"><use href="#i-usb"/></svg><span class="no-mobile">USB</span></button>
+  <button class="btn sm" id="btn-bt" title="Verbinden via Bluetooth (Web Bluetooth)"><svg class="i"><use href="#i-bt"/></svg><span class="no-mobile">Bluetooth</span></button>
+  <button class="btn sm ghost no-mobile" id="btn-disconnect" disabled>Verbreken</button>
+  <span class="spacer"></span>
+  <span id="battery" title="Batterijspanning" hidden><span class="cell"><i></i></span><span class="v">—</span></span>
+  <span class="sep no-mobile"></span>
+  <span id="nick" class="no-mobile" title="Eigen naam (nick)">—</span>
+  <button class="btn icon ghost" id="btn-theme" aria-label="Thema wisselen"><svg class="i"><use href="#i-sun"/></svg></button>
+  <button class="btn icon ghost no-mobile" id="btn-about" data-open="dlg-about" aria-label="Over MeshChat en handleiding" title="Handleiding">?</button>
+  <button class="btn icon ghost" id="btn-settings" data-open="dlg-settings" aria-label="Instellingen"><svg class="i"><use href="#i-gear"/></svg></button>
+  <button class="btn icon ghost only-mobile" id="btn-users" aria-label="Deelnemers tonen" aria-controls="users"><svg class="i"><use href="#i-users"/></svg></button>
+</header>
+
+<div id="app">
+<div id="backdrop" aria-hidden="true"></div>
+
+<nav id="sidebar" aria-label="Kanalen en contacten">
+  <div id="sb-filter"><input id="sb-search" type="search" class="mono" placeholder="Zoek kanaal of contact…" aria-label="Zoeken in zijbalk" autocomplete="off"><button class="btn sm icon" id="btn-fav" aria-label="Alleen favorieten tonen" title="Alleen favorieten tonen">★</button></div>
+  <div id="tree"></div>
+  <div class="foot">
+    <button class="btn sm" data-open="dlg-contacts"><svg class="i"><use href="#i-users"/></svg>Contacten</button>
+    <button class="btn sm" data-open="dlg-settings"><svg class="i"><use href="#i-gear"/></svg>Instellingen</button>
+  </div>
+</nav>
+
+<main id="main">
+  <div id="chan-head" data-target="status">
+    <div class="title"><div id="chan-name">MeshChat</div><div id="chan-topic"></div></div>
+    <div class="actions">
+      <button class="btn sm ghost" id="btn-chan-info">Info</button>
+      <button class="btn sm ghost danger" id="btn-chan-leave" hidden>Verlaten</button>
+    </div>
+  </div>
+  <div id="messages" role="log" aria-live="polite" aria-label="Berichten"></div>
+  <button class="btn sm" id="scroll-bottom" aria-label="Naar nieuwste berichten"><svg class="i"><use href="#i-down"/></svg>Nieuwe berichten</button>
+  <div id="compose">
+    <div class="quick-cmds" hidden></div>
+    <div id="hint" role="listbox" aria-label="Commando's" hidden></div>
+    <form id="composer" autocomplete="off">
+      <span id="target" data-target="status">status</span>
+      <input id="input" type="text" placeholder="Bericht of /commando…" aria-label="Bericht" enterkeyhint="send" autocapitalize="off" spellcheck="true">
+      <span id="counter" aria-live="polite">160</span>
+      <button class="btn primary" id="send" type="submit" aria-label="Verzenden"><svg class="i"><use href="#i-send"/></svg><span class="no-mobile">Verzend</span></button>
+    </form>
+  </div>
+</main>
+
+<aside id="users" aria-label="Deelnemers">
+  <div class="head">Deelnemers <span class="n" id="users-count"></span></div>
+  <div id="userlist"></div>
+  <div id="info"></div>
+</aside>
+</div>
+
+<div id="ctx" role="menu" hidden></div>
+
+<!-- Kanaal toevoegen -->
+<dialog class="dlg" id="dlg-channel" aria-labelledby="dlg-channel-t">
+  <form method="dialog">
+    <div class="dlg-head"><h2 id="dlg-channel-t">Kanaal toevoegen</h2><button class="btn icon ghost" value="cancel" aria-label="Sluiten" formnovalidate><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="dlg-body">
+      <div class="radios" role="radiogroup">
+        <label><input type="radio" name="ctype" value="hashtag" checked><span>Hashtag <code>#naam</code><small>Sleutel afgeleid van de naam · open voor iedereen die de naam kent</small></span></label>
+        <label><input type="radio" name="ctype" value="key"><span>Privé met sleutel<small>Gedeelde 128-bit sleutel (hex of base64), naam vrij</small></span></label>
+        <label><input type="radio" name="ctype" value="password"><span>Privé met wachtwoord<small>Sleutel afgeleid van een wachtwoord</small></span></label>
+        <label><input type="radio" name="ctype" value="public"><span>Publiek<small>Het standaardkanaal, vaste sleutel</small></span></label>
+      </div>
+      <div class="field"><label for="ch-name">Naam</label><input id="ch-name" class="mono" placeholder="#hasselt" maxlength="31"><span class="help">Max. 31 tekens.</span></div>
+      <div class="field"><label for="ch-secret">Sleutel of wachtwoord</label>
+        <div class="row"><input id="ch-secret" class="mono" placeholder="32 hex-tekens of base64"><button class="btn" type="button" id="ch-gen">Genereer</button></div>
+        <span class="help" id="ch-help"></span></div>
+    </div>
+    <div class="dlg-foot"><button class="btn" value="cancel" formnovalidate>Annuleren</button><button class="btn primary" value="ok" id="ch-add">Toevoegen</button></div>
+  </form>
+</dialog>
+
+<!-- Contacten -->
+<dialog class="dlg wide" id="dlg-contacts" aria-labelledby="dlg-contacts-t">
+  <div class="dlg-head"><h2 id="dlg-contacts-t">Contacten <span class="dim" id="contacts-count"></span></h2><button class="btn icon ghost" data-close aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="toolbar">
+    <input class="inp mono grow" id="contacts-search" type="search" placeholder="Zoeken op naam, sleutel, notitie…" aria-label="Contacten zoeken">
+    <select id="contacts-type" aria-label="Type"><option value="">Alle types</option><option value="1">Chat</option><option value="2">Repeater</option><option value="3">Room</option><option value="4">Sensor</option></select>
+    <select id="contacts-sort" aria-label="Sorteren"><option value="recent">Recentste advert</option><option value="name">Naam</option><option value="type">Type</option><option value="dist">Afstand</option></select>
+    <label class="check"><input type="checkbox" id="contacts-stale"> Ook oude tonen</label>
+  </div>
+  <div class="dlg-body" style="padding:0 6px 6px">
+    <div id="pending-adverts" hidden><h3>Wachtende adverts (handmatig toevoegen staat aan)</h3><div id="pending-list"></div></div>
+    <table class="tbl" id="contacts-table">
+      <thead><tr><th></th><th>Naam</th><th>Type</th><th class="hide-m">Laatste advert</th><th class="hide-m">Pad</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="dlg-foot wrap">
+    <div class="left row" style="flex-wrap:wrap"><button class="btn sm" id="ct-advert-flood">Advert (flood)</button><button class="btn sm ghost" id="ct-advert-0">Advert (0-hop)</button><button class="btn sm ghost danger" id="ct-prune">Oude verwijderen</button></div>
+    <button class="btn sm" id="ct-add">Handmatig toevoegen</button>
+    <button class="btn sm" id="ct-import">Importeren (meshcore://)</button>
+    <button class="btn sm ghost" id="ct-export">Exporteren</button>
+    <button class="btn sm primary" data-close>Sluiten</button>
+  </div>
+</dialog>
+
+<!-- Contact bewerken -->
+<dialog class="dlg" id="dlg-contact" aria-labelledby="ce-title">
+  <div class="dlg-head"><h2 id="ce-title">Contact</h2><button class="btn icon ghost" data-close aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="dlg-body">
+    <div class="grid2">
+      <div class="field"><label for="ce-name">Naam uit advert</label><input id="ce-name" class="mono" readonly></div>
+      <div class="field"><label for="ce-alias">Alias (lokaal)</label><input id="ce-alias" class="mono" maxlength="32" placeholder="eigen naam voor dit contact"></div>
+    </div>
+    <div class="field"><label for="ce-note">Notitie (lokaal)</label><textarea id="ce-note" placeholder="bv. dak van de watertoren, admin = Wim"></textarea></div>
+    <div class="grid2">
+      <div class="field"><label for="ce-type">Type (op de node)</label><select id="ce-type"><option value="1">chat</option><option value="2">repeater</option><option value="3">room</option><option value="4">sensor</option></select></div>
+      <div class="field"><label for="ce-perm">Telemetrie-rechten (0–127)</label><input id="ce-perm" class="mono" type="number" min="0" max="127"><span class="help">Gebruikt als telemetrie op "per contact" staat.</span></div>
+    </div>
+    <label class="check"><input type="checkbox" id="ce-fav"> Favoriet (wordt niet automatisch overschreven als de node vol is)</label>
+    <div class="hr"></div>
+    <div class="field"><label for="ce-pub">Publieke sleutel</label><div class="row"><input id="ce-pub" class="mono" readonly style="font-size:11px"><button class="btn" id="ce-copy-pub" type="button">Kopiëren</button></div></div>
+    <div class="grid2">
+      <div class="field"><label for="ce-advert">Laatste advert</label><input id="ce-advert" class="mono" readonly></div>
+      <div class="field"><label for="ce-loc">Locatie</label><input id="ce-loc" class="mono" readonly></div>
+    </div>
+    <div class="field"><label for="ce-path">Pad (uitgaand)</label><input id="ce-path" class="mono" readonly></div>
+    <div class="row" style="flex-wrap:wrap;gap:6px">
+      <button class="btn sm" id="ce-discover" type="button" data-needs-conn>Pad zoeken</button>
+      <button class="btn sm ghost" id="ce-resetpath" type="button" data-needs-conn>Pad reset</button>
+      <button class="btn sm" id="ce-export" type="button" data-needs-conn>Deel-URI</button>
+      <button class="btn sm" id="ce-share" type="button" data-needs-conn>Delen op mesh</button>
+    </div>
+  </div>
+  <div class="dlg-foot"><button class="btn danger left" id="ce-delete">Verwijderen</button><button class="btn" id="ce-chat">Openen</button><button class="btn primary" id="ce-save">Opslaan</button></div>
+</dialog>
+
+<!-- Handmatig contact toevoegen -->
+<dialog class="dlg" id="dlg-addcontact" aria-labelledby="ac-t">
+  <form method="dialog">
+    <div class="dlg-head"><h2 id="ac-t">Contact handmatig toevoegen</h2><button class="btn icon ghost" value="cancel" aria-label="Sluiten" formnovalidate><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="dlg-body">
+      <div class="field"><label for="ac-pub">Publieke sleutel (64 hex)</label><input id="ac-pub" class="mono" placeholder="e27b14c9…" required></div>
+      <div class="grid2"><div class="field"><label for="ac-name">Naam</label><input id="ac-name" class="mono" maxlength="31"></div><div class="field"><label for="ac-type">Type</label><select id="ac-type"><option value="1">chat</option><option value="2" selected>repeater</option><option value="3">room</option><option value="4">sensor</option></select></div></div>
+      <div class="callout">Heb je een <span class="mono">meshcore://</span>-link? Gebruik dan "Importeren" in het contactenvenster; die bevat ook de handtekening en locatie.</div>
+    </div>
+    <div class="dlg-foot"><button class="btn" value="cancel" formnovalidate>Annuleren</button><button class="btn primary" value="ok" id="ac-ok">Toevoegen</button></div>
+  </form>
+</dialog>
+
+<!-- Instellingen -->
+<dialog class="dlg wide" id="dlg-settings" aria-labelledby="dlg-settings-t">
+  <div class="dlg-head"><h2 id="dlg-settings-t">Instellingen</h2><button class="btn icon ghost" data-close aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="tabs" role="tablist">
+    <button class="tab active" role="tab" data-tab="node">Node</button><button class="tab" role="tab" data-tab="radio">Radio</button><button class="tab" role="tab" data-tab="region">Regio's</button>
+    <button class="tab" role="tab" data-tab="location">Locatie</button><button class="tab" role="tab" data-tab="device">Apparaat</button><button class="tab" role="tab" data-tab="view">Weergave</button><button class="tab" role="tab" data-tab="data">Gegevens</button>
+  </div>
+  <div class="dlg-body">
+    <section class="pane active" data-pane="node">
+      <div class="field"><label for="s-name">Naam (nick)</label><input id="s-name" class="mono" maxlength="31" data-needs-conn><span class="help">Zichtbaar in adverts en kanaalberichten. Verstuur na wijziging een advert.</span></div>
+      <div class="field"><label for="s-pub">Publieke sleutel</label><input id="s-pub" class="mono" readonly style="font-size:11px"></div>
+      <h4 class="sub">Contacten</h4>
+      <label class="check"><input type="checkbox" id="s-manual-add" data-needs-conn> Contacten handmatig toevoegen (nieuwe adverts eerst goedkeuren)</label>
+      <div id="s-autoadd-box" hidden>
+        <div class="row" style="flex-wrap:wrap;gap:4px 14px">
+          <label class="check"><input type="checkbox" id="s-aa-chat"> Chat auto-toevoegen</label><label class="check"><input type="checkbox" id="s-aa-rpt"> Repeaters</label><label class="check"><input type="checkbox" id="s-aa-room"> Rooms</label><label class="check"><input type="checkbox" id="s-aa-sensor"> Sensoren</label>
+          <label class="check"><input type="checkbox" id="s-aa-overwrite"> Oudste (niet-favoriet) overschrijven als vol</label>
+        </div>
+        <div class="field" style="max-width:220px"><label for="s-aa-hops">Max. hops voor auto-toevoegen (leeg = geen limiet)</label><input id="s-aa-hops" class="mono" type="number" min="0" max="64"></div>
+      </div>
+      <h4 class="sub">Telemetrie delen</h4>
+      <div class="grid3">
+        <div class="field"><label for="s-telem-base">Basis (batterij, temp.)</label><select id="s-telem-base" data-needs-conn><option value="0">Nooit</option><option value="1">Per contact (rechten)</option><option value="2">Iedereen</option></select></div>
+        <div class="field"><label for="s-telem-loc">Locatie</label><select id="s-telem-loc" data-needs-conn><option value="0">Nooit</option><option value="1">Per contact</option><option value="2">Iedereen</option></select></div>
+        <div class="field"><label for="s-telem-env">Omgeving (sensoren)</label><select id="s-telem-env" data-needs-conn><option value="0">Nooit</option><option value="1">Per contact</option><option value="2">Iedereen</option></select></div>
+      </div>
+      <label class="check"><input type="checkbox" id="s-multiacks" data-needs-conn> Meerdere ACK's sturen (betrouwbaarder, meer airtime)</label>
+      <div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn" id="s-advert" data-needs-conn>Advert versturen</button><button class="btn primary" id="s-node-save" data-needs-conn>Opslaan</button></div>
+    </section>
+
+    <section class="pane" data-pane="radio">
+      <div class="callout" style="margin-bottom:12px">Alle nodes in het netwerk moeten dezelfde frequentie, bandbreedte, SF en CR gebruiken. Wijzigingen gelden direct na opslaan.</div>
+      <div class="field"><label for="s-radio-preset">Voorinstelling</label><select id="s-radio-preset"><option value="">— kies —</option><option value="eu-869">EU/UK 869.618 · BW250 · SF11 · CR5 (standaard)</option><option value="eu-868n">EU narrow 869.618 · BW62.5 · SF8 · CR8</option><option value="eu-433">EU 433.650 · BW250 · SF10 · CR5</option><option value="us-910">USA/Canada 910.525 · BW62.5 · SF7 · CR5</option><option value="au-915">AU/NZ 915.800 · BW250 · SF11 · CR5</option><option value="anz-9">ANZ 917.500 · BW250 · SF10 · CR5</option></select></div>
+      <div class="grid3">
+        <div class="field"><label for="s-freq">Frequentie (MHz)</label><input id="s-freq" class="mono" inputmode="decimal" data-needs-conn></div>
+        <div class="field"><label for="s-bw">Bandbreedte (kHz)</label><select id="s-bw" data-needs-conn><option>7.8</option><option>10.4</option><option>15.6</option><option>20.8</option><option>31.25</option><option>41.7</option><option>62.5</option><option>125</option><option>250</option><option>500</option></select></div>
+        <div class="field"><label for="s-sf">Spreading factor</label><select id="s-sf" data-needs-conn><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option></select></div>
+        <div class="field"><label for="s-cr">Coding rate</label><select id="s-cr" data-needs-conn><option>5</option><option>6</option><option>7</option><option>8</option></select></div>
+        <div class="field"><label for="s-tx">TX-vermogen (dBm)</label><input id="s-tx" class="mono" type="number" min="-9" max="30" data-needs-conn></div>
+        <div class="field"><label for="s-hashmode">Pad-hashgrootte</label><select id="s-hashmode" data-needs-conn><option value="0">1 byte (standaard)</option><option value="1">2 bytes</option><option value="2">3 bytes</option></select></div>
+      </div>
+      <label class="check"><input type="checkbox" id="s-repeat" data-needs-conn> Client-repeat: deze node herhaalt ook pakketten (alleen op toegestane frequenties)</label>
+      <div class="help" id="s-repeat-help" style="font-size:11px;color:var(--fg-mute)"></div>
+      <div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn primary" id="s-radio-save" data-needs-conn>Radio opslaan</button></div>
+      <div class="hr"></div>
+      <h4 class="sub">Tuning (geavanceerd)</h4>
+      <div class="grid3">
+        <div class="field"><label for="s-tuning-rx">RX-vertraging basis</label><input id="s-tuning-rx" class="mono" inputmode="decimal" data-needs-conn></div>
+        <div class="field"><label for="s-tuning-af">Airtime-factor</label><input id="s-tuning-af" class="mono" inputmode="decimal" data-needs-conn></div>
+        <div class="field"><label>&nbsp;</label><button class="btn" id="s-tuning-save" data-needs-conn>Tuning opslaan</button></div>
+      </div>
+    </section>
+
+    <section class="pane" data-pane="region">
+      <div class="callout" style="margin-bottom:12px">Regio's (flood-scopes, firmware ≥ 1.10) beperken hoe ver floods reizen: repeaters herhalen alleen pakketten van hun eigen regio. De sleutel van een regio volgt uit de naam (SHA-256 van "#naam", 16 bytes), tenzij de beheerder een eigen sleutel deelt.</div>
+      <h4 class="sub">Standaardregio van de node</h4>
+      <div class="grid2">
+        <div class="field"><label for="s-region-name">Naam</label><input id="s-region-name" class="mono" maxlength="30" placeholder="bv. Limburg" data-needs-conn></div>
+        <div class="field"><label for="s-region-key">Sleutel (hex, 32)</label><div class="row"><input id="s-region-key" class="mono" placeholder="leeg = afleiden uit naam" data-needs-conn><button class="btn" id="s-region-derive" type="button">Afleiden</button></div></div>
+      </div>
+      <div class="row" style="justify-content:flex-end"><button class="btn ghost" id="s-region-clear" data-needs-conn>Regio wissen</button><button class="btn primary" id="s-region-save" data-needs-conn>Regio opslaan</button></div>
+      <div class="hr"></div>
+      <h4 class="sub">Verzendscope voor deze sessie</h4>
+      <div class="field"><label for="s-scope-mode">Scope bij het verzenden</label><select id="s-scope-mode"><option value="default">Standaardregio van de node</option><option value="unscoped">Zonder scope (overal heen floods)</option><option value="custom">Andere regio…</option></select></div>
+      <div id="s-scope-custom" hidden class="grid2">
+        <div class="field"><label for="s-scope-name">Regionaam</label><input id="s-scope-name" class="mono" placeholder="bv. Antwerpen"></div>
+        <div class="field"><label for="s-scope-key">Sleutel (hex)</label><div class="row"><input id="s-scope-key" class="mono" placeholder="leeg = afleiden"><button class="btn" id="s-scope-derive" type="button">Afleiden</button></div></div>
+      </div>
+      <div class="row" style="justify-content:flex-end"><button class="btn primary" id="s-scope-apply">Toepassen</button></div>
+      <p class="help" style="font-size:11.5px;color:var(--fg-mute)">Ook via <span class="mono">/scope &lt;naam|hex|off|default&gt;</span> en <span class="mono">/region &lt;naam&gt;</span>. Eigen berichten tonen de gebruikte scope in de meta-badge; bij ontvangen berichten is de scope zichtbaar in Berichtinfo zodra de node ruwe pakketten doorstuurt.</p>
+    </section>
+
+    <section class="pane" data-pane="location">
+      <div class="grid2">
+        <div class="field"><label for="s-lat">Breedtegraad</label><input id="s-lat" class="mono" inputmode="decimal" placeholder="50.93070" data-needs-conn></div>
+        <div class="field"><label for="s-lon">Lengtegraad</label><input id="s-lon" class="mono" inputmode="decimal" placeholder="5.33780" data-needs-conn></div>
+      </div>
+      <div class="field"><label for="s-locpolicy">Locatie in adverts</label><select id="s-locpolicy" data-needs-conn><option value="0">Niet meedelen</option><option value="1">Meedelen in adverts</option></select><span class="help">Anderen zien je positie en afstand alleen als je dit aanzet.</span></div>
+      <div class="row" style="justify-content:flex-end"><button class="btn" id="s-geo">Locatie van browser</button><button class="btn primary" id="s-loc-save" data-needs-conn>Opslaan</button></div>
+    </section>
+
+    <section class="pane" data-pane="device">
+      <div class="grid2">
+        <div class="field"><label for="s-model">Model</label><input id="s-model" readonly></div>
+        <div class="field"><label for="s-fw">Firmware</label><input id="s-fw" class="mono" readonly></div>
+        <div class="field"><label for="s-build">Build</label><input id="s-build" class="mono" readonly></div>
+        <div class="field"><label for="s-limits">Limieten</label><input id="s-limits" class="mono" readonly></div>
+        <div class="field"><label for="s-devtime">Apparaattijd</label><input id="s-devtime" class="mono" readonly></div>
+        <div class="field"><label for="s-battery">Batterij / opslag</label><input id="s-battery" class="mono" readonly></div>
+      </div>
+      <div class="row" style="flex-wrap:wrap"><button class="btn" id="s-sync-time" data-needs-conn>Tijd synchroniseren</button><button class="btn danger" id="s-reboot" data-needs-conn>Herstart node</button></div>
+      <div class="hr"></div>
+      <div class="field" style="max-width:260px"><label for="s-pin">Bluetooth-pincode (6 cijfers, 0 = uit)</label><div class="row"><input id="s-pin" class="mono" type="number" min="0" max="999999" data-needs-conn><button class="btn" id="s-pin-save" data-needs-conn>Opslaan</button></div></div>
+      <div class="hr"></div>
+      <h4 class="sub">Identiteit</h4>
+      <div class="row" style="flex-wrap:wrap"><button class="btn" id="s-privkey-export" data-needs-conn>Privésleutel tonen</button><button class="btn" id="s-privkey-import" data-needs-conn>Privésleutel importeren</button><button class="btn danger" id="s-factory" data-needs-conn>Fabrieksinstellingen</button></div>
+    </section>
+
+    <section class="pane" data-pane="view">
+      <div class="field" style="max-width:260px"><label for="s-theme">Thema</label><select id="s-theme"><option value="auto">Systeem</option><option value="dark">Donker</option><option value="light">Licht</option></select></div>
+      <label class="check"><input type="checkbox" id="s-ts" checked> Tijdstempels tonen</label>
+      <label class="check"><input type="checkbox" id="s-meta" checked> SNR/hops/scope-badge per bericht tonen</label>
+      <label class="check"><input type="checkbox" id="s-compact"> Compacte weergave</label>
+      <label class="check"><input type="checkbox" id="s-notif" checked> Systeemmelding bij vermelding van mijn naam</label>
+      <label class="check"><input type="checkbox" id="s-debug"> Debug: ruwe frames in het statusvenster</label>
+      <label class="check"><input type="checkbox" id="s-favonly"> Zijbalk: alleen favoriete rooms, repeaters en sensoren tonen (favorieten van de node, ★ in Contacten)</label>
+      <div class="field" style="max-width:260px"><label for="s-stale">Contact geldt als "oud" na (dagen zonder advert)</label><input id="s-stale" type="number" min="1" max="365" class="mono"></div>
+    </section>
+
+    <section class="pane" data-pane="data">
+      <div class="callout" style="margin-bottom:12px">Berichten, aliassen en voorkeuren staan alleen in deze browser (localStorage). Er gaat niets naar een server. Room-wachtwoorden worden alleen bewaard als "automatisch inloggen" aanstaat.</div>
+      <h4 class="sub">Volledige configuratie</h4>
+      <p class="help" style="font-size:12px;color:var(--fg-dim)">Node-instellingen (naam, radio, locatie, regio, opties, tuning), kanalen met sleutels, contacten en lokale voorkeuren. Importeren schrijft alles terug naar een (nieuwe) node.</p>
+      <label class="check"><input type="checkbox" id="s-export-key"> Privésleutel meenemen (identiteit overzetten; bewaar het bestand veilig)</label>
+      <div class="row" style="flex-wrap:wrap"><button class="btn primary" id="s-export-config">Configuratie exporteren</button><button class="btn" id="s-import-config">Configuratie importeren</button><input type="file" id="s-import-file" accept="application/json,.json" hidden></div>
+      <div class="hr"></div>
+      <div class="row" style="flex-wrap:wrap"><button class="btn" id="s-export-history">Geschiedenis exporteren</button><button class="btn danger" id="s-clear">Geschiedenis wissen</button><button class="btn danger ghost" id="s-forget">Alles lokaal vergeten</button></div>
+    </section>
+  </div>
+  <div class="dlg-foot"><span class="left dim" id="s-storage"></span><button class="btn primary" data-close>Sluiten</button></div>
+</dialog>
+
+<!-- Login -->
+<dialog class="dlg" id="dlg-login" aria-labelledby="dlg-login-t">
+  <form method="dialog">
+    <div class="dlg-head"><h2 id="dlg-login-t">Inloggen op <span class="mono" id="login-room"></span></h2><button class="btn icon ghost" value="cancel" aria-label="Sluiten" formnovalidate><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="dlg-body">
+      <div class="field"><label for="login-pw">Wachtwoord</label><input id="login-pw" type="password" class="mono" autocomplete="off"><span class="help">Room: gast- of adminwachtwoord. Repeater: adminwachtwoord (nodig voor CLI-commando's). Wordt versleuteld over het mesh verstuurd.</span></div>
+      <label class="check"><input type="checkbox" id="login-auto"> Automatisch inloggen bij verbinden (wachtwoord lokaal bewaren)</label>
+    </div>
+    <div class="dlg-foot"><button class="btn" value="cancel" formnovalidate>Annuleren</button><button class="btn primary" value="ok" id="login-ok">Inloggen</button></div>
+  </form>
+</dialog>
+
+<!-- Berichtinfo -->
+<dialog class="dlg" id="dlg-msg" aria-labelledby="dlg-msg-t">
+  <div class="dlg-head"><h2 id="dlg-msg-t">Berichtinfo</h2><button class="btn icon ghost" data-close aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="dlg-body" id="msg-info"></div>
+  <div class="dlg-foot"><button class="btn primary" data-close>Sluiten</button></div>
+</dialog>
+
+<!-- Bevestiging / invoer -->
+<dialog class="dlg" id="dlg-confirm" aria-labelledby="confirm-t">
+  <form method="dialog">
+    <div class="dlg-head"><h2 id="confirm-t">Bevestigen</h2></div>
+    <div class="dlg-body"><p id="confirm-x" style="margin:0;font-size:13px"></p></div>
+    <div class="dlg-foot"><button class="btn" value="cancel" formnovalidate>Annuleren</button><button class="btn primary" value="ok" id="confirm-ok">OK</button></div>
+  </form>
+</dialog>
+<dialog class="dlg" id="dlg-prompt" aria-labelledby="prompt-t">
+  <form method="dialog">
+    <div class="dlg-head"><h2 id="prompt-t">Invoer</h2></div>
+    <div class="dlg-body"><div class="field"><label for="prompt-v" id="prompt-l"></label><input id="prompt-v" class="mono"></div></div>
+    <div class="dlg-foot"><button class="btn" value="cancel" formnovalidate>Annuleren</button><button class="btn primary" value="ok">OK</button></div>
+  </form>
+</dialog>
+
+<!-- Over / handleiding -->
+<dialog class="dlg wide" id="dlg-about" aria-labelledby="dlg-about-t">
+  <div class="dlg-head"><h2 id="dlg-about-t">MeshChat <span class="dim app-version"></span></h2><button class="btn icon ghost" data-close aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="dlg-body about">
+    <p>IRC-achtige webclient voor <b>MeshCore</b>-companion-radio's. Eén HTML-bestand, geen server, geen installatie. Werkt in Chrome of Edge (desktop en Android); op iOS alleen Bluetooth via de Bluefy-browser.</p>
+    <dl class="meta"><dt>Maker</dt><dd class="app-author"></dd><dt>Broncode</dt><dd><a class="app-repo" href="#" target="_blank" rel="noopener"></a></dd><dt>Versie</dt><dd class="app-version"></dd><dt>Licentie</dt><dd>MIT</dd></dl>
+    <h4 class="sub">Verbinden</h4>
+    <ol>
+      <li><b>USB</b>: sluit de node aan, klik op USB en kies de COM-poort.</li>
+      <li><b>Bluetooth</b>: klik op Bluetooth en kies de node. Op Windows verschijnt de eerste keer een pincode-vraag (standaard 123456); mislukt de eerste poging, klik dan gewoon nog een keer. De node mag niet tegelijk met de telefoon-app verbonden zijn.</li>
+      <li>Werkt de knop niet vanaf een lokaal bestand, host het bestand dan via https of localhost.</li>
+    </ol>
+    <h4 class="sub">Vensters</h4>
+    <ul>
+      <li><b>MeshChat</b> (statusvenster): verbindingsinfo, systeemmeldingen, /commando's.</li>
+      <li><b>Kanalen</b>: #public, hashtag-kanalen (sleutel volgt uit de naam) en privékanalen met gedeelde sleutel of wachtwoord. Toevoegen met + of <code>/join</code>.</li>
+      <li><b>Rooms</b> (&amp;naam): log in met <code>/login wachtwoord</code>, daarna is gewone tekst een post.</li>
+      <li><b>Privé</b>: directe berichten met bevestiging (✓). Openen via Contacten, de deelnemerslijst of <code>/msg naam tekst</code>.</li>
+      <li><b>Repeaters &amp; sensoren</b>: gewone tekst gaat als CLI-commando (bv. <code>ver</code>, <code>get radio</code>, <code>neighbors</code>); log eerst in met het adminwachtwoord. Knoppen rechts: Status, Telemetrie, Trace, Pad zoeken, Pad reset.</li>
+    </ul>
+    <h4 class="sub">Zijbalk</h4>
+    <p>Het zoekveld filtert tijdens het typen over alle kanalen en contacten (Enter opent het eerste resultaat). De ★-knop toont alleen de favorieten die op de node staan; favorieten zet je aan of uit met de ster in Contacten. Rechtsklik op een item voor meer acties.</p>
+    <h4 class="sub">Berichten</h4>
+    <p>Rechts van elk bericht staan SNR, RSSI, hops en scope. Rechtsklik, dubbelklik of lang indrukken opent <b>Berichtinfo</b> met het volledige pad (repeaters), transportcodes en het ruwe pakket, voor zover de firmware ruwe pakketten doorstuurt. Tab vult namen aan, pijl omhoog haalt eerdere invoer terug, @naam markeert iemand.</p>
+    <h4 class="sub">Veelgebruikte commando's</h4>
+    <table class="tbl cmds"><tbody>
+      <tr><td><code>/join #naam</code> · <code>/join naam sleutel</code></td><td>kanaal toevoegen (hashtag, of privé met sleutel/wachtwoord)</td></tr>
+      <tr><td><code>/part</code></td><td>kanaal van de node verwijderen</td></tr>
+      <tr><td><code>/msg naam tekst</code> · <code>/query naam</code></td><td>privébericht / privévenster</td></tr>
+      <tr><td><code>/login ww</code> · <code>/logout</code></td><td>in- en uitloggen op room of repeater</td></tr>
+      <tr><td><code>/status</code> · <code>/telemetry</code> · <code>/trace</code> · <code>/path</code> · <code>/resetpath</code></td><td>node-diagnose voor het geopende contact</td></tr>
+      <tr><td><code>/advert</code> · <code>/advert flood</code></td><td>eigen advert versturen</td></tr>
+      <tr><td><code>/scope naam|off|default</code> · <code>/region naam</code></td><td>verzendscope en standaardregio (flood-scopes)</td></tr>
+      <tr><td><code>/nick naam</code> · <code>/whois naam</code> · <code>/names</code> · <code>/list</code></td><td>naam wijzigen, contactinfo, deelnemers, overzicht</td></tr>
+      <tr><td><code>/export</code> · <code>/import meshcore://…</code> · <code>/share naam</code> · <code>/del naam</code></td><td>contacten delen, importeren, verwijderen</td></tr>
+      <tr><td><code>/time</code> · <code>/settime</code> · <code>/battery</code> · <code>/stats</code> · <code>/debug</code> · <code>/clear</code></td><td>node-informatie en onderhoud</td></tr>
+    </tbody></table>
+    <h4 class="sub">Instellingen</h4>
+    <p>Via het tandwiel: naam, telemetrie-rechten, auto-add, radio (met voorinstellingen), regio's, locatie, apparaat (tijd, BLE-pincode, herstart, privésleutel, fabrieksreset), weergave en gegevens. Onder Gegevens exporteer je de volledige configuratie als JSON en zet je die op een andere node terug.</p>
+    <p class="mute">Alles wordt alleen lokaal in de browser opgeslagen. De sleutel van een wachtwoordkanaal is een MeshChat-conventie; deel voor andere apps de sleutel uit het infopaneel.</p>
+  </div>
+  <div class="dlg-foot"><span class="left dim">MeshChat is een onafhankelijk project, niet verbonden aan het MeshCore-team.</span><button class="btn primary" data-close>Sluiten</button></div>
+</dialog>
+
+<div id="toasts" aria-live="polite"></div>

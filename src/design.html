@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MeshCore IRC</title>
+<meta name="color-scheme" content="dark light">
+<style>
+/* ========== 1. TOKENS ========== */
+:root{
+  --bg:#0e1116; --bg-1:#141920; --bg-2:#1a212a; --bg-3:#222b36;
+  --line:#2a3542; --line-soft:#1f2832;
+  --fg:#d9e0e7; --fg-dim:#8e9baa; --fg-mute:#5b6875;
+  --accent:#4ea1ff; --accent-fg:#06111f; --accent-soft:rgba(78,161,255,.14);
+  --ok:#3ccf83; --warn:#f2a93b; --err:#ff5f6f; --err-soft:rgba(255,95,111,.12);
+  --hl:rgba(242,169,59,.13); --hl-line:#f2a93b;
+  --self:#8ad0ff; --cli-bg:#0b0e12;
+  --nc0:#5cc8ff; --nc1:#7ee787; --nc2:#f7b955; --nc3:#ff8fab;
+  --nc4:#c4a3ff; --nc5:#5fd6c5; --nc6:#ffa657; --nc7:#a5d6ff;
+  --mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --r:6px; --fs:13px; --fs-mono:13px;
+  --sb-w:230px; --users-w:200px; --top-h:42px;
+  --shadow:0 12px 40px rgba(0,0,0,.55);
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){
+  --bg:#f5f7fa; --bg-1:#ffffff; --bg-2:#eef1f5; --bg-3:#e3e8ee;
+  --line:#cfd6de; --line-soft:#e2e7ed;
+  --fg:#1c2530; --fg-dim:#5d6b7a; --fg-mute:#8a97a5;
+  --accent:#1f6fe0; --accent-fg:#ffffff; --accent-soft:rgba(31,111,224,.12);
+  --ok:#1f9d5c; --warn:#c77c0a; --err:#d63848; --err-soft:rgba(214,56,72,.1);
+  --hl:rgba(199,124,10,.12); --hl-line:#c77c0a;
+  --self:#0f5bc4; --cli-bg:#f0f3f7;
+  --nc0:#0a76c2; --nc1:#1e8a3c; --nc2:#b3690a; --nc3:#c8336a;
+  --nc4:#6f42c1; --nc5:#0f8a7a; --nc6:#c2551a; --nc7:#2a5db0;
+  --shadow:0 12px 40px rgba(20,30,40,.2);
+  color-scheme:light;
+}}
+:root[data-theme="light"]{
+  --bg:#f5f7fa; --bg-1:#ffffff; --bg-2:#eef1f5; --bg-3:#e3e8ee;
+  --line:#cfd6de; --line-soft:#e2e7ed;
+  --fg:#1c2530; --fg-dim:#5d6b7a; --fg-mute:#8a97a5;
+  --accent:#1f6fe0; --accent-fg:#ffffff; --accent-soft:rgba(31,111,224,.12);
+  --ok:#1f9d5c; --warn:#c77c0a; --err:#d63848; --err-soft:rgba(214,56,72,.1);
+  --hl:rgba(199,124,10,.12); --hl-line:#c77c0a;
+  --self:#0f5bc4; --cli-bg:#f0f3f7;
+  --nc0:#0a76c2; --nc1:#1e8a3c; --nc2:#b3690a; --nc3:#c8336a;
+  --nc4:#6f42c1; --nc5:#0f8a7a; --nc6:#c2551a; --nc7:#2a5db0;
+  --shadow:0 12px 40px rgba(20,30,40,.2);
+  color-scheme:light;
+}
+
+/* ========== 2. BASIS ========== */
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; height:100dvh; overflow:hidden;
+  background:var(--bg); color:var(--fg);
+  font:var(--fs)/1.4 var(--sans);
+  display:grid; grid-template-rows:var(--top-h) 1fr;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-radius:3px}
+svg.i{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none;vertical-align:-2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.btn{
+  display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;
+  border:1px solid var(--line);border-radius:var(--r);background:var(--bg-2);color:var(--fg);
+  font-size:12px;line-height:1;white-space:nowrap;
+}
+.btn:hover{background:var(--bg-3);border-color:var(--fg-mute)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:600}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--err);border-color:color-mix(in srgb,var(--err) 40%,transparent)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--fg-dim)}
+.btn.ghost:hover{background:var(--bg-3);color:var(--fg)}
+.btn.sm{height:22px;padding:0 7px;font-size:11px}
+.btn.icon{width:26px;padding:0;justify-content:center}
+.chip{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:999px;font-size:11px;border:1px solid var(--line);background:var(--bg-2);color:var(--fg-dim)}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.field label{font-size:12px;color:var(--fg-dim)}
+.field .help{font-size:11px;color:var(--fg-mute)}
+.inp,.field input:not([type=checkbox]):not([type=radio]),.field select{
+  height:28px;padding:0 8px;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--bg);color:var(--fg);width:100%;min-width:0;
+}
+.field input:read-only,.field input[readonly]{background:var(--bg-2);color:var(--fg-dim);border-style:dashed}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{min-width:0}
+.grow{flex:1}
+.mono{font-family:var(--mono)}
+.dim{color:var(--fg-dim)} .mute{color:var(--fg-mute)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--fg-mute);flex:none}
+.dot.on{background:var(--ok)} .dot.busy{background:var(--warn)} .dot.off{background:var(--fg-mute)} .dot.err{background:var(--err)}
+
+/* ========== 3. TOPBAR ========== */
+#topbar{
+  display:flex;align-items:center;gap:8px;padding:0 10px;
+  background:var(--bg-1);border-bottom:1px solid var(--line);min-width:0;
+}
+#topbar .brand{font-weight:700;letter-spacing:.2px;display:flex;align-items:center;gap:7px;white-space:nowrap}
+#topbar .brand .logo{width:18px;height:18px;border-radius:4px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font:700 10px var(--mono)}
+#status{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px 0 6px;border-radius:999px;font-size:11.5px;border:1px solid var(--line);color:var(--fg-dim);white-space:nowrap}
+#status::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--fg-mute)}
+#status.st-busy{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 50%,transparent)}
+#status.st-busy::before{background:var(--warn);animation:pulse 1.1s ease-in-out infinite}
+#status.st-on{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 50%,transparent)}
+#status.st-on::before{background:var(--ok)}
+@keyframes pulse{50%{opacity:.35}}
+#topbar .sep{width:1px;height:18px;background:var(--line);margin:0 2px}
+#topbar .spacer{flex:1}
+#battery{display:inline-flex;align-items:center;gap:5px;font:12px var(--mono);color:var(--fg-dim);white-space:nowrap}
+#battery .cell{width:18px;height:9px;border:1px solid currentColor;border-radius:2px;position:relative;padding:1px}
+#battery .cell::after{content:"";position:absolute;right:-3px;top:2px;width:2px;height:3px;background:currentColor;border-radius:0 1px 1px 0}
+#battery .cell i{display:block;height:100%;width:var(--lvl,70%);background:var(--ok);border-radius:1px}
+#battery.low .cell i{background:var(--err)}
+#nick{font:600 12.5px var(--mono);color:var(--self);white-space:nowrap}
+.only-mobile{display:none}
+
+/* ========== 4. HOOFDLAYOUT ========== */
+#app{display:grid;grid-template-columns:var(--sb-w) minmax(0,1fr) var(--users-w);min-height:0;position:relative}
+#sidebar,#users{background:var(--bg-1);display:flex;flex-direction:column;min-height:0}
+#sidebar{border-right:1px solid var(--line)}
+#users{border-left:1px solid var(--line)}
+#main{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--bg)}
+#backdrop{display:none;position:fixed;inset:var(--top-h) 0 0 0;background:rgba(0,0,0,.5);z-index:30}
+
+/* ========== 5. LINKER ZIJBALK ========== */
+#tree{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px 0}
+.sec{margin-bottom:8px}
+.sec-h{
+  display:flex;align-items:center;gap:6px;padding:4px 10px 3px 12px;
+  font-size:10.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--fg-mute);
+}
+.sec-h .n{font-weight:500;letter-spacing:0;color:var(--fg-mute)}
+.sec-h .spacer{flex:1}
+.sec-h .add{width:18px;height:18px;border:0;background:transparent;border-radius:4px;color:var(--fg-mute);display:grid;place-items:center;padding:0}
+.sec-h .add:hover{background:var(--bg-3);color:var(--fg)}
+.item{
+  display:flex;align-items:center;gap:7px;height:26px;padding:0 10px 0 12px;margin:0 6px;border-radius:var(--r);
+  color:var(--fg-dim);cursor:pointer;user-select:none;position:relative;font-size:13px;
+}
+.item:hover{background:var(--bg-2);color:var(--fg)}
+.item.active{background:var(--accent-soft);color:var(--fg);font-weight:600}
+.item.active::before{content:"";position:absolute;left:-6px;top:5px;bottom:5px;width:3px;border-radius:2px;background:var(--accent)}
+.item.unread{color:var(--fg)}
+.item .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);font-size:12.5px}
+.item .i{color:var(--fg-mute)} .item.active .i{color:var(--accent)}
+.badge{min-width:18px;height:17px;padding:0 5px;border-radius:999px;background:var(--accent);color:var(--accent-fg);font:700 10.5px/17px var(--mono);text-align:center;flex:none}
+.badge.hl{background:var(--err);color:#fff}
+#sidebar .foot{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line)}
+#sidebar .foot .btn{flex:1;justify-content:center}
+
+/* ========== 6. KANAALKOP ========== */
+#chan-head{display:flex;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid var(--line);background:var(--bg-1);min-height:46px}
+#chan-head .title{display:flex;flex-direction:column;min-width:0;flex:1}
+#chan-name{font:700 15px/1.2 var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#chan-topic{font-size:11.5px;color:var(--fg-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+#chan-topic .key{font-family:var(--mono)}
+#chan-head .actions{display:flex;gap:6px}
+
+/* ========== 7. BERICHTEN ========== */
+#messages{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px 10px 10px;font:var(--fs-mono)/1.45 var(--mono);overscroll-behavior:contain;scroll-behavior:smooth}
+.m{display:grid;grid-template-columns:max-content 11ch minmax(0,1fr) max-content;gap:0 8px;padding:1px 6px;border-radius:4px;align-items:baseline}
+.m:hover{background:var(--bg-1)}
+.m .t{color:var(--fg-mute);font-size:11.5px;white-space:nowrap}
+.m .t::before{content:"["} .m .t::after{content:"]"}
+.m .n{white-space:nowrap;text-align:right;font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.m .n::before{content:"<";color:var(--fg-mute);font-weight:400} .m .n::after{content:">";color:var(--fg-mute);font-weight:400}
+.m .x{overflow-wrap:anywhere;white-space:pre-wrap}
+.m .meta{color:var(--fg-mute);font-size:10.5px;white-space:nowrap;justify-self:end;opacity:.85}
+.m .meta .ack{margin-left:4px}
+.m-self .n{color:var(--self)}
+.m-self .n::before,.m-self .n::after{color:var(--self);opacity:.6}
+.m-hl{background:var(--hl);box-shadow:inset 2px 0 0 var(--hl-line)}
+.m-hl:hover{background:color-mix(in srgb,var(--hl) 80%,var(--bg-2))}
+.m-notice .x,.m-error .x,.m-action .x,.m-cli .x{grid-column:2/4}
+.m-notice .x{color:var(--fg-dim);font-style:italic}
+.m-notice .x::before{content:"* ";color:var(--fg-mute);font-style:normal}
+.m-error .x{color:var(--err)}
+.m-error .x::before{content:"! ";font-weight:700}
+.m-action .x{color:var(--fg-dim)}
+.m-action .x::before{content:"* ";color:var(--fg-mute)}
+.m-action .x b{color:inherit;font-weight:600}
+.m-cli .n{color:var(--nc5)}
+.m-cli .x{display:block}
+.m-cli .cmd{display:block;color:var(--fg-dim)} .m-cli .cmd::before{content:"> ";color:var(--accent)}
+.m-cli pre{margin:3px 0 2px;padding:6px 9px;border:1px solid var(--line-soft);border-left:3px solid var(--nc5);border-radius:4px;background:var(--cli-bg);font:12px/1.45 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;color:var(--fg)}
+.m-pending{opacity:.55}
+.m-pending .meta .ack::after{content:"…"}
+.m-acked .meta .ack{color:var(--ok)}
+.m-failed .x{color:var(--fg-dim);text-decoration:line-through;text-decoration-color:var(--err)}
+.m-failed .meta .ack{color:var(--err)}
+.m .mention{color:var(--hl-line);font-weight:600}
+.m a{color:var(--accent);text-decoration:none} .m a:hover{text-decoration:underline}
+.nc0{color:var(--nc0)} .nc1{color:var(--nc1)} .nc2{color:var(--nc2)} .nc3{color:var(--nc3)}
+.nc4{color:var(--nc4)} .nc5{color:var(--nc5)} .nc6{color:var(--nc6)} .nc7{color:var(--nc7)}
+.day-sep{display:flex;align-items:center;gap:10px;margin:8px 4px 6px;color:var(--fg-mute);font:11px var(--sans);text-transform:lowercase}
+.day-sep::before,.day-sep::after{content:"";flex:1;height:1px;background:var(--line-soft)}
+#new-marker{display:flex;align-items:center;gap:8px;margin:4px 6px;color:var(--err);font:10.5px var(--sans)}
+#new-marker::before{content:"";flex:1;height:1px;background:var(--err);opacity:.6}
+#scroll-bottom{position:absolute;right:calc(var(--users-w) + 16px);bottom:64px;z-index:5;box-shadow:var(--shadow)}
+body:not(.unread-below) #scroll-bottom{display:none}
+
+/* ========== 8. INVOER ========== */
+#compose{position:relative;border-top:1px solid var(--line);background:var(--bg-1)}
+.quick-cmds{display:flex;gap:6px;padding:6px 10px 0;flex-wrap:wrap}
+.quick-cmds .chip{cursor:pointer;font-family:var(--mono)}
+.quick-cmds .chip:hover{border-color:var(--accent);color:var(--fg)}
+#composer{display:flex;align-items:center;gap:6px;padding:8px 10px}
+#target{font:12px var(--mono);color:var(--accent);background:var(--accent-soft);height:30px;display:inline-flex;align-items:center;padding:0 8px;border-radius:var(--r);white-space:nowrap}
+#input{flex:1;height:30px;min-width:0;padding:0 10px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg);color:var(--fg);font:var(--fs-mono) var(--mono)}
+#input::placeholder{color:var(--fg-mute)}
+#input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 2px var(--accent-soft)}
+#counter{font:11px var(--mono);color:var(--fg-mute);min-width:3ch;text-align:right}
+#counter.warn{color:var(--warn)} #counter.over{color:var(--err);font-weight:700}
+#send{height:30px}
+#hint{position:absolute;left:10px;right:10px;bottom:calc(100% + 4px);background:var(--bg-2);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:4px;max-height:220px;overflow-y:auto;z-index:20}
+#hint[hidden]{display:none}
+#hint .h{display:grid;grid-template-columns:14ch 1fr;gap:10px;padding:4px 8px;border-radius:4px;font-size:12px;cursor:pointer}
+#hint .h code{font-family:var(--mono);color:var(--accent)} #hint .h span{color:var(--fg-dim)}
+#hint .h.sel,#hint .h:hover{background:var(--accent-soft)} #hint .h.sel span{color:var(--fg)}
+
+/* ========== 9. RECHTER ZIJBALK ========== */
+#users .head{padding:9px 12px 7px;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--fg-mute);border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:6px}
+#users .head .n{font-weight:500;letter-spacing:0}
+#userlist{flex:1;overflow-y:auto;padding:4px 6px}
+.user{display:flex;align-items:center;gap:7px;height:24px;padding:0 6px;border-radius:4px;font:12.5px var(--mono);color:var(--fg-dim);cursor:pointer}
+.user:hover{background:var(--bg-2);color:var(--fg)}
+.user .i{color:var(--fg-mute)}
+.user .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user .snr{font-size:10px;color:var(--fg-mute)}
+.user.me .nm{color:var(--self);font-weight:600}
+#info{border-top:1px solid var(--line);padding:10px 12px;font-size:12px;background:var(--bg-1)}
+#info h3{margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--fg-mute)}
+#info dl{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:0 0 10px}
+#info dt{color:var(--fg-mute)} #info dd{margin:0;font-family:var(--mono);font-size:11.5px;overflow-wrap:anywhere}
+#info .acts{display:flex;flex-wrap:wrap;gap:5px}
+
+/* ========== 10. DIALOGEN ========== */
+.dlg{border:1px solid var(--line);border-radius:10px;background:var(--bg-1);color:var(--fg);padding:0;width:min(520px,calc(100vw - 32px));max-height:min(85dvh,720px);box-shadow:var(--shadow);display:flex;flex-direction:column}
+.dlg:not([open]){display:none}
+.dlg::backdrop{background:rgba(0,0,0,.55);backdrop-filter:blur(2px)}
+.dlg-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.dlg-head h2{margin:0;font-size:14px;font-weight:700;flex:1}
+.dlg-body{padding:14px 16px;overflow-y:auto;flex:1;min-height:0}
+.dlg-foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--line);background:var(--bg-2);border-radius:0 0 10px 10px}
+.dlg-foot .left{margin-right:auto}
+.dlg.wide{width:min(720px,calc(100vw - 32px))}
+.radios{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
+.radios label{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r);cursor:pointer;font-size:12.5px}
+.radios label:has(:checked){border-color:var(--accent);background:var(--accent-soft)}
+.radios input{margin:3px 0 0}
+.radios small{display:block;color:var(--fg-mute);font-size:11px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 16px;background:var(--bg-1)}
+.tab{border:0;background:transparent;padding:9px 10px;font-size:12.5px;color:var(--fg-dim);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab:hover{color:var(--fg)} .tab.active{color:var(--fg);border-bottom-color:var(--accent);font-weight:600}
+.pane{display:none} .pane.active{display:block}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:0 12px}
+table.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;font-weight:600;color:var(--fg-mute);font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;padding:6px 8px;border-bottom:1px solid var(--line)}
+.tbl td{padding:6px 8px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+.tbl tr:hover td{background:var(--bg-2)}
+.tbl .acts{display:flex;gap:4px;justify-content:flex-end}
+.type{display:inline-block;padding:0 6px;height:18px;line-height:18px;border-radius:4px;font-size:10.5px;font-weight:600;letter-spacing:.3px;background:var(--bg-3);color:var(--fg-dim)}
+.type.chat{color:var(--nc0)} .type.rpt{color:var(--nc2)} .type.room{color:var(--nc4)} .type.sensor{color:var(--nc5)}
+.check{display:flex;gap:8px;align-items:center;font-size:12.5px;margin:8px 0}
+.callout{padding:8px 10px;border-radius:var(--r);background:var(--bg-2);border:1px solid var(--line);font-size:12px;color:var(--fg-dim)}
+
+/* ========== 11. TOASTS ========== */
+#toasts{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:60;max-width:min(360px,calc(100vw - 32px))}
+.toast{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r);background:var(--bg-2);border:1px solid var(--line);box-shadow:var(--shadow);font-size:12.5px;border-left:3px solid var(--accent)}
+.toast.ok{border-left-color:var(--ok)} .toast.err{border-left-color:var(--err)} .toast.warn{border-left-color:var(--warn)}
+.toast .x{margin-left:auto}
+
+/* ========== 12. RESPONSIVE ========== */
+@media (max-width:1100px){ :root{--users-w:180px} }
+@media (max-width:900px){
+  .only-mobile{display:inline-flex}
+  .no-mobile{display:none!important}
+  #app{grid-template-columns:minmax(0,1fr)}
+  #sidebar,#users{position:fixed;top:var(--top-h);bottom:0;z-index:40;width:min(85vw,300px);transform:translateX(-100%);transition:transform .2s ease;box-shadow:none}
+  #users{right:0;transform:translateX(100%)}
+  body.sidebar-open #sidebar,body.users-open #users{transform:none;box-shadow:var(--shadow)}
+  body.sidebar-open #backdrop,body.users-open #backdrop{display:block}
+  #topbar{padding:0 8px;gap:6px}
+  #topbar .brand span.txt{display:none}
+  #chan-head{padding:6px 16px}
+  #messages{padding:6px 16px 10px}
+  .m{grid-template-columns:max-content minmax(0,1fr) max-content;gap:0 6px}
+  .m .n{grid-column:2;text-align:left;min-width:0;width:auto}
+  .m .x{grid-column:1/-1;padding-left:1.5ch}
+  .m .meta{grid-column:3;grid-row:1}
+  .m-notice .x,.m-error .x,.m-action .x,.m-cli .x{grid-column:1/-1}
+  #composer{padding:8px 16px}
+  #target{max-width:9ch;overflow:hidden;text-overflow:ellipsis}
+  #counter{display:none}
+  #hint{left:16px;right:16px}
+  #scroll-bottom{right:16px}
+  .grid3{grid-template-columns:1fr 1fr}
+  .radios{grid-template-columns:1fr}
+  .tbl .hide-m{display:none}
+  #toasts{right:16px;left:16px;bottom:72px}
+}
+@media (max-width:480px){ .grid2,.grid3{grid-template-columns:1fr} .tabs{overflow-x:auto} }
+@media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
+</style>
+</head>
+<body class="">
+
+<!-- SVG-sprite (currentColor) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 19c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.8 0 4.5 1.6 4.5 4"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-hash" viewBox="0 0 24 24"><path d="M9 3 7 21M17 3l-2 18M3.5 8.5h17M3.5 15.5h17"/></symbol>
+  <symbol id="i-ant" viewBox="0 0 24 24"><path d="M12 8v13M8.5 21h7"/><circle cx="12" cy="6" r="2"/><path d="M6.5 9.5a7 7 0 0 1 0-8M17.5 9.5a7 7 0 0 0 0-8M8.8 8a3.8 3.8 0 0 1 0-5M15.2 8a3.8 3.8 0 0 0 0-5"/></symbol>
+  <symbol id="i-room" viewBox="0 0 24 24"><path d="M3 20V7l9-4 9 4v13"/><path d="M9 20v-6h6v6"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M3 11.5 21 3l-7 18-3-7.5z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></symbol>
+  <symbol id="i-usb" viewBox="0 0 24 24"><path d="M12 2v18M12 20l-3-3M12 20l3-3M8 8l4-2 4 2"/><circle cx="12" cy="22" r="1"/></symbol>
+  <symbol id="i-bt" viewBox="0 0 24 24"><path d="M7 7l10 10-5 5V2l5 5L7 17"/></symbol>
+  <symbol id="i-sensor" viewBox="0 0 24 24"><path d="M12 3v6M12 9a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"/><path d="M12 12v2"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></symbol>
+</svg>
+
+<!-- ========== TOPBAR ========== -->
+<header id="topbar">
+  <button class="btn icon ghost only-mobile" id="btn-sidebar" aria-label="Kanalen tonen" aria-controls="sidebar"><svg class="i"><use href="#i-menu"/></svg></button>
+  <div class="brand"><span class="logo">MC</span><span class="txt">MeshCore IRC</span></div>
+  <span id="status" class="st-on" role="status" aria-live="polite">Verbonden · USB</span>
+  <span class="sep no-mobile"></span>
+  <button class="btn sm no-mobile" id="btn-usb"><svg class="i"><use href="#i-usb"/></svg>USB</button>
+  <button class="btn sm no-mobile" id="btn-bt"><svg class="i"><use href="#i-bt"/></svg>Bluetooth</button>
+  <button class="btn sm ghost no-mobile" id="btn-disconnect">Verbreken</button>
+  <span class="spacer"></span>
+  <span id="battery" title="Batterijspanning" style="--lvl:72%"><span class="cell"><i></i></span><span class="v">4.05 V</span></span>
+  <span class="sep no-mobile"></span>
+  <span id="nick" class="no-mobile" title="Eigen nick">Bjorn</span>
+  <button class="btn icon ghost" id="btn-theme" aria-label="Thema wisselen"><svg class="i"><use href="#i-sun"/></svg></button>
+  <button class="btn icon ghost" id="btn-settings" data-open="dlg-settings" aria-label="Instellingen"><svg class="i"><use href="#i-gear"/></svg></button>
+  <button class="btn icon ghost only-mobile" id="btn-users" aria-label="Deelnemers tonen" aria-controls="users"><svg class="i"><use href="#i-users"/></svg></button>
+</header>
+
+<div id="app">
+<div id="backdrop" aria-hidden="true"></div>
+
+<!-- ========== LINKER ZIJBALK ========== -->
+<nav id="sidebar" aria-label="Kanalen en contacten">
+  <div id="tree">
+    <section class="sec" data-sec="channels">
+      <div class="sec-h">Kanalen <span class="n">3</span><span class="spacer"></span><button class="add" data-open="dlg-channel" aria-label="Kanaal toevoegen"><svg class="i"><use href="#i-plus"/></svg></button></div>
+      <div class="item" data-target="#public" data-kind="channel"><svg class="i"><use href="#i-hash"/></svg><span class="name">#public</span><span class="badge">14</span></div>
+      <div class="item active" data-target="#belgium" data-kind="channel" aria-current="true"><svg class="i"><use href="#i-hash"/></svg><span class="name">#belgium</span></div>
+      <div class="item unread" data-target="#hasselt" data-kind="channel" data-private="1"><svg class="i"><use href="#i-lock"/></svg><span class="name">#hasselt</span><span class="badge hl">2</span></div>
+    </section>
+    <section class="sec" data-sec="rooms">
+      <div class="sec-h">Rooms <span class="n">2</span><span class="spacer"></span><button class="add" aria-label="Room toevoegen"><svg class="i"><use href="#i-plus"/></svg></button></div>
+      <div class="item" data-target="&amp;Limburg-BBS" data-kind="room"><span class="dot on" title="Ingelogd"></span><span class="name">&amp;Limburg-BBS</span><span class="badge">3</span></div>
+      <div class="item" data-target="&amp;Leuven-Room" data-kind="room"><span class="dot off" title="Niet ingelogd"></span><span class="name">&amp;Leuven-Room</span></div>
+    </section>
+    <section class="sec" data-sec="dm">
+      <div class="sec-h">Privé <span class="n">3</span><span class="spacer"></span><button class="add" data-open="dlg-contacts" aria-label="Privégesprek starten"><svg class="i"><use href="#i-plus"/></svg></button></div>
+      <div class="item unread" data-target="Sofie" data-kind="dm"><svg class="i"><use href="#i-user"/></svg><span class="name">Sofie</span><span class="badge">1</span></div>
+      <div class="item" data-target="Wim_ON4WS" data-kind="dm"><svg class="i"><use href="#i-user"/></svg><span class="name">Wim_ON4WS</span></div>
+      <div class="item" data-target="Koen_PA3" data-kind="dm"><svg class="i"><use href="#i-user"/></svg><span class="name">Koen_PA3</span></div>
+    </section>
+    <section class="sec" data-sec="repeaters">
+      <div class="sec-h">Repeaters <span class="n">3</span><span class="spacer"></span></div>
+      <div class="item" data-target="RPT-Genk" data-kind="repeater"><svg class="i"><use href="#i-ant"/></svg><span class="name">RPT-Genk</span><span class="dot on"></span></div>
+      <div class="item" data-target="RPT-Hasselt-Toren" data-kind="repeater"><svg class="i"><use href="#i-ant"/></svg><span class="name">RPT-Hasselt-Toren</span><span class="dot on"></span></div>
+      <div class="item" data-target="RPT-Diest" data-kind="repeater"><svg class="i"><use href="#i-ant"/></svg><span class="name">RPT-Diest</span><span class="dot off" title="Geen advert &gt; 24u"></span></div>
+    </section>
+  </div>
+  <div class="foot">
+    <button class="btn sm" data-open="dlg-contacts"><svg class="i"><use href="#i-users"/></svg>Contacten</button>
+    <button class="btn sm" data-open="dlg-settings"><svg class="i"><use href="#i-gear"/></svg>Instellingen</button>
+  </div>
+</nav>
+
+<!-- ========== MIDDEN ========== -->
+<main id="main">
+  <div id="chan-head" data-target="#belgium">
+    <div class="title">
+      <div id="chan-name">#belgium</div>
+      <div id="chan-topic">Hashtag-kanaal · sleutel <span class="key">8b33…cd72</span> · 12 deelnemers gezien · laatste bericht 14:21</div>
+    </div>
+    <div class="actions">
+      <button class="btn sm ghost" id="btn-chan-info">Info</button>
+      <button class="btn sm ghost danger" id="btn-chan-leave">Verlaten</button>
+    </div>
+  </div>
+
+  <div id="messages" role="log" aria-live="polite" aria-label="Berichten">
+    <div class="day-sep" data-date="2026-09-21">— maandag 21 september —</div>
+
+    <div class="m m-notice"><span class="t">08:57:02</span><span class="x">Verbonden met Heltec V3 (fw 1.7.2, build 15 aug 2026) via USB</span></div>
+    <div class="m m-notice"><span class="t">08:57:03</span><span class="x">Kanaal #belgium geopend · 869.618 MHz · BW 250 · SF11 · CR5</span></div>
+
+    <div class="m m-msg"><span class="t">09:03:12</span><span class="n nc1">Wim_ON4WS</span><span class="x">Goeiemorgen allemaal, iemand RPT-Genk zien vandaag? Hier is die sinds gisteravond weg.</span><span class="meta">SNR 7.5 · 2 hops</span></div>
+    <div class="m m-msg"><span class="t">09:04:40</span><span class="n nc3">Sofie</span><span class="x">Ja, kwam net door met SNR 9. Denk dat er een stroomonderbreking was.</span><span class="meta">SNR 9.0 · 1 hop</span></div>
+    <div class="m m-msg m-self m-acked"><span class="t">09:05:18</span><span class="n">Bjorn</span><span class="x">Hier in Hasselt goede ontvangst, 1 hop via a1.</span><span class="meta">via a1<span class="ack" aria-label="Bevestigd">✓</span></span></div>
+    <div class="m m-msg m-hl"><span class="t">09:06:51</span><span class="n nc2">Koen_PA3</span><span class="x"><span class="mention">@Bjorn</span> heb je je advert al gestuurd? Ik zie je nog niet in mijn lijst.</span><span class="meta">SNR 3.2 · 3 hops</span></div>
+    <div class="m m-action"><span class="t">09:07:05</span><span class="x"><b class="nc3">Sofie</b> zet koffie voor het hele mesh</span><span class="meta">SNR 8.7 · 1 hop</span></div>
+    <div class="m m-msg"><span class="t">09:09:30</span><span class="n nc6">Dries</span><span class="x">test test, komt dit door?</span><span class="meta">SNR -2.0 · flood</span></div>
+    <div class="m m-msg m-self m-acked"><span class="t">09:09:44</span><span class="n">Bjorn</span><span class="x">Advert net verstuurd (flood). Dries: ja, komt door, wel zwak.</span><span class="meta">via a1<span class="ack">✓</span></span></div>
+    <div class="m m-error"><span class="t">09:12:02</span><span class="x">Verzenden mislukt: geen ACK ontvangen na 3 pogingen (#belgium)</span></div>
+    <div class="m m-msg m-self m-failed"><span class="t">09:12:02</span><span class="n">Bjorn</span><span class="x">Kan iemand de frequentie van de Leuven-room bevestigen?</span><span class="meta"><span class="ack" aria-label="Mislukt">✗</span></span></div>
+    <div class="m m-notice"><span class="t">09:15:10</span><span class="x">RPT-Genk: advert ontvangen (2 hops, SNR 6.5) · pad bijgewerkt</span></div>
+
+    <div class="m m-cli"><span class="t">09:16:33</span><span class="n">RPT-Genk</span><span class="x"><span class="cmd">ver</span><pre>MeshCore v1.7.2 (build 15 aug 2026)
+Heltec V3 · repeater
+uptime 3d 14:22 · bat 4.12V · temp 31.4°C</pre></span></div>
+    <div class="m m-cli"><span class="t">09:16:58</span><span class="n">RPT-Genk</span><span class="x"><span class="cmd">get radio</span><pre>869.618,250,11,5
+tx 22 dBm · airtime 3.1% · rx 1842 · tx 407</pre></span></div>
+
+    <div class="m m-msg"><span class="t">10:41:07</span><span class="n nc4">Ellen_ON3</span><span class="x">Wie komt zaterdag naar de meetup in Leuven? We testen nieuwe antennes op het dak van de faculteit. Neem je eigen node mee, er is stroom en koffie. Details op <a href="#">meshcore.be/meetup</a></span><span class="meta">SNR 5.1 · 2 hops</span></div>
+    <div class="m m-msg"><span class="t">10:42:15</span><span class="n nc2">Koen_PA3</span><span class="x">Ik ben er, met de nieuwe 5 dBi collineair.</span><span class="meta">SNR 3.8 · 3 hops</span></div>
+    <div class="m m-msg m-self m-acked"><span class="t">10:42:39</span><span class="n">Bjorn</span><span class="x">Ik ook. Breng de D3200 mee voor foto's.</span><span class="meta">via a1,7f<span class="ack">✓</span></span></div>
+    <div class="m m-msg"><span class="t">10:43:02</span><span class="n nc6">Dries</span><span class="x">idem, T-Deck komt mee</span><span class="meta">SNR 1.5 · flood</span></div>
+    <div class="m m-notice"><span class="t">10:45:00</span><span class="x">Dries is nu bereikbaar via pad 3 hops (a1,7f,c2)</span></div>
+    <div class="m m-msg"><span class="t">11:20:44</span><span class="n nc0">Jef_ON7JV</span><span class="x">Sensor-node in Diest meldt 18.2°C / 71% RV, batterij 3.71 V</span><span class="meta">SNR 6.9 · 1 hop</span></div>
+    <div class="m m-msg"><span class="t">11:21:10</span><span class="n nc1">Wim_ON4WS</span><span class="x">Mooi, die zonnepaneeltjes doen het dus wel in september :)</span><span class="meta">SNR 7.2 · 2 hops</span></div>
+    <div class="m m-msg"><span class="t">13:58:26</span><span class="n nc7">Maarten</span><span class="x">Nieuwe repeater op de watertoren van Tienen gaat vanavond online, naam RPT-Tienen-WT</span><span class="meta">SNR 4.4 · 2 hops</span></div>
+    <div class="m m-msg"><span class="t">14:01:33</span><span class="n nc3">Sofie</span><span class="x">Top! Dan zou het gat richting Leuven eindelijk dicht moeten zijn.</span><span class="meta">SNR 8.9 · 1 hop</span></div>
+
+    <div id="new-marker" role="separator">nieuw</div>
+    <div class="m m-msg m-hl"><span class="t">14:19:57</span><span class="n nc5">Tom_ON5T</span><span class="x"><span class="mention">Bjorn</span>, lukt het je om vanavond RPT-Hasselt-Toren te tracen? Ik wil het pad vergelijken.</span><span class="meta">SNR 2.6 · 2 hops</span></div>
+    <div class="m m-msg m-self m-pending"><span class="t">14:21:08</span><span class="n">Bjorn</span><span class="x">Doe ik, rond 20u.</span><span class="meta"><span class="ack" aria-label="Wacht op bevestiging"></span></span></div>
+  </div>
+
+  <button class="btn sm" id="scroll-bottom" aria-label="Naar nieuwste berichten"><svg class="i"><use href="#i-down"/></svg>Nieuwe berichten</button>
+
+  <div id="compose">
+    <div class="quick-cmds" data-for="repeater" hidden>
+      <button class="chip" data-cmd="ver">ver</button><button class="chip" data-cmd="clock">clock</button>
+      <button class="chip" data-cmd="get radio">get radio</button><button class="chip" data-cmd="neighbors">neighbors</button>
+      <button class="chip" data-cmd="advert">advert</button><button class="chip" data-cmd="reboot">reboot</button>
+    </div>
+    <div id="hint" role="listbox" aria-label="Commando's">
+      <div class="h sel" role="option" data-cmd="/msg"><code>/msg &lt;nick&gt;</code><span>Privébericht sturen</span></div>
+      <div class="h" role="option" data-cmd="/me"><code>/me</code><span>Actie-bericht</span></div>
+      <div class="h" role="option" data-cmd="/join"><code>/join #kanaal</code><span>Kanaal openen of toevoegen</span></div>
+      <div class="h" role="option" data-cmd="/advert"><code>/advert [flood]</code><span>Eigen advert versturen</span></div>
+      <div class="h" role="option" data-cmd="/trace"><code>/trace &lt;node&gt;</code><span>Pad naar node traceren</span></div>
+      <div class="h" role="option" data-cmd="/login"><code>/login &lt;room&gt;</code><span>Inloggen op room server</span></div>
+    </div>
+    <form id="composer" autocomplete="off">
+      <span id="target" data-target="#belgium">#belgium</span>
+      <input id="input" type="text" placeholder="Bericht of /commando…" maxlength="160" aria-label="Bericht" enterkeyhint="send">
+      <span id="counter" aria-live="polite">132</span>
+      <button class="btn primary" id="send" type="submit" aria-label="Verzenden"><svg class="i"><use href="#i-send"/></svg><span class="no-mobile">Verzend</span></button>
+    </form>
+  </div>
+</main>
+
+<!-- ========== RECHTER ZIJBALK ========== -->
+<aside id="users" aria-label="Deelnemers">
+  <div class="head">Deelnemers <span class="n" id="users-count">(12)</span></div>
+  <div id="userlist">
+    <div class="user me" data-nick="Bjorn"><span class="dot on"></span><svg class="i"><use href="#i-user"/></svg><span class="nm">Bjorn</span></div>
+    <div class="user" data-nick="Sofie"><span class="dot on"></span><svg class="i"><use href="#i-user"/></svg><span class="nm nc3">Sofie</span><span class="snr">9.0</span></div>
+    <div class="user" data-nick="Wim_ON4WS"><span class="dot on"></span><svg class="i"><use href="#i-user"/></svg><span class="nm nc1">Wim_ON4WS</span><span class="snr">7.5</span></div>
+    <div class="user" data-nick="Jef_ON7JV"><span class="dot on"></span><svg class="i"><use href="#i-user"/></svg><span class="nm nc0">Jef_ON7JV</span><span class="snr">6.9</span></div>
+    <div class="user" data-nick="Ellen_ON3"><span class="dot on"></span><svg class="i"><use href="#i-user"/></svg><span class="nm nc4">Ellen_ON3</span><span class="snr">5.1</span></div>
+    <div class="user" data-nick="Maarten"><span class="dot on"></span><svg class="i"><use href="#i-user"/></svg><span class="nm nc7">Maarten</span><span class="snr">4.4</span></div>
+    <div class="user" data-nick="Koen_PA3"><span class="dot busy"></span><svg class="i"><use href="#i-user"/></svg><span class="nm nc2">Koen_PA3</span><span class="snr">3.2</span></div>
+    <div class="user" data-nick="Tom_ON5T"><span class="dot busy"></span><svg class="i"><use href="#i-user"/></svg><span class="nm nc5">Tom_ON5T</span><span class="snr">2.6</span></div>
+    <div class="user" data-nick="Dries"><span class="dot busy"></span><svg class="i"><use href="#i-user"/></svg><span class="nm nc6">Dries</span><span class="snr">-2.0</span></div>
+    <div class="user" data-nick="RPT-Genk" data-type="repeater"><span class="dot on"></span><svg class="i"><use href="#i-ant"/></svg><span class="nm">RPT-Genk</span><span class="snr">6.5</span></div>
+    <div class="user" data-nick="Limburg-BBS" data-type="room"><span class="dot on"></span><svg class="i"><use href="#i-room"/></svg><span class="nm">&amp;Limburg-BBS</span></div>
+    <div class="user" data-nick="SNS-Diest" data-type="sensor"><span class="dot off"></span><svg class="i"><use href="#i-sensor"/></svg><span class="nm">SNS-Diest</span><span class="snr">3.0</span></div>
+  </div>
+  <div id="info" data-for="RPT-Genk">
+    <h3>Info · RPT-Genk</h3>
+    <dl>
+      <dt>Type</dt><dd><span class="type rpt">repeater</span></dd>
+      <dt>Sleutel</dt><dd>a1c4 9f02 … 7e3b</dd>
+      <dt>Advert</dt><dd>09:15 (2 hops)</dd>
+      <dt>Pad</dt><dd>3 hops via a1,7f,c2</dd>
+      <dt>SNR</dt><dd>6.5 dB · RSSI -104</dd>
+      <dt>Locatie</dt><dd>50.9650, 5.5010</dd>
+    </dl>
+    <div class="acts">
+      <button class="btn sm" data-act="status">Status</button>
+      <button class="btn sm" data-act="telemetry">Telemetrie</button>
+      <button class="btn sm" data-act="trace">Trace</button>
+      <button class="btn sm ghost" data-act="path-reset">Pad reset</button>
+      <button class="btn sm primary" data-act="login" data-open="dlg-login">Login</button>
+    </div>
+  </div>
+</aside>
+</div><!-- /#app -->
+
+<!-- ========== DIALOGEN ========== -->
+<dialog class="dlg" id="dlg-channel" aria-labelledby="dlg-channel-t">
+  <form method="dialog">
+    <div class="dlg-head"><h2 id="dlg-channel-t">Kanaal toevoegen</h2><button class="btn icon ghost" value="cancel" aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="dlg-body">
+      <div class="radios" role="radiogroup">
+        <label><input type="radio" name="ctype" value="public" checked><span>Publiek<small>Standaardkanaal, iedereen leest mee</small></span></label>
+        <label><input type="radio" name="ctype" value="hashtag"><span>Hashtag <code>#naam</code><small>Sleutel afgeleid van de naam</small></span></label>
+        <label><input type="radio" name="ctype" value="key"><span>Privé met sleutel<small>Gedeelde 128-bit sleutel (hex)</small></span></label>
+        <label><input type="radio" name="ctype" value="password"><span>Privé met wachtwoord<small>Sleutel afgeleid van wachtwoord</small></span></label>
+      </div>
+      <div class="field"><label for="ch-name">Naam</label><input id="ch-name" class="mono" placeholder="#hasselt"><span class="help">Begin met # voor een hashtag-kanaal. Max. 32 tekens.</span></div>
+      <div class="field"><label for="ch-secret">Sleutel of wachtwoord</label>
+        <div class="row"><input id="ch-secret" class="mono" placeholder="8b33 4f1a … cd72"><button class="btn" type="button" id="ch-gen">Genereer</button></div>
+        <span class="help">Deel deze sleutel alleen met wie mee mag lezen. Ze wordt lokaal opgeslagen.</span></div>
+    </div>
+    <div class="dlg-foot"><button class="btn" value="cancel">Annuleren</button><button class="btn primary" value="ok" id="ch-add">Toevoegen</button></div>
+  </form>
+</dialog>
+
+<dialog class="dlg wide" id="dlg-contacts" aria-labelledby="dlg-contacts-t">
+  <div class="dlg-head"><h2 id="dlg-contacts-t">Contacten <span class="dim" id="contacts-count">(9)</span></h2>
+    <input class="inp mono" id="contacts-search" type="search" placeholder="Zoeken…" aria-label="Contacten zoeken" style="width:180px">
+    <button class="btn icon ghost" data-close aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="dlg-body" style="padding:0 6px 6px">
+    <table class="tbl" id="contacts-table">
+      <thead><tr><th>Naam</th><th>Type</th><th class="hide-m">Laatste advert</th><th class="hide-m">Pad</th><th></th></tr></thead>
+      <tbody>
+        <tr data-key="3f9a"><td class="mono">Sofie</td><td><span class="type chat">chat</span></td><td class="hide-m dim">14:01 · 1 hop</td><td class="hide-m mono dim">a1</td><td><div class="acts"><button class="btn sm">Chat</button><button class="btn sm ghost danger">Verwijder</button></div></td></tr>
+        <tr data-key="a1c4"><td class="mono">RPT-Genk</td><td><span class="type rpt">repeater</span></td><td class="hide-m dim">09:15 · 2 hops</td><td class="hide-m mono dim">a1,7f,c2</td><td><div class="acts"><button class="btn sm">Chat</button><button class="btn sm ghost danger">Verwijder</button></div></td></tr>
+        <tr data-key="c07e"><td class="mono">Limburg-BBS</td><td><span class="type room">room</span></td><td class="hide-m dim">gisteren 22:40</td><td class="hide-m mono dim">flood</td><td><div class="acts"><button class="btn sm">Chat</button><button class="btn sm ghost danger">Verwijder</button></div></td></tr>
+        <tr data-key="5d21"><td class="mono">SNS-Diest</td><td><span class="type sensor">sensor</span></td><td class="hide-m dim">11:20 · 1 hop</td><td class="hide-m mono dim">7f</td><td><div class="acts"><button class="btn sm">Chat</button><button class="btn sm ghost danger">Verwijder</button></div></td></tr>
+        <tr data-key="88b0"><td class="mono">Koen_PA3</td><td><span class="type chat">chat</span></td><td class="hide-m dim">10:42 · 3 hops</td><td class="hide-m mono dim">a1,7f,c2</td><td><div class="acts"><button class="btn sm">Chat</button><button class="btn sm ghost danger">Verwijder</button></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="dlg-foot">
+    <div class="left row"><button class="btn sm" id="ct-advert-flood">Advert versturen (flood)</button><button class="btn sm ghost" id="ct-advert-0">Advert (0-hop)</button></div>
+    <button class="btn sm" id="ct-import">Contact importeren (meshcore://…)</button>
+    <button class="btn sm primary" data-close>Sluiten</button>
+  </div>
+</dialog>
+
+<dialog class="dlg wide" id="dlg-settings" aria-labelledby="dlg-settings-t">
+  <div class="dlg-head"><h2 id="dlg-settings-t">Instellingen</h2><button class="btn icon ghost" data-close aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="tabs" role="tablist">
+    <button class="tab active" role="tab" data-tab="node">Node</button><button class="tab" role="tab" data-tab="radio">Radio</button>
+    <button class="tab" role="tab" data-tab="device">Apparaat</button><button class="tab" role="tab" data-tab="view">Weergave</button><button class="tab" role="tab" data-tab="data">Gegevens</button>
+  </div>
+  <div class="dlg-body">
+    <section class="pane active" data-pane="node">
+      <div class="field"><label for="s-name">Naam (nick)</label><input id="s-name" class="mono" value="Bjorn" maxlength="31"><span class="help">Zichtbaar voor anderen in adverts en berichten.</span></div>
+      <div class="grid2">
+        <div class="field"><label for="s-lat">Breedtegraad</label><input id="s-lat" class="mono" value="50.9307"></div>
+        <div class="field"><label for="s-lon">Lengtegraad</label><input id="s-lon" class="mono" value="5.3378"></div>
+      </div>
+      <div class="field"><label for="s-pub">Publieke sleutel</label><input id="s-pub" class="mono" readonly value="e2 7b 14 c9 03 aa 51 6f … 90 3d"></div>
+      <div class="row"><button class="btn" id="s-advert">Advert versturen</button><button class="btn primary" id="s-node-save">Opslaan</button></div>
+    </section>
+    <section class="pane" data-pane="radio">
+      <div class="callout" style="margin-bottom:12px">Wijzigingen gelden pas na opslaan. Alle nodes in het netwerk moeten dezelfde radio-instellingen gebruiken.</div>
+      <div class="grid3">
+        <div class="field"><label for="s-freq">Frequentie (MHz)</label><input id="s-freq" class="mono" value="869.618"></div>
+        <div class="field"><label for="s-bw">Bandbreedte (kHz)</label><select id="s-bw"><option>62.5</option><option>125</option><option selected>250</option><option>500</option></select></div>
+        <div class="field"><label for="s-sf">Spreading factor</label><select id="s-sf"><option>7</option><option>8</option><option>9</option><option>10</option><option selected>11</option><option>12</option></select></div>
+        <div class="field"><label for="s-cr">Coding rate</label><select id="s-cr"><option selected>5</option><option>6</option><option>7</option><option>8</option></select></div>
+        <div class="field"><label for="s-tx">TX-vermogen (dBm)</label><input id="s-tx" class="mono" type="number" value="22" min="0" max="22"></div>
+        <div class="field"><label>Airtime (laatste uur)</label><input class="mono" readonly value="3.1 %"></div>
+      </div>
+      <div class="row" style="justify-content:flex-end"><button class="btn ghost" id="s-radio-reset">Standaard (EU 869)</button><button class="btn primary" id="s-radio-save">Opslaan</button></div>
+    </section>
+    <section class="pane" data-pane="device">
+      <div class="grid2">
+        <div class="field"><label>Model</label><input readonly value="Heltec WiFi LoRa 32 V3"></div>
+        <div class="field"><label>Firmware</label><input class="mono" readonly value="v1.7.2"></div>
+        <div class="field"><label>Build</label><input class="mono" readonly value="15 aug 2026 · companion_usb"></div>
+        <div class="field"><label>Apparaattijd</label><input class="mono" readonly value="2026-09-21 14:21:14 (+2 s)"></div>
+      </div>
+      <div class="row"><button class="btn" id="s-sync-time">Tijd synchroniseren</button><button class="btn danger" id="s-reboot">Herstart apparaat</button></div>
+    </section>
+    <section class="pane" data-pane="view">
+      <div class="field"><label for="s-theme">Thema</label><select id="s-theme"><option value="auto" selected>Systeem</option><option value="dark">Donker</option><option value="light">Licht</option></select></div>
+      <label class="check"><input type="checkbox" id="s-ts" checked> Tijdstempels tonen (met seconden)</label>
+      <label class="check"><input type="checkbox" id="s-compact"> Compacte weergave</label>
+      <label class="check"><input type="checkbox" id="s-meta" checked> SNR/hops-badge per bericht tonen</label>
+      <label class="check"><input type="checkbox" id="s-notif" checked> Melding bij vermelding van mijn nick</label>
+    </section>
+    <section class="pane" data-pane="data">
+      <div class="callout" style="margin-bottom:12px">Berichten en contacten worden lokaal in deze browser opgeslagen (IndexedDB). Er gaat niets naar een server.</div>
+      <div class="row" style="flex-wrap:wrap"><button class="btn" id="s-export">Exporteren (JSON)</button><button class="btn" id="s-import">Importeren</button><button class="btn danger" id="s-clear">Geschiedenis wissen</button></div>
+    </section>
+  </div>
+  <div class="dlg-foot"><span class="left dim" style="font-size:11.5px">Opslag: 1,8 MB · 4 312 berichten</span><button class="btn primary" data-close>Sluiten</button></div>
+</dialog>
+
+<dialog class="dlg" id="dlg-login" aria-labelledby="dlg-login-t">
+  <form method="dialog">
+    <div class="dlg-head"><h2 id="dlg-login-t">Inloggen op <span class="mono" id="login-room">&amp;Leuven-Room</span></h2><button class="btn icon ghost" value="cancel" aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="dlg-body">
+      <div class="field"><label for="login-pw">Wachtwoord</label><input id="login-pw" type="password" class="mono" placeholder="••••••••"><span class="help">Het wachtwoord van de room server. Wordt versleuteld naar de node gestuurd.</span></div>
+      <label class="check"><input type="checkbox" id="login-auto" checked> Automatisch inloggen bij verbinden</label>
+    </div>
+    <div class="dlg-foot"><button class="btn" value="cancel">Annuleren</button><button class="btn primary" value="ok" id="login-ok">Inloggen</button></div>
+  </form>
+</dialog>
+
+<!-- ========== TOASTS ========== -->
+<div id="toasts" aria-live="polite">
+  <div class="toast ok"><span class="dot on"></span><span>Advert verstuurd (flood)</span><button class="btn icon ghost sm x" aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="toast err"><span class="dot err"></span><span>Geen ACK van &amp;Leuven-Room · login mislukt</span><button class="btn icon ghost sm x" aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button></div>
+</div>
+
+<script>
+/* DEMO ONLY – thema, mobiele zijbalken, dialogen openen/sluiten, tabs. Vervangen door echte app-logica. */
+const $=s=>document.querySelector(s), R=document.documentElement;
+$('#btn-theme').onclick=()=>{const dark=matchMedia('(prefers-color-scheme:dark)').matches;const cur=R.dataset.theme||(dark?'dark':'light');R.dataset.theme=cur==='dark'?'light':'dark';};
+$('#btn-sidebar').onclick=()=>document.body.classList.toggle('sidebar-open');
+$('#btn-users').onclick=()=>document.body.classList.toggle('users-open');
+$('#backdrop').onclick=()=>document.body.classList.remove('sidebar-open','users-open');
+document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.open).showModal());
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{const d=t.closest('dialog');d.querySelectorAll('.tab,.pane').forEach(e=>e.classList.remove('active'));t.classList.add('active');d.querySelector(`[data-pane="${t.dataset.tab}"]`).classList.add('active');});
+$('#composer').onsubmit=e=>e.preventDefault();
+</script>
+
+<!-- INTEGRATIE-NOTITIES
+Layout / globale states
+  body.sidebar-open        linker zijbalk als overlay open (mobiel ≤900px)
+  body.users-open          rechter zijbalk als overlay open (mobiel)
+  body.unread-below        toont #scroll-bottom ("Nieuwe berichten")
+  :root[data-theme]        "dark" | "light" (leeg = systeemvoorkeur)
+  #backdrop                klik sluit overlays
+Topbar
+  #status                  tekst + class .st-off | .st-busy | .st-on
+  #btn-usb #btn-bt #btn-disconnect #btn-settings #btn-theme
+  #battery                 .v = spanning-tekst; style --lvl = vulpercentage; class .low = rood
+  #nick                    eigen nick
+  #btn-sidebar #btn-users  mobiele togglers
+Linker zijbalk
+  #tree > .sec[data-sec=channels|rooms|dm|repeaters]
+  .sec-h .n                aantal; .sec-h .add = "+"-knop
+  .item[data-target][data-kind=channel|room|dm|repeater]
+  .item.active             actief venster; .item.unread = ongelezen
+  .item .badge             ongelezen teller; .badge.hl = vermelding
+  .item .dot.on|.off|.busy room login / repeater status
+Middenvenster
+  #chan-head[data-target]  #chan-name, #chan-topic (.key), #btn-chan-info, #btn-chan-leave
+  #messages                enige scrollcontainer voor berichten (role=log)
+  .m                       regel: .t (tijd) .n (nick) .x (tekst) .meta (SNR/hops + .ack)
+  Regeltypes               .m-msg .m-self .m-notice .m-error .m-action .m-cli .m-hl
+  Bezorgstatus (op .m)     .m-pending .m-acked .m-failed  (.meta .ack = ✓ / ✗ / leeg+…)
+  .m-cli                   .cmd = ingegeven commando, <pre> = antwoord
+  .nc0 … .nc7              nickkleuren (op .n of .nm); eigen nick = var(--self)
+  .mention                 gemarkeerde nick in tekst
+  .day-sep[data-date]      datumscheider; #new-marker = "nieuw"-lijn
+  #compose                 .quick-cmds[data-for=repeater] (hidden-attribuut togglen), .chip[data-cmd]
+  #hint                    autocomplete (hidden-attribuut), .h[data-cmd].sel = geselecteerd
+  #composer (form) #target[data-target] #input #counter(.warn|.over) #send
+Rechter zijbalk
+  #users-count             "(12)"
+  #userlist .user[data-nick][data-type=repeater|room|sensor] .dot .nm(.ncX) .snr; .user.me
+  #info[data-for]          dl met dt/dd; .acts button[data-act=status|telemetry|trace|path-reset|login]
+Dialogen (<dialog class="dlg">, open via .showModal())
+  #dlg-channel   input[name=ctype] (public|hashtag|key|password) #ch-name #ch-secret #ch-gen #ch-add
+  #dlg-contacts  #contacts-search #contacts-table tbody tr[data-key] #ct-advert-flood #ct-advert-0 #ct-import #contacts-count
+  #dlg-settings  .tab[data-tab] / .pane[data-pane] (node|radio|device|view|data)
+                 #s-name #s-lat #s-lon #s-pub(readonly) #s-advert #s-node-save
+                 #s-freq #s-bw #s-sf #s-cr #s-tx #s-radio-save #s-radio-reset
+                 #s-sync-time #s-reboot | #s-theme #s-ts #s-compact #s-meta #s-notif | #s-export #s-import #s-clear
+  #dlg-login     #login-room #login-pw #login-auto #login-ok
+  [data-open=id] opent dialoog, [data-close] sluit; forms method=dialog geven value "ok"/"cancel"
+Toasts
+  #toasts > .toast(.ok|.err|.warn)  met sluitknop .x
+Overig
+  .type.chat|.rpt|.room|.sensor  type-badge; .dot.on|.off|.busy|.err  statuspunt
+  Iconen: <svg class="i"><use href="#i-…"/></svg> uit de sprite bovenaan (menu users gear lock hash ant room user plus send x sun usb bt sensor down)
+-->
+</body>
+</html>

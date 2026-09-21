@@ -1,0 +1,347 @@
+/* ===================== Dialogs, settings, context menu, wiring ===================== */
+const on = (sel, ev, fn) => { const el = typeof sel === 'string' ? $(sel) : sel; if (el) el.addEventListener(ev, fn); };
+const val = (sel) => ($(sel)?.value ?? '').trim();
+const num = (sel) => parseFloat(String(val(sel)).replace(',', '.'));
+
+// ---------- theme ----------
+function setTheme(t) { S.settings.theme = t; if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t; $('#s-theme').value = t; saveState(); }
+function applyView() { document.body.classList.toggle('compact', !!S.settings.compact); document.body.classList.toggle('no-ts', !S.settings.ts); }
+
+// ---------- channel dialog ----------
+function channelDlgUpdate() {
+  const t = $('input[name=ctype]:checked').value; const sec = $('#ch-secret'), gen = $('#ch-gen'), name = $('#ch-name');
+  sec.closest('.field').hidden = t === 'public' || t === 'hashtag'; name.closest('.field').hidden = t === 'public'; gen.hidden = t !== 'key';
+  sec.type = t === 'password' ? 'password' : 'text'; sec.placeholder = t === 'password' ? 'wachtwoord' : '32 hex-tekens of base64';
+  $('#ch-help').textContent = { public: 'Het standaard publieke kanaal (vaste sleutel izOH6cXN6mrJ5e26oRXNcg==).', hashtag: 'Sleutel = eerste 16 bytes van SHA-256 van de naam incl. #, in kleine letters. Compatibel met de officiële app.', key: 'Gedeelde 128-bit sleutel, zoals de officiële app die toont/deelt (base64 of hex). Naam is vrij te kiezen.', password: 'Sleutel = eerste 16 bytes van SHA-256 van het wachtwoord. Alleen compatibel met andere MeshChat-gebruikers met hetzelfde wachtwoord; deel anders de sleutel (te vinden in het infopaneel).' }[t];
+  if (t === 'hashtag' && name.value && !name.value.startsWith('#')) name.value = '#' + name.value;
+}
+async function channelDlgSubmit() {
+  const t = $('input[name=ctype]:checked').value; const name = val('#ch-name'), sec = $('#ch-secret').value;
+  if (t === 'public') return joinChannel('#public');
+  if (!name) { toast('Geef een naam op', 'err'); return; }
+  if (t === 'hashtag') return joinChannel(name.startsWith('#') ? name : '#' + name);
+  if (!sec) { toast('Geef een sleutel of wachtwoord op', 'err'); return; }
+  return joinChannel(name, sec, t);
+}
+
+// ---------- login dialog ----------
+function openLoginDlg(c) { S.loginTarget = c; $('#login-room').textContent = displayName(c); $('#login-pw').value = S.roomPw[c.pub]?.pw || ''; $('#login-auto').checked = !!S.roomPw[c.pub]?.auto; $('#dlg-login').showModal(); setTimeout(() => $('#login-pw').focus(), 30); }
+
+// ---------- contacts dialog ----------
+function renderContactsDlg() {
+  const q = val('#contacts-search').toLowerCase(), type = val('#contacts-type'), sort = val('#contacts-sort'), showStale = $('#contacts-stale').checked;
+  let list = Array.from(S.contacts.values()).filter(c => !c.hidden);
+  const total = list.length;
+  if (type) list = list.filter(c => String(c.type) === type);
+  if (q) list = list.filter(c => cname(c).toLowerCase().includes(q) || (c.name || '').toLowerCase().includes(q) || c.pub.startsWith(q) || (S.extras[c.pub]?.note || '').toLowerCase().includes(q));
+  const staleT = nowSecs() - S.settings.staleDays * 86400; const staleCount = list.filter(c => (c.lastAdvert || 0) < staleT).length;
+  if (!showStale) list = list.filter(c => (c.lastAdvert || 0) >= staleT);
+  const fav = (c) => (c.flags & 1) || S.extras[c.pub]?.fav ? 0 : 1;
+  list.sort((a, b) => fav(a) - fav(b) || (sort === 'name' ? cname(a).localeCompare(cname(b), 'nl', { sensitivity: 'base' }) : sort === 'type' ? (a.type - b.type || cname(a).localeCompare(cname(b))) : sort === 'dist' ? ((distanceKm(S.self, a) ?? 1e9) - (distanceKm(S.self, b) ?? 1e9)) : ((b.lastAdvert || 0) - (a.lastAdvert || 0))));
+  $('#contacts-count').textContent = `(${list.length}${list.length !== total ? ' van ' + total : ''}${S.dev?.maxContacts ? ' · max ' + S.dev.maxContacts : ''})`;
+  $('#ct-prune').textContent = `Oude verwijderen (${staleCount})`; $('#ct-prune').disabled = !staleCount;
+  $('#contacts-table tbody').innerHTML = list.map(c => { const p = pathInfo(c); const d = distanceKm(S.self, c); const x = S.extras[c.pub] || {}; return `<tr data-key="${c.pub}">
+    <td><span class="fav ${(c.flags & 1) || x.fav ? 'on' : ''}" data-act="fav" title="Favoriet">★</span></td>
+    <td class="mono"><div>${esc(cname(c))}</div>${x.alias ? `<div class="mute" style="font-size:10.5px">${esc(c.name)}</div>` : ''}${x.note ? `<div class="mute" style="font-size:10.5px;font-family:var(--sans)">${esc(x.note)}</div>` : ''}</td>
+    <td><span class="type ${TYPE_CSS[c.type] || ''}">${ADV_TYPE[c.type]}</span>${c.loggedIn ? ' <span class="dot on" title="ingelogd"></span>' : ''}</td>
+    <td class="hide-m dim" title="${c.lastAdvert ? fmtDateTime(c.lastAdvert) : ''}">${c.lastAdvert ? fmtAgo(c.lastAdvert) : '—'}${c.lastSnr != null ? ` · ${c.lastSnr.toFixed(1)} dB` : ''}</td>
+    <td class="hide-m mono dim" title="${esc(p.hashes.map(hashLabel).join(', '))}">${p.hashes.length ? p.hashes.join(',') : p.text}${d != null ? `<div class="mute" style="font-size:10.5px">${d.toFixed(1)} km</div>` : ''}</td>
+    <td><div class="acts"><button class="btn sm" data-act="chat">${c.type === 2 || c.type === 4 ? 'Console' : 'Chat'}</button><button class="btn sm ghost" data-act="edit">Info</button><button class="btn sm ghost danger" data-act="del" aria-label="Verwijderen">${icon('x')}</button></div></td></tr>`; }).join('') || '<tr><td colspan="6" class="dim" style="padding:14px">Geen contacten.</td></tr>';
+  const pend = Array.from(S.pendingAdverts.values()); const pb = $('#pending-adverts'); pb.hidden = !pend.length;
+  $('#pending-list').innerHTML = pend.map(c => `<div class="row pend" data-key="${c.pub}"><span class="type ${TYPE_CSS[c.type] || ''}">${ADV_TYPE[c.type]}</span><span class="mono grow">${esc(c.name)}</span><span class="dim">${fmtAgo(c.lastAdvert)}</span><button class="btn sm primary" data-act="accept">Toevoegen</button><button class="btn sm ghost" data-act="ignore">Negeren</button></div>`).join('');
+}
+async function contactsDlgAction(pub, act) {
+  const c = S.contacts.get(pub); if (!c) return;
+  if (act === 'chat') { const cv = convForContact(c); cv.open = true; $('#dlg-contacts').close(); openConv(cv.key); }
+  else if (act === 'edit') openContactDlg(c);
+  else if (act === 'del') await deleteContact(c);
+  else if (act === 'fav') { const x = S.extras[pub] = S.extras[pub] || {}; const newFav = !((c.flags & 1) || x.fav); x.fav = newFav; if (C.connected) { try { c.flags = newFav ? (c.flags | 1) : (c.flags & ~1); await C.addUpdateContact(c); } catch (e) { debugLog('fav: ' + e.message); } } renderContactsDlg(); renderTree(); saveState(); }
+}
+function openContactDlg(c) {
+  S.editContact = c; const x = S.extras[c.pub] || {}; const p = pathInfo(c);
+  $('#ce-title').textContent = displayName(c); $('#ce-name').value = c.name; $('#ce-alias').value = x.alias || ''; $('#ce-note').value = x.note || ''; $('#ce-fav').checked = !!((c.flags & 1) || x.fav);
+  $('#ce-type').value = c.type; $('#ce-pub').value = c.pub; $('#ce-path').value = p.hashes.length ? p.hashes.map(hashLabel).join(' → ') : p.text;
+  $('#ce-advert').value = c.lastAdvert ? fmtDateTime(c.lastAdvert) : 'nooit'; $('#ce-loc').value = c.lat ? `${c.lat.toFixed(5)}, ${c.lon.toFixed(5)}` + (distanceKm(S.self, c) != null ? ` (${distanceKm(S.self, c).toFixed(1)} km)` : '') : '—';
+  $('#ce-perm').value = c.flags >> 1; $('#dlg-contact').showModal();
+}
+async function saveContactDlg() {
+  const c = S.editContact; if (!c) return; const x = S.extras[c.pub] = S.extras[c.pub] || {};
+  x.alias = val('#ce-alias') || undefined; x.note = val('#ce-note') || undefined; x.fav = $('#ce-fav').checked || undefined;
+  const newType = parseInt(val('#ce-type')), perm = Math.max(0, Math.min(127, parseInt(val('#ce-perm')) || 0)); const newFlags = (perm << 1) | ($('#ce-fav').checked ? 1 : 0);
+  if (C.connected && (newType !== c.type || newFlags !== c.flags)) { try { c.type = newType; c.flags = newFlags; await C.addUpdateContact(c); } catch (e) { errorMsg('Bijwerken op node mislukt: ' + e.message); } }
+  const cv = S.convs.get(convKeyFor(c)); if (cv) { cv.name = displayName(c); cv.kind = TYPE_KIND[c.type] || 'dm'; }
+  saveState(); renderTree(); if ($('#dlg-contacts').open) renderContactsDlg(); const acv = activeConv(); if (acv.pub === c.pub) { renderHead(acv); renderUsers(acv); }
+}
+async function addContactManual() {
+  const pub = val('#ac-pub').toLowerCase().replace(/[^0-9a-f]/g, ''), name = val('#ac-name'), type = parseInt(val('#ac-type'));
+  if (pub.length !== 64) { toast('Publieke sleutel moet 64 hex-tekens zijn', 'err'); return; }
+  if (!requireConn(activeConv())) return;
+  await C.addUpdateContact({ pub, type, flags: 0, outPathLen: -1, outPath: '', name: name || pub.slice(0, 8), lastAdvert: 0, lat: 0, lon: 0 });
+  await refreshContacts(); toast('Contact toegevoegd', 'ok'); renderContactsDlg();
+}
+async function acceptPending(pub) { const c = S.pendingAdverts.get(pub); if (!c || !requireConn(activeConv())) return; try { await C.addUpdateContact(c); S.pendingAdverts.delete(pub); await refreshContacts(); toast(c.name + ' toegevoegd', 'ok'); } catch (e) { errorMsg('Toevoegen mislukt: ' + e.message); } renderContactsDlg(); }
+async function pruneStale() {
+  const staleT = nowSecs() - S.settings.staleDays * 86400; const list = Array.from(S.contacts.values()).filter(c => !c.hidden && (c.lastAdvert || 0) < staleT && !((c.flags & 1) || S.extras[c.pub]?.fav));
+  if (!list.length) return; if (!await confirmDlg('Oude contacten verwijderen', `${list.length} contacten zonder advert in de laatste ${S.settings.staleDays} dagen van de node verwijderen? Favorieten blijven staan.`, 'Verwijderen', true)) return;
+  let n = 0; for (const c of list) { try { if (C.connected) await C.removeContact(c.pub); c.hidden = true; n++; } catch (e) { debugLog('prune ' + cname(c) + ': ' + e.message); } }
+  renderTree(); renderContactsDlg(); saveState(); toast(n + ' contacten verwijderd', 'ok');
+}
+
+// ---------- settings dialog ----------
+const RADIO_PRESETS = { 'eu-869': [869.618, 250, 11, 5, 'EU/UK 869.618 · BW250 · SF11 · CR5 (standaard)'], 'eu-868n': [869.618, 62.5, 8, 8, 'EU narrow 869.618 · BW62.5 · SF8 · CR8'], 'eu-433': [433.650, 250, 10, 5, 'EU 433.650 · BW250 · SF10 · CR5'], 'us-910': [910.525, 62.5, 7, 5, 'USA/Canada 910.525 · BW62.5 · SF7 · CR5'], 'au-915': [915.800, 250, 11, 5, 'AU/NZ 915.800 · BW250 · SF11 · CR5'], 'anz-9': [917.5, 250, 10, 5, 'ANZ 917.500 · BW250 · SF10 · CR5'] };
+async function fillSettings() {
+  const conn = C.connected; $$('#dlg-settings [data-needs-conn]').forEach(el => el.disabled = !conn);
+  if (S.self) {
+    $('#s-name').value = S.self.name; $('#s-pub').value = S.self.pub; $('#s-lat').value = S.self.lat || ''; $('#s-lon').value = S.self.lon || '';
+    $('#s-freq').value = S.self.freq; $('#s-bw').value = S.self.bw; $('#s-sf').value = S.self.sf; $('#s-cr').value = S.self.cr; $('#s-tx').value = S.self.txPower; $('#s-tx').max = S.self.maxTxPower || 30;
+    $('#s-manual-add').checked = !!S.self.manualAdd; $('#s-multiacks').checked = !!S.self.multiAcks; $('#s-locpolicy').value = S.self.locPolicy;
+    $('#s-telem-base').value = S.self.telemetryMode & 3; $('#s-telem-loc').value = (S.self.telemetryMode >> 2) & 3; $('#s-telem-env').value = (S.self.telemetryMode >> 4) & 3;
+  }
+  if (S.dev) { $('#s-model').value = S.dev.model || '?'; $('#s-fw').value = (S.dev.version || '?') + ' (protocol v' + S.dev.fwVer + ')'; $('#s-build').value = S.dev.build || '?'; $('#s-pin').value = S.dev.blePin || ''; $('#s-repeat').checked = !!S.dev.repeatEn; $('#s-hashmode').value = S.dev.pathHashMode ?? 0; $('#s-limits').value = `${S.dev.maxContacts || '?'} contacten · ${S.dev.maxChannels || '?'} kanalen`; }
+  $('#s-region-name').value = S.defaultScope?.name || ''; $('#s-region-key').value = S.defaultScope?.key || '';
+  $('#s-scope-mode').value = S.sendScope.mode; $('#s-scope-name').value = S.sendScope.name || ''; $('#s-scope-key').value = S.sendScope.key || ''; scopeModeUpdate();
+  $('#s-theme').value = S.settings.theme; $('#s-ts').checked = S.settings.ts; $('#s-meta').checked = S.settings.meta; $('#s-compact').checked = !!S.settings.compact; $('#s-notif').checked = S.settings.notif; $('#s-debug').checked = !!S.settings.debug; $('#s-stale').value = S.settings.staleDays; $('#s-favonly').checked = !!S.settings.favOnly;
+  try { $('#s-storage').textContent = 'Opslag in browser: ' + ((localStorage.getItem(LS_KEY) || '').length / 1024).toFixed(0) + ' kB · ' + Array.from(S.convs.values()).reduce((n, c) => n + c.msgs.length, 0) + ' berichten'; } catch (e) {}
+  if (conn) {
+    try { const t = await C.getTime(); $('#s-devtime').value = fmtDateTime(t) + ` (${t - nowSecs() >= 0 ? '+' : ''}${t - nowSecs()} s)`; } catch (e) {}
+    try { const a = await C.getAutoAdd(); $('#s-aa-overwrite').checked = !!(a.mask & 1); $('#s-aa-chat').checked = !!(a.mask & 2); $('#s-aa-rpt').checked = !!(a.mask & 4); $('#s-aa-room').checked = !!(a.mask & 8); $('#s-aa-sensor').checked = !!(a.mask & 16); $('#s-aa-hops').value = a.maxHops ?? ''; $('#s-autoadd-box').hidden = false; } catch (e) { $('#s-autoadd-box').hidden = true; }
+    try { const t = await C.getTuning(); $('#s-tuning-rx').value = t.rxDelayBase; $('#s-tuning-af').value = t.airtimeFactor; } catch (e) {}
+    try { const r = await C.getAllowedRepeatFreq(); $('#s-repeat-help').textContent = r.length ? 'Client-repeat toegestaan op: ' + r.map(x => x[0] === x[1] ? x[0] + ' MHz' : x[0] + '–' + x[1] + ' MHz').join(', ') : ''; } catch (e) {}
+    try { S.batt = await C.getBattery(); renderBattery(); $('#s-battery').value = (S.batt.mv / 1000).toFixed(2) + ' V' + (S.batt.totalKb ? ` · opslag ${S.batt.usedKb}/${S.batt.totalKb} kB` : ''); } catch (e) {}
+  }
+}
+function scopeModeUpdate() { const m = $('#s-scope-mode').value; $('#s-scope-custom').hidden = m !== 'custom'; }
+async function saveNode() {
+  if (!requireConn(activeConv())) return;
+  const name = val('#s-name').slice(0, 31); if (name && name !== S.self.name) { await C.setName(name); S.self.name = name; renderNick(); }
+  const tm = (parseInt(val('#s-telem-base')) & 3) | ((parseInt(val('#s-telem-loc')) & 3) << 2) | ((parseInt(val('#s-telem-env')) & 3) << 4);
+  await C.setOtherParams($('#s-manual-add').checked ? 1 : 0, tm, parseInt(val('#s-locpolicy')), $('#s-multiacks').checked ? 1 : 0);
+  S.self.manualAdd = $('#s-manual-add').checked ? 1 : 0; S.self.telemetryMode = tm; S.self.locPolicy = parseInt(val('#s-locpolicy')); S.self.multiAcks = $('#s-multiacks').checked ? 1 : 0;
+  if (!$('#s-autoadd-box').hidden) { const mask = ($('#s-aa-overwrite').checked ? 1 : 0) | ($('#s-aa-chat').checked ? 2 : 0) | ($('#s-aa-rpt').checked ? 4 : 0) | ($('#s-aa-room').checked ? 8 : 0) | ($('#s-aa-sensor').checked ? 16 : 0); const hops = val('#s-aa-hops'); try { await C.setAutoAdd(mask, hops === '' ? null : parseInt(hops)); } catch (e) { debugLog('autoadd: ' + e.message); } }
+  toast('Node-instellingen opgeslagen', 'ok'); notice('Node-instellingen bijgewerkt. Verstuur een advert om de nieuwe naam bekend te maken.', S.convs.get('status'), false); renderHead(activeConv());
+}
+async function saveLocation() {
+  if (!requireConn(activeConv())) return; const lat = num('#s-lat') || 0, lon = num('#s-lon') || 0;
+  await C.setLatLon(lat, lon); S.self.lat = lat; S.self.lon = lon; await C.setOtherParams(S.self.manualAdd, S.self.telemetryMode, parseInt(val('#s-locpolicy')), S.self.multiAcks); S.self.locPolicy = parseInt(val('#s-locpolicy'));
+  toast('Locatie opgeslagen', 'ok');
+}
+async function saveRadio() {
+  if (!requireConn(activeConv())) return; const f = num('#s-freq'), bw = num('#s-bw'), sf = parseInt(val('#s-sf')), cr = parseInt(val('#s-cr')), tx = parseInt(val('#s-tx'));
+  if (!(f >= 150 && f <= 2500) || !(sf >= 5 && sf <= 12) || !(cr >= 5 && cr <= 8) || !(bw >= 7 && bw <= 500)) { toast('Ongeldige radiowaarden', 'err'); return; }
+  if (!await confirmDlg('Radio-instellingen', `Frequentie ${f} MHz · BW ${bw} kHz · SF${sf} · CR${cr} · ${tx} dBm. Alle nodes in je netwerk moeten dezelfde waarden gebruiken; anders hoor je niemand meer.`, 'Opslaan')) return;
+  try { await C.setRadioFull(f, bw, sf, cr, $('#s-repeat').checked); } catch (e) { if (e.errCode === 6 && $('#s-repeat').checked) { toast('Client-repeat is niet toegestaan op deze frequentie', 'err'); return; } await C.setRadio(f, bw, sf, cr); }
+  if (tx !== S.self.txPower) await C.setTxPower(tx);
+  Object.assign(S.self, { freq: f, bw, sf, cr, txPower: tx }); if (S.dev) S.dev.repeatEn = $('#s-repeat').checked ? 1 : 0;
+  const hm = parseInt(val('#s-hashmode')); if (S.dev && hm !== (S.dev.pathHashMode ?? 0)) { try { await C.setPathHashMode(hm); S.dev.pathHashMode = hm; } catch (e) { toast('Pad-hashmodus niet ondersteund', 'warn'); } }
+  toast('Radio opgeslagen', 'ok'); notice(`Radio ingesteld: ${f} MHz · BW ${bw} · SF${sf} · CR${cr} · ${tx} dBm`, S.convs.get('status'), false); renderHead(activeConv());
+}
+async function saveTuning() { if (!requireConn(activeConv())) return; await C.setTuning(num('#s-tuning-rx') || 0, num('#s-tuning-af') || 0); toast('Tuning opgeslagen', 'ok'); }
+async function saveRegion() {
+  if (!requireConn(activeConv())) return; const name = val('#s-region-name').replace(/^#/, ''); let key = val('#s-region-key').toLowerCase();
+  if (!name) { await C.setDefaultScope('', ''); S.defaultScope = null; toast('Regio gewist', 'ok'); }
+  else { if (!/^[0-9a-f]{32}$/.test(key)) { key = await scopeKeyFromName(name); $('#s-region-key').value = key; } await C.setDefaultScope(name, key); S.defaultScope = { name, key }; toast('Regio opgeslagen', 'ok'); }
+  await applySendScope(false); saveState(); renderInfo(activeConv());
+}
+async function applyScopeDlg() {
+  const mode = val('#s-scope-mode'); let name = val('#s-scope-name'), key = val('#s-scope-key').toLowerCase();
+  if (mode === 'custom') { if (!/^[0-9a-f]{32}$/.test(key)) { if (!name) { toast('Geef een regionaam of sleutel', 'err'); return; } key = await scopeKeyFromName(name); $('#s-scope-key').value = key; } }
+  S.sendScope = { mode, name, key: mode === 'custom' ? key : '' }; saveState(); await applySendScope(true); toast('Verzendscope: ' + sendScopeText(), 'ok');
+}
+async function savePin() { if (!requireConn(activeConv())) return; const p = parseInt(val('#s-pin')) || 0; if (p !== 0 && (p < 100000 || p > 999999)) { toast('PIN: 6 cijfers of 0 om uit te schakelen', 'err'); return; } await C.setDevicePin(p); toast('BLE-pincode opgeslagen (na herstart actief)', 'ok'); }
+async function exportPrivKey() { if (!requireConn(activeConv())) return; if (!await confirmDlg('Privésleutel exporteren', 'Wie deze sleutel heeft, kan zich als jouw node voordoen en je privéberichten lezen. Alleen bewaren op een veilige plek.', 'Tonen', true)) return; try { const k = await C.exportPrivateKey(); await promptDlg('Privésleutel (hex, 64 bytes)', 'Kopieer en bewaar veilig', k); } catch (e) { toast('Export niet mogelijk: ' + e.message, 'err'); } }
+async function importPrivKey() { if (!requireConn(activeConv())) return; const k = await promptDlg('Privésleutel importeren', '128 hex-tekens', ''); if (!k) return; if (k.replace(/[^0-9a-f]/gi, '').length !== 128) { toast('Verwacht 128 hex-tekens', 'err'); return; } if (!await confirmDlg('Identiteit vervangen', 'De node krijgt een andere identiteit (publieke sleutel). Contacten zien je als een nieuwe node. Herstart daarna.', 'Importeren', true)) return; await C.importPrivateKey(k); toast('Privésleutel geïmporteerd; herstart de node', 'ok'); }
+
+// ---------- config export / import ----------
+async function exportConfig(includeKey) {
+  const cfg = { app: 'MeshChat', format: 1, exportedAt: new Date().toISOString(), node: null, channels: S.channels.filter(c => c && c.name).map(c => ({ name: c.name, secret: c.secret })), contacts: Array.from(S.contacts.values()).filter(c => !c.hidden).map(({ loggedIn, perms, hidden, lastSnr, _loginPending, ...c }) => c), local: { extras: S.extras, roomPw: S.roomPw, settings: S.settings, sendScope: S.sendScope } };
+  if (S.self) { cfg.node = { name: S.self.name, pub: S.self.pub, lat: S.self.lat, lon: S.self.lon, radio: { freq: S.self.freq, bw: S.self.bw, sf: S.self.sf, cr: S.self.cr, tx: S.self.txPower, repeat: S.dev?.repeatEn || 0 }, manualAdd: S.self.manualAdd, telemetryMode: S.self.telemetryMode, locPolicy: S.self.locPolicy, multiAcks: S.self.multiAcks, defaultScope: S.defaultScope, pathHashMode: S.dev?.pathHashMode ?? 0, blePin: S.dev?.blePin };
+    if (C.connected) { try { cfg.node.autoAdd = await C.getAutoAdd(); } catch (e) {} try { cfg.node.tuning = await C.getTuning(); } catch (e) {} if (includeKey) { try { cfg.node.privateKey = await C.exportPrivateKey(); } catch (e) { toast('Privésleutel niet exporteerbaar: ' + e.message, 'warn'); } } }
+  }
+  downloadJson(cfg, `meshchat-config-${(S.self?.name || 'node').replace(/[^\w-]/g, '_')}-${new Date().toISOString().slice(0, 10)}.json`);
+}
+function exportHistory() { const h = {}; for (const [k, cv] of S.convs) h[k] = { name: cv.name, kind: cv.kind, msgs: cv.msgs }; downloadJson({ app: 'MeshChat', history: h }, 'meshchat-geschiedenis.json'); }
+function downloadJson(obj, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 1)], { type: 'application/json' })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
+async function importConfig(file) {
+  let cfg; try { cfg = JSON.parse(await file.text()); } catch (e) { toast('Ongeldig JSON-bestand', 'err'); return; }
+  if (cfg.app !== 'MeshChat') { toast('Geen MeshChat-configuratie', 'err'); return; }
+  const parts = []; if (cfg.node) parts.push('node-instellingen (naam, radio, locatie, regio, opties)'); if (cfg.channels?.length) parts.push(cfg.channels.length + ' kanalen'); if (cfg.contacts?.length) parts.push(cfg.contacts.length + ' contacten'); if (cfg.node?.privateKey) parts.push('PRIVÉSLEUTEL (identiteit)'); if (cfg.local) parts.push('lokale voorkeuren, aliassen en room-wachtwoorden');
+  if (!await confirmDlg('Configuratie importeren', 'Toepassen: ' + parts.join(', ') + '.' + (C.connected ? ' Node-instellingen worden direct naar de node geschreven.' : ' Niet verbonden: alleen lokale gegevens worden overgenomen.'), 'Importeren', !!cfg.node?.privateKey)) return;
+  if (cfg.local) { Object.assign(S.settings, cfg.local.settings || {}); S.extras = { ...S.extras, ...(cfg.local.extras || {}) }; S.roomPw = { ...S.roomPw, ...(cfg.local.roomPw || {}) }; if (cfg.local.sendScope) S.sendScope = cfg.local.sendScope; setTheme(S.settings.theme); applyView(); }
+  if (C.connected) {
+    const n = cfg.node; let errs = 0; const tryDo = async (f, label) => { try { await f(); } catch (e) { errs++; debugLog('import ' + label + ': ' + e.message); } };
+    if (n) {
+      if (n.privateKey) await tryDo(() => C.importPrivateKey(n.privateKey), 'privésleutel');
+      if (n.name) await tryDo(() => C.setName(n.name), 'naam');
+      if (n.radio) { await tryDo(() => C.setRadioFull(n.radio.freq, n.radio.bw, n.radio.sf, n.radio.cr, n.radio.repeat), 'radio'); if (n.radio.tx != null) await tryDo(() => C.setTxPower(n.radio.tx), 'tx'); }
+      if (n.lat != null) await tryDo(() => C.setLatLon(n.lat, n.lon), 'locatie');
+      await tryDo(() => C.setOtherParams(n.manualAdd || 0, n.telemetryMode || 0, n.locPolicy || 0, n.multiAcks || 0), 'opties');
+      if (n.defaultScope) await tryDo(() => C.setDefaultScope(n.defaultScope.name, n.defaultScope.key), 'regio');
+      if (n.autoAdd) await tryDo(() => C.setAutoAdd(n.autoAdd.mask, n.autoAdd.maxHops), 'autoadd');
+      if (n.tuning) await tryDo(() => C.setTuning(n.tuning.rxDelayBase, n.tuning.airtimeFactor), 'tuning');
+      if (n.pathHashMode != null) await tryDo(() => C.setPathHashMode(n.pathHashMode), 'hashmode');
+    }
+    for (const ch of (cfg.channels || [])) { if (S.channels.some(c => c && c.secret === ch.secret && c.name)) continue; const slot = freeChannelSlot(); if (slot < 0) { errs++; break; } await tryDo(async () => { await C.setChannel(slot, ch.name, ch.secret); S.channels[slot] = { idx: slot, ...ch }; }, 'kanaal ' + ch.name); }
+    for (const c of (cfg.contacts || [])) if (!S.contacts.has(c.pub) || S.contacts.get(c.pub).hidden) await tryDo(() => C.addUpdateContact(c), 'contact ' + c.name);
+    S.self = await C.appStart('MeshChat'); renderNick(); await refreshContacts(true); await refreshChannels(); S.defaultScope = await C.getDefaultScope().catch(() => null); await applySendScope(false);
+    toast(errs ? `Import klaar met ${errs} fout(en); zie status-venster met /debug` : 'Configuratie geïmporteerd', errs ? 'warn' : 'ok'); if (n?.privateKey) notice('Privésleutel geïmporteerd: herstart de node (Instellingen › Apparaat).', S.convs.get('status'), false);
+  } else { for (const c of (cfg.contacts || [])) if (!S.contacts.has(c.pub)) S.contacts.set(c.pub, { ...c, hidden: true }); toast('Lokale gegevens geïmporteerd (niet verbonden)', 'ok'); }
+  saveState(true); renderTree(); fillSettings();
+}
+
+// ---------- message context menu & info ----------
+function msgFromEl(el) { const id = el?.dataset.id; const cv = activeConv(); return cv.msgs.find(m => m.id === id); }
+function showCtx(x, y, items) {
+  const ctx = $('#ctx'); ctx.innerHTML = items.filter(Boolean).map((it, i) => it === '-' ? '<div class="sep"></div>' : `<button class="ci ${it.danger ? 'danger' : ''}" data-i="${i}">${esc(it.label)}</button>`).join('');
+  ctx.hidden = false; const r = ctx.getBoundingClientRect(); ctx.style.left = Math.min(x, innerWidth - r.width - 8) + 'px'; ctx.style.top = Math.min(y, innerHeight - r.height - 8) + 'px';
+  ctx.onclick = (e) => { const b = e.target.closest('.ci'); if (!b) return; ctx.hidden = true; const it = items.filter(Boolean)[b.dataset.i]; it.run && it.run(); };
+}
+document.addEventListener('click', (e) => { if (!e.target.closest('#ctx')) $('#ctx').hidden = true; });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#ctx').hidden = true; });
+function msgContextItems(m, cv) {
+  const c = m.pub ? S.contacts.get(m.pub) : contactByName(m.nick);
+  return [
+    { label: 'Berichtinfo (pad, scope, raw)…', run: () => showMsgInfo(m, cv) },
+    { label: 'Antwoorden aan ' + m.nick, run: () => { const inp = $('#input'); inp.value = (cv.kind === 'channel' ? '@' + m.nick + ' ' : '') + inp.value; inp.focus(); } },
+    c && !m.self ? { label: 'Privébericht aan ' + cname(c), run: () => { const cv2 = convForContact(c); cv2.open = true; openConv(cv2.key); } } : null,
+    c ? { label: 'Contactinfo ' + cname(c), run: () => openContactDlg(c) } : null,
+    '-',
+    { label: 'Tekst kopiëren', run: () => copyText(m.text) },
+    m.rawHex || m.rx ? { label: 'Raw pakket kopiëren (hex)', run: () => copyText(m.rx ? m.rx.rawHex : m.rawHex) } : null,
+    m.self && m.ack === 'fail' && cv.kind !== 'channel' ? { label: 'Opnieuw verzenden', run: () => sendToConv(cv, m.text) } : null,
+    '-',
+    { label: 'Bericht verwijderen (lokaal)', danger: true, run: () => { cv.msgs = cv.msgs.filter(x => x.id !== m.id); renderMessages(cv, true); saveState(); } },
+  ];
+}
+function showMsgInfo(m, cv) {
+  const rows = []; const add = (k, v) => v != null && v !== '' && rows.push(`<dt>${esc(k)}</dt><dd>${v}</dd>`);
+  add('Tijd', fmtDateTime(m.t) + (m.recvT ? ' · ontvangen ' + fmtTime(m.recvT) : ''));
+  add('Van', esc(m.nick) + (m.pub ? ` <span class="mute">${m.pub}</span>` : m.sig ? ` <span class="mute">auteur-prefix ${m.sig}</span>` : ''));
+  add('Venster', esc(cv.name) + ' (' + cv.kind + ')');
+  if (m.self) { add('Bezorging', m.ack === 'ok' ? '✓ bevestigd' + (m.trip ? ` na ${m.trip} ms` : '') : m.ack === 'fail' ? '✗ geen bevestiging' : m.ack === 'pending' ? 'wacht op bevestiging' : (cv.kind === 'channel' ? 'kanaalbericht (geen ACK mogelijk)' : '—')); add('Route', m.flood == null ? null : m.flood ? 'flood' : 'direct'); add('ACK-code', m.ackCode); add('Verzendscope', m.scope || (S.defaultScope ? 'standaard (' + esc(S.defaultScope.name) + ')' : 'standaard')); }
+  else { add('SNR', m.snr != null ? m.snr.toFixed(1) + ' dB' : null); add('RSSI', m.rssi != null ? m.rssi + ' dBm' : null); add('Hops', m.pathLen == null ? null : m.pathLen === 0xFF ? 'direct (0xFF)' : (m.pathLen & 63) + (m.pathLen >> 6 ? ` · hashgrootte ${(m.pathLen >> 6) + 1} B` : '')); }
+  add('Type', m.txtType != null ? ({ 0: 'tekst', 1: 'CLI', 2: 'ondertekend (room)' }[m.txtType] || m.txtType) : null);
+  if (m.rx) {
+    const p = m.rx; add('Raw route', esc(p.routeName) + ` · payload ${esc(p.ptypeName)} · v${p.ver}`);
+    if (p.codes) add('Scope (transportcodes)', p.codes.map(c => c.toString(16).padStart(4, '0')).join(' / ') + (S.defaultScope ? ` <span class="mute">(node-regio: ${esc(S.defaultScope.name)})</span>` : ''));
+    add('Pad', p.hashes.length ? p.hashes.map((h, i) => `<div>${i + 1}. <b>${h}</b> ${resolveHash(h).map(c => esc(cname(c)) + ' <span class="mute">(' + ADV_TYPE[c.type] + (c.lat ? ', ' + c.lat.toFixed(3) + ',' + c.lon.toFixed(3) : '') + ')</span>').join(', ') || '<span class="mute">onbekende node</span>'}</div>`).join('') : '<span class="mute">geen tussenliggende repeaters</span>');
+    add('Raw pakket', `<div class="raw">${p.rawHex}</div>`);
+  } else if (!m.self) add('Raw pakket', '<span class="mute">niet beschikbaar: de node stuurt alleen ruwe pakketten door als rx-logging in de firmware actief is (bericht ontvangen vóór de verbinding of firmware zonder LOG_RX).</span>');
+  if (m.pathLen != null && m.pathLen !== 0xFF && !m.rx && !m.self) add('Pad', `<span class="mute">${m.pathLen & 63} hop(s); de tussenliggende repeaters zijn alleen zichtbaar via het ruwe pakket.</span>`);
+  $('#msg-info').innerHTML = `<dl>${rows.join('')}</dl>`; $('#dlg-msg').showModal();
+}
+
+// ---------- wiring ----------
+function wire() {
+  on('#btn-usb', 'click', () => connect('usb')); on('#btn-bt', 'click', () => connect('ble')); on('#btn-disconnect', 'click', () => C.disconnect());
+  on('#btn-theme', 'click', () => { const dark = matchMedia('(prefers-color-scheme:dark)').matches; const cur = document.documentElement.dataset.theme || (dark ? 'dark' : 'light'); setTheme(cur === 'dark' ? 'light' : 'dark'); });
+  on('#btn-sidebar', 'click', () => document.body.classList.toggle('sidebar-open')); on('#btn-users', 'click', () => document.body.classList.toggle('users-open')); on('#backdrop', 'click', () => document.body.classList.remove('sidebar-open', 'users-open'));
+  document.addEventListener('click', (e) => { const o = e.target.closest('[data-open]'); if (o) { const d = $('#' + o.dataset.open); if (d.id === 'dlg-settings') fillSettings(); if (d.id === 'dlg-contacts') renderContactsDlg(); if (d.id === 'dlg-channel') channelDlgUpdate(); d.showModal(); } const c = e.target.closest('[data-close]'); if (c) c.closest('dialog').close(); });
+  $$('.tab').forEach(t => t.onclick = () => { const d = t.closest('dialog'); $$('.tab,.pane', d).forEach(e => e.classList.remove('active')); t.classList.add('active'); $(`[data-pane="${t.dataset.tab}"]`, d).classList.add('active'); });
+  // tree
+  on('#tree', 'click', (e) => { const it = e.target.closest('.item'); if (it && !e.target.closest('.add')) openConv(it.dataset.target); });
+  on('#tree', 'contextmenu', (e) => { const it = e.target.closest('.item'); if (!it) return; e.preventDefault(); const cv = S.convs.get(it.dataset.target); if (!cv) return; const c = cv.pub ? S.contacts.get(cv.pub) : null; showCtx(e.clientX, e.clientY, [{ label: 'Openen', run: () => openConv(cv.key) }, { label: 'Als gelezen markeren', run: () => { cv.unread = 0; cv.hl = false; renderTree(); } }, c ? { label: 'Contactinfo…', run: () => openContactDlg(c) } : null, c && c.type >= 2 ? { label: c.loggedIn ? 'Uitloggen' : 'Inloggen…', run: () => c.loggedIn ? handleInput('/logout') : openLoginDlg(c) } : null, '-', cv.kind === 'channel' ? { label: 'Kanaal verlaten', danger: true, run: () => leaveChannel(channelByConv(cv)) } : cv.kind === 'dm' ? { label: 'Venster sluiten', run: () => closeConv(cv) } : null, { label: 'Geschiedenis wissen', danger: true, run: () => { cv.msgs = []; if (cv.key === S.active) renderMessages(cv); saveState(true); } }]); });
+  on('#btn-chan-leave', 'click', () => closeConv(activeConv()));
+  on('#btn-chan-info', 'click', () => { const cv = activeConv(); const c = cv.pub ? S.contacts.get(cv.pub) : null; if (c) openContactDlg(c); else if (cv.kind === 'channel') { const ch = channelByConv(cv); if (ch) promptDlg('Kanaalsleutel · ' + cv.name, 'Hex (deel dit met wie mee mag lezen) · base64: ' + b64(unhex(ch.secret)), ch.secret); } else fillSettings().then(() => $('#dlg-settings').showModal()); });
+  // messages
+  on('#messages', 'contextmenu', (e) => { const el = e.target.closest('.m'); if (!el) return; const m = msgFromEl(el); if (!m) return; e.preventDefault(); showCtx(e.clientX, e.clientY, msgContextItems(m, activeConv())); });
+  on('#messages', 'dblclick', (e) => { const el = e.target.closest('.m'); const m = el && msgFromEl(el); if (m) showMsgInfo(m, activeConv()); });
+  let pressTimer; on('#messages', 'touchstart', (e) => { const el = e.target.closest('.m'); if (!el) return; pressTimer = setTimeout(() => { const m = msgFromEl(el); if (m) { const t = e.touches[0]; showCtx(t.clientX, t.clientY, msgContextItems(m, activeConv())); } }, 550); }, { passive: true }); on('#messages', 'touchend', () => clearTimeout(pressTimer)); on('#messages', 'touchmove', () => clearTimeout(pressTimer));
+  on('#messages', 'scroll', () => { const box = $('#messages'); if (box.scrollHeight - box.scrollTop - box.clientHeight < 40) document.body.classList.remove('unread-below'); });
+  on('#scroll-bottom', 'click', () => { const box = $('#messages'); box.scrollTop = box.scrollHeight; document.body.classList.remove('unread-below'); });
+  // users
+  on('#userlist', 'click', (e) => { const u = e.target.closest('.user'); if (!u) return; const c = u.dataset.pub ? S.contacts.get(u.dataset.pub) : contactByName(u.dataset.nick); if (c) { const cv = convForContact(c); cv.open = true; openConv(cv.key); } else if (u.dataset.nick) { const inp = $('#input'); inp.value = '@' + u.dataset.nick + ' ' + inp.value; inp.focus(); } });
+  on('#userlist', 'contextmenu', (e) => { const u = e.target.closest('.user'); if (!u) return; e.preventDefault(); const c = u.dataset.pub ? S.contacts.get(u.dataset.pub) : contactByName(u.dataset.nick); showCtx(e.clientX, e.clientY, [c ? { label: 'Privébericht', run: () => { const cv = convForContact(c); cv.open = true; openConv(cv.key); } } : null, c ? { label: 'Contactinfo…', run: () => openContactDlg(c) } : null, c ? { label: 'Whois in venster', run: () => handleInput('/whois ' + cname(c)) } : null, { label: 'Vermelden', run: () => { const inp = $('#input'); inp.value = '@' + (u.dataset.nick || (c && cname(c))) + ' ' + inp.value; inp.focus(); } }]); });
+  on('#info', 'click', async (e) => { const b = e.target.closest('[data-act]'); if (!b) return; const cv = activeConv(); const c = cv.pub ? S.contacts.get(cv.pub) : null; const act = b.dataset.act;
+    const map = { status: '/status', telemetry: '/telemetry', trace: '/trace', discover: '/path', 'path-reset': '/resetpath', logout: '/logout', 'advert-flood': '/advert flood', 'advert-0': '/advert' };
+    if (act === 'login' && c) openLoginDlg(c); else if (act === 'edit' && c) openContactDlg(c); else if (act === 'contacts') { renderContactsDlg(); $('#dlg-contacts').showModal(); } else if (act === 'copy-key') { const ch = channelByConv(cv); if (ch) copyText(ch.secret); } else if (act === 'leave') closeConv(cv); else if (map[act]) handleInput(map[act]); });
+  // composer
+  const inp = $('#input');
+  on('#composer', 'submit', (e) => { e.preventDefault(); if (!inp.value.trim()) return; if (!$('#hint').hidden && hintPick()) return; const v = inp.value; inp.value = ''; updateCounter(); $('#hint').hidden = true; S.histIdx = -1; (S.inputHist = S.inputHist || []).unshift(v); if (S.inputHist.length > 50) S.inputHist.pop(); handleInput(v); });
+  on(inp, 'input', () => { hintSel = 0; renderHint(); updateCounter(); });
+  on(inp, 'keydown', (e) => {
+    const h = $('#hint');
+    if (!h.hidden && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { e.preventDefault(); const n = $$('#hint .h').length; hintSel = (hintSel + (e.key === 'ArrowDown' ? 1 : n - 1)) % n; renderHint(); return; }
+    if (!h.hidden && e.key === 'Tab') { e.preventDefault(); hintPick(); updateCounter(); return; }
+    if (e.key === 'Tab') { e.preventDefault(); tabComplete(inp); return; }
+    if (e.key === 'Escape') { h.hidden = true; return; }
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && h.hidden && (inp.value === '' || S.histIdx >= 0)) { const hist = S.inputHist || []; if (!hist.length) return; e.preventDefault(); S.histIdx = e.key === 'ArrowUp' ? Math.min(hist.length - 1, (S.histIdx ?? -1) + 1) : Math.max(-1, S.histIdx - 1); inp.value = S.histIdx < 0 ? '' : hist[S.histIdx]; updateCounter(); }
+  });
+  on('#hint', 'click', (e) => { const h = e.target.closest('.h'); if (h) { inp.value = h.dataset.cmd + ' '; $('#hint').hidden = true; inp.focus(); } });
+  on('.quick-cmds', 'click', (e) => { const ch = e.target.closest('.chip'); if (!ch) return; const cmd = ch.dataset.cmd; if (cmd.startsWith('/')) { inp.value = cmd + ' '; inp.focus(); if (cmd === '/login') { const c = activeContact(); if (c) openLoginDlg(c); } else if (cmd !== '/login') handleInput(cmd); inp.value = ''; } else handleInput(cmd); });
+  // channel dialog
+  $$('input[name=ctype]').forEach(r => r.onchange = channelDlgUpdate); on('#ch-name', 'input', () => { const t = $('input[name=ctype]:checked').value; if (t === 'hashtag') $('#ch-name').value = $('#ch-name').value.toLowerCase(); });
+  on('#ch-gen', 'click', () => { $('#ch-secret').value = randomKey(); });
+  on('#dlg-channel form', 'submit', (e) => { if (e.submitter?.value === 'ok') { e.preventDefault(); channelDlgSubmit().then(() => $('#dlg-channel').close()).catch(err => toast(err.message, 'err')); } });
+  // login dialog
+  on('#dlg-login form', 'submit', (e) => { if (e.submitter?.value !== 'ok') return; const c = S.loginTarget; if (!c) return; const pw = $('#login-pw').value; S.roomPw[c.pub] = { pw: $('#login-auto').checked ? pw : null, auto: $('#login-auto').checked }; if (!$('#login-auto').checked) S.roomPw[c.pub].pw = pw; saveState(); doLogin(c, pw); });
+  // contacts dialog
+  ['#contacts-search', '#contacts-type', '#contacts-sort', '#contacts-stale'].forEach(s => { on(s, 'input', renderContactsDlg); on(s, 'change', renderContactsDlg); });
+  on('#contacts-table', 'click', (e) => { const b = e.target.closest('[data-act]'); const tr = e.target.closest('tr[data-key]'); if (b && tr) contactsDlgAction(tr.dataset.key, b.dataset.act); else if (tr && !e.target.closest('button')) openContactDlg(S.contacts.get(tr.dataset.key)); });
+  on('#pending-list', 'click', (e) => { const b = e.target.closest('[data-act]'); const row = e.target.closest('.pend'); if (!b || !row) return; if (b.dataset.act === 'accept') acceptPending(row.dataset.key); else { S.pendingAdverts.delete(row.dataset.key); renderContactsDlg(); } });
+  on('#ct-advert-flood', 'click', () => handleInput('/advert flood')); on('#ct-advert-0', 'click', () => handleInput('/advert'));
+  on('#ct-import', 'click', async () => { const uri = await promptDlg('Contact importeren', 'meshcore://… URI (van "Deel contact" in de app)', ''); if (uri) handleInput('/import ' + uri); });
+  on('#ct-add', 'click', () => { $('#ac-pub').value = ''; $('#ac-name').value = ''; $('#dlg-addcontact').showModal(); });
+  on('#dlg-addcontact form', 'submit', (e) => { if (e.submitter?.value === 'ok') addContactManual().catch(err => toast(err.message, 'err')); });
+  on('#ct-prune', 'click', pruneStale);
+  on('#ct-export', 'click', () => downloadJson({ app: 'MeshChat', contacts: Array.from(S.contacts.values()).filter(c => !c.hidden), extras: S.extras }, 'meshchat-contacten.json'));
+  // contact edit dialog
+  on('#ce-save', 'click', () => saveContactDlg().then(() => $('#dlg-contact').close()));
+  on('#ce-chat', 'click', () => { const c = S.editContact; const cv = convForContact(c); cv.open = true; $('#dlg-contact').close(); $('#dlg-contacts').close(); openConv(cv.key); });
+  on('#ce-copy-pub', 'click', () => copyText(S.editContact.pub));
+  on('#ce-export', 'click', async () => { if (!requireConn(activeConv())) return; try { const uri = await C.exportContact(S.editContact.pub); await promptDlg('Contact-URI · ' + cname(S.editContact), 'Deel deze meshcore:// link', uri); } catch (e) { toast(e.message, 'err'); } });
+  on('#ce-share', 'click', () => handleInput('/share ' + cname(S.editContact)));
+  on('#ce-resetpath', 'click', () => handleInput('/resetpath ' + cname(S.editContact)).then(() => openContactDlg(S.editContact)));
+  on('#ce-discover', 'click', () => { handleInput('/path ' + cname(S.editContact)); $('#dlg-contact').close(); });
+  on('#ce-delete', 'click', async () => { $('#dlg-contact').close(); await deleteContact(S.editContact); });
+  // settings
+  on('#s-node-save', 'click', () => saveNode().catch(e => toast(e.message, 'err'))); on('#s-advert', 'click', () => handleInput('/advert flood'));
+  on('#s-loc-save', 'click', () => saveLocation().catch(e => toast(e.message, 'err')));
+  on('#s-geo', 'click', () => { if (!navigator.geolocation) { toast('Geolocatie niet beschikbaar', 'err'); return; } navigator.geolocation.getCurrentPosition(p => { $('#s-lat').value = p.coords.latitude.toFixed(5); $('#s-lon').value = p.coords.longitude.toFixed(5); toast('Locatie overgenomen van de browser', 'ok'); }, e => toast('Geolocatie mislukt: ' + e.message, 'err')); });
+  on('#s-radio-save', 'click', () => saveRadio().catch(e => toast(e.message, 'err')));
+  on('#s-radio-preset', 'change', (e) => { const p = RADIO_PRESETS[e.target.value]; if (p) { $('#s-freq').value = p[0]; $('#s-bw').value = p[1]; $('#s-sf').value = p[2]; $('#s-cr').value = p[3]; } });
+  on('#s-tuning-save', 'click', () => saveTuning().catch(e => toast(e.message, 'err')));
+  on('#s-region-derive', 'click', async () => { $('#s-region-key').value = await scopeKeyFromName(val('#s-region-name')); });
+  on('#s-region-save', 'click', () => saveRegion().catch(e => toast(e.message, 'err'))); on('#s-region-clear', 'click', () => { $('#s-region-name').value = ''; $('#s-region-key').value = ''; saveRegion().catch(e => toast(e.message, 'err')); });
+  on('#s-scope-mode', 'change', scopeModeUpdate); on('#s-scope-derive', 'click', async () => { $('#s-scope-key').value = await scopeKeyFromName(val('#s-scope-name')); }); on('#s-scope-apply', 'click', () => applyScopeDlg().catch(e => toast(e.message, 'err')));
+  on('#s-sync-time', 'click', async () => { if (!requireConn(activeConv())) return; await C.setTime(); toast('Tijd gesynchroniseerd', 'ok'); fillSettings(); });
+  on('#s-reboot', 'click', async () => { if (!requireConn(activeConv())) return; if (await confirmDlg('Node herstarten', 'De verbinding valt weg en moet opnieuw gemaakt worden.', 'Herstarten', true)) { await C.reboot(); toast('Herstart verstuurd', 'ok'); } });
+  on('#s-factory', 'click', async () => { if (!requireConn(activeConv())) return; if (await confirmDlg('Fabrieksinstellingen', 'ALLE instellingen, contacten, kanalen en de identiteit van de node worden gewist. Exporteer eerst je configuratie (tab Gegevens). Doorgaan?', 'Wissen', true)) { try { await C.factoryReset(); toast('Fabrieksreset uitgevoerd', 'ok'); } catch (e) { toast(e.message, 'err'); } } });
+  on('#s-pin-save', 'click', () => savePin().catch(e => toast(e.message, 'err'))); on('#s-privkey-export', 'click', exportPrivKey); on('#s-privkey-import', 'click', () => importPrivKey().catch(e => toast(e.message, 'err')));
+  on('#s-theme', 'change', (e) => setTheme(e.target.value));
+  ['#s-ts:ts', '#s-meta:meta', '#s-compact:compact', '#s-notif:notif', '#s-debug:debug'].forEach(x => { const [sel, k] = x.split(':'); on(sel, 'change', (e) => { S.settings[k] = e.target.checked; saveState(); applyView(); renderMessages(activeConv(), true); if (k === 'notif' && e.target.checked && 'Notification' in window) Notification.requestPermission().catch(() => {}); }); });
+  on('#s-favonly', 'change', (e) => { S.settings.favOnly = e.target.checked; saveState(); renderTree(); });
+  on('#sb-search', 'input', (e) => { S.sbQuery = e.target.value; renderTree(); });
+  on('#sb-search', 'keydown', (e) => { if (e.key === 'Escape') { e.target.value = ''; S.sbQuery = ''; renderTree(); } else if (e.key === 'Enter') { const first = $('#tree .sec:not([data-sec=server]) .item'); if (first) { openConv(first.dataset.target); e.target.value = ''; S.sbQuery = ''; renderTree(); } } });
+  on('#btn-fav', 'click', () => { S.settings.favOnly = !S.settings.favOnly; saveState(); renderTree(); toast(S.settings.favOnly ? 'Zijbalk: alleen favorieten' : 'Zijbalk: alle contacten', '', 2000); });
+  on('#s-stale', 'change', (e) => { S.settings.staleDays = Math.max(1, parseInt(e.target.value) || 7); saveState(); renderTree(); });
+  on('#s-export-config', 'click', () => exportConfig($('#s-export-key').checked)); on('#s-export-history', 'click', exportHistory);
+  on('#s-import-config', 'click', () => $('#s-import-file').click()); on('#s-import-file', 'change', (e) => { const f = e.target.files[0]; if (f) importConfig(f).catch(err => toast(err.message, 'err')); e.target.value = ''; });
+  on('#s-clear', 'click', async () => { if (await confirmDlg('Geschiedenis wissen', 'Alle lokaal opgeslagen berichten verwijderen? Contacten en instellingen blijven.', 'Wissen', true)) { for (const cv of S.convs.values()) { cv.msgs = []; cv.unread = 0; } renderMessages(activeConv()); renderTree(); saveState(true); } });
+  on('#s-forget', 'click', async () => { if (await confirmDlg('Alles vergeten', 'Alle lokale gegevens van MeshChat (geschiedenis, aliassen, room-wachtwoorden, instellingen) uit deze browser wissen? De node zelf wordt niet aangepast.', 'Wissen', true)) { localStorage.removeItem(LS_KEY); location.reload(); } });
+  window.addEventListener('beforeunload', () => saveState(true));
+  if ('serial' in navigator) navigator.serial.addEventListener?.('disconnect', () => {});
+}
+function tabComplete(inp) {
+  const v = inp.value, pos = inp.selectionStart; const before = v.slice(0, pos); const m = /(\S+)$/.exec(before); if (!m) return; const part = m[1].replace(/^@/, '').toLowerCase(); if (!part) return;
+  const cv = activeConv(); const names = new Set(); for (const u of cv.users.keys()) names.add(u); for (const c of S.contacts.values()) if (!c.hidden) names.add(cname(c)); for (const ch of S.channels) if (ch && ch.name) names.add(channelLabel(ch));
+  const hits = Array.from(names).filter(n => n.toLowerCase().startsWith(part)); if (!hits.length) return;
+  S.tabHits = S.tabHits && S.tabHits.part === part ? S.tabHits : { part, i: -1, hits }; S.tabHits.i = (S.tabHits.i + 1) % hits.length;
+  const pick = hits[S.tabHits.i] + (before.trim() === m[1] && cv.kind === 'channel' ? ': ' : ' ');
+  inp.value = before.slice(0, m.index) + (m[1].startsWith('@') ? '@' : '') + pick + v.slice(pos); inp.selectionStart = inp.selectionEnd = m.index + pick.length + (m[1].startsWith('@') ? 1 : 0);
+}
+
+// ---------- init ----------
+function init() {
+  loadState(); mkConv('status', 'status', 'MeshChat', null, null); S.convs.get('status').open = true;
+  for (const c of S.contacts.values()) { c.loggedIn = false; if (c.type >= 2 && !c.hidden) convForContact(c); }
+  for (const ch of S.channels) if (ch && ch.name) convForChannel(ch);
+  $$('.app-version').forEach(e => e.textContent = 'v' + APP_VERSION); $$('a.app-repo').forEach(a => { a.href = APP_REPO; a.textContent = APP_REPO.replace(/^https?:\/\//, ''); }); $$('.app-author').forEach(e => e.textContent = APP_AUTHOR);
+  setTheme(S.settings.theme); applyView(); wire(); renderNick(); renderBattery(); setStatus('st-off', 'Niet verbonden');
+  const st = S.convs.get('status');
+  if (!st.msgs.length) { addMsg(st, { kind: 'notice', text: 'Welkom bij MeshChat. Verbind je MeshCore-companion via USB (Web Serial) of Bluetooth (Web Bluetooth) met de knoppen bovenaan. Typ /help voor de commando\'s.' }); if (!SerialTransport.supported() && !BleTransport.supported()) addMsg(st, { kind: 'error', text: 'Deze browser ondersteunt Web Serial noch Web Bluetooth. Gebruik Chrome of Edge (desktop of Android). Op iOS werkt alleen Bluetooth via de Bluefy-browser.' }); if (location.protocol === 'file:') addMsg(st, { kind: 'notice', text: 'Tip: sommige browsers blokkeren Web Serial/Bluetooth op file://-pagina\'s. Werkt het niet, host het bestand dan via https of localhost.' }); }
+  openConv(S.convs.has(S.active) ? S.active : 'status');
+  if (!S.self && !S.client.connected) { const lastNick = localStorage.getItem('mcirc.nick'); if (lastNick) $('#nick').textContent = lastNick; }
+  if (!S.settings.compact) document.body.classList.remove('compact');
+  setInterval(() => { if (S.client.connected) renderTree(); }, 60000);
+}
+init();
