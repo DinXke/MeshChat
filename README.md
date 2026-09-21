@@ -58,6 +58,10 @@ Testen zonder radio: `node src/serve.js .` en open <http://localhost:8765/meshch
 
 Protocolreferenties: [MeshCore-firmware](https://github.com/meshcore-dev/MeshCore) (`examples/companion_radio/MyMesh.cpp`) en [docs.meshcore.io/companion_protocol](https://docs.meshcore.io/companion_protocol/).
 
+## Versies
+
+Actuele versie: **0.2.0**. Zie [CHANGELOG.md](CHANGELOG.md) en de [releases](https://github.com/DinXke/MeshChat/releases) (met `meshchat.html` als bijlage). De app toont versie en bouwstempel in het Over-venster en meldt zelf wanneer er een nieuwe versie op de server staat.
+
 ## Licentie
 
 [MIT](LICENSE)
