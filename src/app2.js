@@ -114,7 +114,7 @@ function renderMsg(m) {
   switch (m.kind) {
     case 'notice': case 'error': body = `<span class="x">${linkify(m.text)}</span>`; break;
     case 'action': body = `<span class="x"><b class="${m.self ? '' : nickColor(m.nick)}">${esc(m.nick)}</b> ${linkify(m.text)}</span>`; break;
-    case 'cli': body = `<span class="n">${esc(m.nick)}</span><span class="x">${m.cmd ? `<span class="cmd">${esc(m.cmd)}</span>` : ''}${m.text ? `<pre>${annotateKeys(m.text)}</pre>` : (m.ack === 'pending' ? `<span class="dim">${esc(t('msg.waitingReply'))}</span>` : '')}</span>`; break;
+    case 'cli': body = `<span class="n">${esc(m.nick)}</span><span class="x">${m.cmd ? `<span class="cmd">${esc(m.cmd)}</span>` : ''}${m.text ? `<pre>${annotateKeys(m.text)}</pre>${/^neighbou?rs\b/i.test(m.cmd || '') && /[0-9a-f]{6}/i.test(m.text) ? `<button class="btn sm nb-btn" data-nb="${m.id}">${esc(t('nb.btn'))}</button>` : ''}` : (m.ack === 'pending' ? `<span class="dim">${esc(t('msg.waitingReply'))}</span>` : '')}</span>`; break;
     default: body = `<span class="n ${m.self ? '' : nickColor(m.nick)}">${esc(m.nick)}</span><span class="x">${linkify(m.text)}</span>`;
   }
   return `<div class="${cls.join(' ')}" data-id="${m.id}">${ts}${body}${meta}</div>`;

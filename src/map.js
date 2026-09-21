@@ -104,6 +104,7 @@ function mapAddOverlays() {
   if (!mapObj.getLayer('nodes-hit')) mapObj.addLayer({ id: 'nodes-hit', type: 'circle', source: 'nodes', paint: { 'circle-radius': 16, 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-width': 0 } });
   if (!mapObj.getLayer('nodes-circle')) mapObj.addLayer({ id: 'nodes-circle', type: 'circle', source: 'nodes', paint: { 'circle-radius': ['case', ['get', 'self'], 8, ['get', 'fav'], 7, 5.5], 'circle-color': ['case', ['get', 'pending'], 'rgba(0,0,0,0)', ['get', 'color']], 'circle-stroke-width': ['case', ['get', 'self'], 3, ['get', 'pending'], 2, 1.5], 'circle-stroke-color': ['case', ['get', 'pending'], ['get', 'color'], ['get', 'stale'], 'rgba(255,255,255,.35)', '#ffffff'], 'circle-opacity': ['case', ['get', 'stale'], 0.55, 0.95], 'circle-stroke-opacity': ['case', ['get', 'pending'], 0.9, 1] } });
   if (!mapObj.getLayer('nodes-label')) mapObj.addLayer({ id: 'nodes-label', type: 'symbol', source: 'nodes', layout: { 'text-field': ['case', ['get', 'pending'], ['concat', ['get', 'name'], ' ?'], ['get', 'name']], 'text-font': ['case', ['get', 'pending'], ['literal', ['Noto Sans Italic']], ['literal', ['Noto Sans Medium']]], 'text-size': 11.5, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-optional': true, 'text-max-width': 12 }, paint: { 'text-color': mapIsDark() ? '#e6ebf0' : '#1c2530', 'text-halo-color': mapIsDark() ? 'rgba(14,17,22,.9)' : 'rgba(255,255,255,.9)', 'text-halo-width': 1.4 } });
+  if (S.nbActive) { try { mapAddNbLayers(); } catch (e) {} }
   if (!mapObj.getLayer('packet-dots')) mapObj.addLayer({ id: 'packet-dots', type: 'circle', source: 'packet-dots', paint: { 'circle-radius': 6, 'circle-color': ['get', 'color'], 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff', 'circle-opacity': ['get', 'opacity'] } });
 }
 function mapNodeFeatures() {
@@ -159,6 +160,32 @@ function mapPacketPath(originPub, hashes) {
   return pts.filter((p, i) => i === 0 || p[0] !== pts[i - 1][0] || p[1] !== pts[i - 1][1]);
 }
 
+// ---------- buren van een repeater (uit het CLI-antwoord 'neighbors') ----------
+function mapAddNbLayers() {
+  if (!mapObj.getSource('nb')) mapObj.addSource('nb', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  if (!mapObj.getLayer('nb-line')) mapObj.addLayer({ id: 'nb-line', type: 'line', source: 'nb', filter: ['==', '$type', 'LineString'], paint: { 'line-color': ['get', 'color'], 'line-width': 3, 'line-opacity': 0.85 } }, 'nodes-hit');
+  if (!mapObj.getLayer('nb-label')) mapObj.addLayer({ id: 'nb-label', type: 'symbol', source: 'nb', filter: ['==', '$type', 'Point'], layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Medium'], 'text-size': 11, 'text-anchor': 'center', 'text-allow-overlap': true }, paint: { 'text-color': ['get', 'color'], 'text-halo-color': mapIsDark() ? 'rgba(14,17,22,.95)' : 'rgba(255,255,255,.95)', 'text-halo-width': 1.6 } });
+}
+function snrColor(snr) { return snr == null ? '#8e9baa' : snr >= 5 ? '#3ccf83' : snr >= 0 ? '#f2a93b' : '#ff5f6f'; }
+// list: [{ hex, snr, age, contact }]
+function mapShowNeighbors(rpt, list) {
+  if (!rpt || !rpt.lat) { toast(t('map_no_location'), 'warn'); return; }
+  openConv('map'); S.nbActive = { pub: rpt.pub, list };
+  const draw = () => {
+    mapAddNbLayers(); const feats = []; const from = [rpt.lon, rpt.lat]; const b = new maplibregl.LngLatBounds(from, from); let placed = 0;
+    for (const n of list) { const c = n.contact; if (!c || !c.lat || !c.lon) continue; const to = [c.lon, c.lat]; const col = snrColor(n.snr); b.extend(to); placed++;
+      feats.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [from, to] }, properties: { color: col } });
+      feats.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2] }, properties: { color: col, label: (n.snr != null ? n.snr.toFixed(1) + ' dB' : '?') + (n.age != null ? ' · ' + fmtAgo(nowSecs() - n.age) : '') } }); }
+    mapObj.getSource('nb').setData({ type: 'FeatureCollection', features: feats });
+    if (placed) mapObj.fitBounds(b, { padding: 80, maxZoom: 13, duration: 800 }); else mapObj.flyTo({ center: from, zoom: 11 });
+    $('#map-nb-clear').hidden = false;
+    const unknown = list.filter(n => !n.contact || !n.contact.lat); const known = list.length - unknown.length;
+    toast(t('nb.summary', cname(rpt), known, unknown.length) + (unknown.length ? ' ' + t('nb.unknown', unknown.map(n => n.contact ? cname(n.contact) : n.hex.slice(0, 8)).join(', ')) : ''), 'ok', 9000);
+  };
+  const go = () => { if (mapObj.isStyleLoaded()) draw(); else mapObj.once('idle', draw); };
+  if (mapObj) go(); else setTimeout(() => mapObj && go(), 800);
+}
+function mapClearNeighbors() { S.nbActive = null; if (mapObj && mapObj.getSource('nb')) mapObj.getSource('nb').setData({ type: 'FeatureCollection', features: [] }); const b = $('#map-nb-clear'); if (b) b.hidden = true; }
 // ---------- venster ----------
 function mapShow() {
   const wrap = $('#mapwrap'); wrap.hidden = false; $('#messages').hidden = true; $('#compose').hidden = true;

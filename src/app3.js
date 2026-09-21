@@ -256,6 +256,16 @@ function askCli(c, cmdText, timeoutMs = 20000) {
     (S.cliWaiters = S.cliWaiters || []).push(w); sendCli(cv, c, cmdText).catch(e => { clearTimeout(w.timer); reject(e); });
   });
 }
+// Buren uit het CLI-antwoord van 'neighbors': per regel een sleutelprefix, daarna SNR en ouderdom (seconden).
+function parseNeighbors(text) {
+  const out = [];
+  for (const line of String(text).split(/\r?\n/)) {
+    const m = /\b([0-9a-f]{6,64})\b/i.exec(line); if (!m) continue;
+    const nums = (line.slice(m.index + m[1].length).match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+    const hex = m[1].toLowerCase(); out.push({ hex, snr: nums.length ? nums[0] : null, age: nums.length > 1 ? nums[1] : null, contact: contactByPrefix(hex) });
+  }
+  return out;
+}
 // Regionamen uit de uitvoer van 'region' halen. Markeringen: '*' wildcard, '^' home, 'F' flood-vlag, '$naam' = privésleutel (niet af te leiden).
 function parseRegionReply(text) {
   const out = []; let home = null;

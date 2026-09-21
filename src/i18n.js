@@ -7,6 +7,7 @@ let LANG = 'nl';
 const I18N = {};
 
 I18N.nl = {
+  'nb.btn': 'Buren op kaart', 'nb.summary': 'Buren van {0}: {1} met locatie, {2} zonder.', 'nb.unknown': 'Zonder locatie: {0}', 'map.tools.clearNb': 'Buren wissen',
   'move.text': 'MeshChat is verhuisd naar een eigen adres. Exporteer je configuratie, open het nieuwe adres en importeer ze daar; installeer de app daarna opnieuw:', 'move.export': 'Configuratie exporteren', 'map.searchPh': 'Zoek node…', 'map.searchNone': 'Geen node met locatie gevonden voor "{0}".', 'h.showOnMap': 'Toon op kaart',
   'heard.via': 'gehoord via {0}', 'heard.ok': 'gehoord', 'heard.no': 'niet gehoord', 'heard.wait': 'wacht op herhaling…', 'ctx.resendSame': 'Opnieuw verzenden (zelfde regel)',
   'map.legend.pending': 'wachtend advert', 'map_pending': 'Wachtend advert (nog geen contact op de node).', 'map_accept': 'Toevoegen', 'map_ignore': 'Negeren',
@@ -242,6 +243,7 @@ I18N.nl = {
 };
 
 I18N.en = {
+  'nb.btn': 'Neighbours on map', 'nb.summary': 'Neighbours of {0}: {1} with a location, {2} without.', 'nb.unknown': 'Without location: {0}', 'map.tools.clearNb': 'Clear neighbours',
   'move.text': 'MeshChat has moved to its own address. Export your configuration, open the new address and import it there; then reinstall the app:', 'move.export': 'Export configuration', 'map.searchPh': 'Find node…', 'map.searchNone': 'No node with a location found for "{0}".', 'h.showOnMap': 'Show on map',
   'heard.via': 'heard via {0}', 'heard.ok': 'heard', 'heard.no': 'not heard', 'heard.wait': 'waiting for repeat…', 'ctx.resendSame': 'Resend (same line)',
   'map.legend.pending': 'pending advert', 'map_pending': 'Pending advert (not yet a contact on the node).', 'map_accept': 'Add', 'map_ignore': 'Ignore',
@@ -456,6 +458,7 @@ I18N.en = {
 };
 
 I18N.fr = {
+  'nb.btn': 'Voisins sur la carte', 'nb.summary': 'Voisins de {0} : {1} avec position, {2} sans.', 'nb.unknown': 'Sans position : {0}', 'map.tools.clearNb': 'Effacer les voisins',
   'move.text': 'MeshChat a déménagé vers sa propre adresse. Exportez votre configuration, ouvrez la nouvelle adresse et importez-la ; réinstallez ensuite l\'app :', 'move.export': 'Exporter la configuration', 'map.searchPh': 'Chercher un nœud…', 'map.searchNone': 'Aucun nœud avec position trouvé pour "{0}".', 'h.showOnMap': 'Afficher sur la carte',
   'heard.via': 'entendu via {0}', 'heard.ok': 'entendu', 'heard.no': 'pas entendu', 'heard.wait': 'en attente de répétition…', 'ctx.resendSame': 'Renvoyer (même ligne)',
   'map.legend.pending': 'advert en attente', 'map_pending': 'Advert en attente (pas encore un contact sur le nœud).', 'map_accept': 'Ajouter', 'map_ignore': 'Ignorer',

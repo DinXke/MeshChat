@@ -286,6 +286,7 @@ function msgContextItems(m, cv) {
     c && !m.self ? { label: t('ctx.dm', cname(c)), run: () => { const cv2 = convForContact(c); cv2.open = true; openConv(cv2.key); } } : null,
     c ? { label: t('ctx.contactInfo', cname(c)), run: () => openContactDlg(c) } : null,
     c && c.lat ? { label: t('ctx.onMap', cname(c)), run: () => mapFocus(c.pub) } : null,
+    m.kind === 'cli' && /^neighbou?rs\b/i.test(m.cmd || '') && cv.pub ? { label: t('nb.btn'), run: () => mapShowNeighbors(S.contacts.get(cv.pub), parseNeighbors(m.text)) } : null,
     '-',
     { label: t('ctx.copyText'), run: () => copyText(m.text) },
     m.rawHex || m.rx ? { label: t('ctx.copyRaw'), run: () => copyText(m.rx ? m.rx.rawHex : m.rawHex) } : null,
@@ -355,6 +356,8 @@ function wire() {
   on('#btn-chan-info', 'click', () => { const cv = activeConv(); const c = cv.pub ? S.contacts.get(cv.pub) : null; if (c) openContactDlg(c); else if (cv.kind === 'channel') { const ch = channelByConv(cv); if (ch) promptDlg(t('chkey.title', cv.name), t('chkey.label', b64(unhex(ch.secret))), ch.secret); } else fillSettings().then(() => $('#dlg-settings').showModal()); });
   // messages
   on('#messages', 'contextmenu', (e) => { const el = e.target.closest('.m'); if (!el) return; const m = msgFromEl(el); if (!m) return; e.preventDefault(); showCtx(e.clientX, e.clientY, msgContextItems(m, activeConv())); });
+  on('#messages', 'click', (e) => { const b = e.target.closest('.nb-btn'); if (!b) return; const cv = activeConv(); const m = cv.msgs.find(x => x.id === b.dataset.nb); const c = cv.pub ? S.contacts.get(cv.pub) : null; if (m && c) mapShowNeighbors(c, parseNeighbors(m.text)); });
+  on('#map-nb-clear', 'click', mapClearNeighbors);
   on('#messages', 'dblclick', (e) => { const el = e.target.closest('.m'); const m = el && msgFromEl(el); if (m) showMsgInfo(m, activeConv()); });
   let pressTimer; on('#messages', 'touchstart', (e) => { const el = e.target.closest('.m'); if (!el) return; pressTimer = setTimeout(() => { const m = msgFromEl(el); if (m) { const t = e.touches[0]; showCtx(t.clientX, t.clientY, msgContextItems(m, activeConv())); } }, 550); }, { passive: true }); on('#messages', 'touchend', () => clearTimeout(pressTimer)); on('#messages', 'touchmove', () => clearTimeout(pressTimer));
   on('#messages', 'scroll', () => { const box = $('#messages'); if (box.scrollHeight - box.scrollTop - box.clientHeight < 40) document.body.classList.remove('unread-below'); });
