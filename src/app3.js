@@ -162,9 +162,9 @@ async function sendToConv(cv, text, asAction = false) {
   text = text.trim(); if (!text) return;
   if (cv.kind === 'channel') {
     const ch = channelByConv(cv); if (!ch) { errorMsg('Kanaal staat niet (meer) op de node.', cv); return; }
-    const body = asAction ? '* ' + text : text;
-    const m = addMsg(cv, { kind: asAction ? 'action' : 'msg', nick: myNick(), text, self: true, scope: S.sendScope.mode === 'unscoped' ? 'zonder scope' : S.sendScope.mode === 'custom' ? (S.sendScope.name || 'scope') : null });
-    try { const r = await C.sendChannelText(ch.idx, body); m.t = r.ts; m.flood = true; updateMsgDom(m); } catch (e) { m.ack = 'fail'; updateMsgDom(m); errorMsg('Verzenden mislukt: ' + e.message, cv); }
+    const body = asAction ? '* ' + text : text; const sc = scopeFor(cv);
+    const m = addMsg(cv, { kind: asAction ? 'action' : 'msg', nick: myNick(), text, self: true, scope: sc.mode === 'unscoped' ? 'zonder scope' : sc.mode === 'custom' ? (sc.name || 'scope') : (S.chanScope[ch.secret] ? scopeText(sc) : null) });
+    try { await ensureDeviceScope(sc); const r = await C.sendChannelText(ch.idx, body); m.t = r.ts; m.flood = true; updateMsgDom(m); } catch (e) { m.ack = 'fail'; updateMsgDom(m); errorMsg('Verzenden mislukt: ' + e.message, cv); }
     return;
   }
   const c = S.contacts.get(cv.pub); if (!c) { errorMsg('Contact niet gevonden.', cv); return; }
@@ -172,7 +172,7 @@ async function sendToConv(cv, text, asAction = false) {
   if (cv.kind === 'room' && !c.loggedIn) { notice('Je bent niet ingelogd op deze room. Gebruik /login <wachtwoord>.', cv, false); openLoginDlg(c); return; }
   const m = addMsg(cv, { kind: asAction ? 'action' : 'msg', nick: myNick(), text, self: true, ack: 'pending' });
   try {
-    const r = await C.sendText(c.pub, asAction ? '* ' + text : text, TXT.PLAIN, 0); m.t = r.ts; m.ackCode = r.ack; m.flood = r.flood; updateMsgDom(m);
+    await ensureDeviceScope(S.sendScope); const r = await C.sendText(c.pub, asAction ? '* ' + text : text, TXT.PLAIN, 0); m.t = r.ts; m.ackCode = r.ack; m.flood = r.flood; updateMsgDom(m);
     m._timer = setTimeout(() => { if (m.ack === 'pending') { m.ack = 'fail'; updateMsgDom(m); saveState(); } }, Math.max(5000, r.timeoutMs) + 2000);
   } catch (e) { m.ack = 'fail'; updateMsgDom(m); errorMsg('Verzenden mislukt: ' + e.message, cv); }
 }
@@ -180,7 +180,7 @@ async function sendCli(cv, c, cmdText) {
   if (!requireConn(cv)) return;
   if (!c.loggedIn && !/^(ver|clock|board)$/.test(cmdText)) notice('Niet ingelogd: het antwoord kan uitblijven. Gebruik /login <wachtwoord>.', cv, false);
   const m = addMsg(cv, { kind: 'cli', nick: displayName(c), cmd: cmdText, text: '', self: false, ack: 'pending' });
-  try { const r = await C.sendText(c.pub, cmdText, TXT.CLI, 0); m.flood = r.flood; m.pathLen = null; m._timer = setTimeout(() => { if (m.ack === 'pending') { m.ack = 'fail'; m.text = m.text || '(geen antwoord)'; updateMsgDom(m); } }, Math.max(8000, r.timeoutMs) + 4000); }
+  try { await ensureDeviceScope(S.sendScope); const r = await C.sendText(c.pub, cmdText, TXT.CLI, 0); m.flood = r.flood; m.pathLen = null; m._timer = setTimeout(() => { if (m.ack === 'pending') { m.ack = 'fail'; m.text = m.text || '(geen antwoord)'; updateMsgDom(m); } }, Math.max(8000, r.timeoutMs) + 4000); }
   catch (e) { m.ack = 'fail'; m.text = 'fout: ' + e.message; updateMsgDom(m); }
 }
 async function doLogin(c, pw, silent) {
@@ -188,13 +188,27 @@ async function doLogin(c, pw, silent) {
   try { c._loginPending = true; const r = await C.login(c.pub, pw); if (!silent) notice(`Login verstuurd naar ${displayName(c)} (${r.flood ? 'flood' : 'direct'})…`, cv, false); setTimeout(() => { if (c._loginPending && !c.loggedIn) { c._loginPending = false; notice(`Geen antwoord op login van ${displayName(c)}.`, cv, false); } }, Math.max(8000, r.timeoutMs) + 3000); }
   catch (e) { c._loginPending = false; errorMsg('Login mislukt: ' + e.message, cv); }
 }
+// Effectieve scope voor een venster: kanaal-eigen keuze, anders de globale verzendscope.
+function scopeFor(cv) { const ch = cv && cv.kind === 'channel' ? channelByConv(cv) : null; const s = ch && S.chanScope[ch.secret]; return s && s.mode ? s : S.sendScope; }
+function scopeKeyOf(s) { if (s.mode === 'unscoped') return null; if (s.mode === 'custom' && s.key) return s.key; return S.defaultScope ? S.defaultScope.key : null; }
+function scopeText(s) { return s.mode === 'unscoped' ? 'zonder scope' : s.mode === 'custom' ? (s.name || s.key.slice(0, 8) + '…') : (S.defaultScope ? 'standaard (' + S.defaultScope.name + ')' : 'standaard'); }
+function rememberRegion(name, key) { if (!name || !key) return; const r = S.settings.regions; if (!r.some(x => x.key === key)) { r.push({ name, key }); saveState(); } }
+// Zet de verzendscope op de node om als die afwijkt van wat dit venster nodig heeft (één commando, alleen bij wissel).
+async function ensureDeviceScope(s) {
+  const want = scopeKeyOf(s); if (S.deviceScopeKey !== undefined && S.deviceScopeKey === want) return;
+  try { await C.setSendScope(want); S.deviceScopeKey = want; }
+  catch (e) { if (e.errCode === 1) { S.deviceScopeKey = want; if (s.mode !== 'default') notice("Deze firmware ondersteunt geen flood-scopes (regio's); bericht gaat zonder scope-wissel.", activeConv(), false); } else throw e; }
+}
+async function setChannelScope(ch, s) {
+  if (!ch) return; if (!s || s.mode === 'global') delete S.chanScope[ch.secret]; else S.chanScope[ch.secret] = s;
+  if (s && s.mode === 'custom') rememberRegion(s.name, s.key); saveState();
+  const cv = S.convs.get(convKeyForChannel(ch)); if (cv) { renderHead(cv); notice('Regio voor dit kanaal: ' + (s && s.mode !== 'global' ? scopeText(s) : 'volgt de globale verzendscope (' + scopeText(S.sendScope) + ')'), cv, false); }
+}
 async function applySendScope(announce = true) {
   if (!C.connected) return;
   const s = S.sendScope;
   try {
-    if (s.mode === 'unscoped') await C.setSendScope(null);
-    else if (s.mode === 'custom' && s.key) await C.setSendScope(s.key);
-    else if (S.defaultScope) await C.setSendScope(S.defaultScope.key); else await C.setSendScope(null);
+    const k = scopeKeyOf(s); await C.setSendScope(k); S.deviceScopeKey = k; if (s.mode === 'custom') rememberRegion(s.name, s.key);
     if (announce) notice('Verzendscope: ' + sendScopeText(), S.convs.get('status'), false);
   } catch (e) { if (e.errCode === 1) { if (s.mode !== 'default') notice('Deze firmware ondersteunt geen flood-scopes (regio\'s).', S.convs.get('status'), false); } else debugLog('scope: ' + e.message); }
   const cv = activeConv(); if (cv.kind === 'status') renderInfo(cv);
@@ -258,7 +272,18 @@ async function showNodeStats(cv) {
     addMsg(cv, { kind: 'cli', nick: myNick(), cmd: 'stats', text: lines.join('\n') });
   } catch (e) { errorMsg('Statistieken niet beschikbaar (oudere firmware?): ' + e.message, cv); }
 }
+async function parseScopeArgs(argv) {
+  const a = (argv[0] || '').toLowerCase();
+  if (a === 'off' || a === 'none' || a === 'uit') return { mode: 'unscoped', name: '', key: '' };
+  if (a === 'default' || a === 'standaard') return { mode: 'default', name: '', key: '' };
+  if (a === 'global' || a === 'globaal') return { mode: 'global' };
+  if (/^[0-9a-f]{32}$/i.test(a)) return { mode: 'custom', name: argv[1] || '', key: a.toLowerCase() };
+  const known = S.settings.regions.find(r => r.name.toLowerCase() === argv[0].toLowerCase().replace(/^#/, ''));
+  return { mode: 'custom', name: argv[0].replace(/^#/, ''), key: known ? known.key : await scopeKeyFromName(argv[0]) };
+}
 async function setSendScopeCmd(argv) {
+  const cv0 = activeConv(); const ch0 = cv0.kind === 'channel' ? channelByConv(cv0) : null;
+  if (ch0) { if (!argv[0]) { notice('Regio van dit kanaal: ' + (S.chanScope[ch0.secret] ? scopeText(S.chanScope[ch0.secret]) : 'globaal (' + scopeText(S.sendScope) + ')') + '. Gebruik /scope <naam|off|default|global>.', cv0, false); return; } await setChannelScope(ch0, await parseScopeArgs(argv)); return; }
   const a = (argv[0] || '').toLowerCase(); const st = S.convs.get('status');
   if (!a) { notice('Verzendscope: ' + sendScopeText() + (S.defaultScope ? ` · standaardregio van de node: ${S.defaultScope.name} (${S.defaultScope.key})` : ' · geen standaardregio op de node'), activeConv(), false); return; }
   if (a === 'off' || a === 'none' || a === 'uit') S.sendScope = { mode: 'unscoped', name: '', key: '' };

@@ -166,7 +166,19 @@ function renderHead(cv) {
   else if (cv.kind === 'channel') { const ch = channelByConv(cv); const kind = ch?.secret === PUBLIC_KEY_HEX ? 'Publiek kanaal' : ch?.name.startsWith('#') ? 'Hashtag-kanaal' : 'Privékanaal'; topic = `${kind} · sleutel <span class="key">${ch ? ch.secret.slice(0, 4) + '…' + ch.secret.slice(-4) : '?'}</span> · ${cv.users.size} deelnemer${cv.users.size === 1 ? '' : 's'} gezien${ch ? ' · slot ' + ch.idx : ''}`; }
   else { const c = S.contacts.get(cv.pub); if (c) { const p = pathInfo(c); topic = `${ADV_TYPE[c.type]} · ${c.pub.slice(0, 12)}… · advert ${fmtAgo(c.lastAdvert)} geleden · pad ${p.text}` + (c.type >= 2 ? (c.loggedIn ? ' · ingelogd' : ' · niet ingelogd') : ''); } }
   $('#chan-topic').innerHTML = topic;
+  renderChanScope(cv);
   $('#btn-chan-leave').hidden = cv.kind === 'status'; $('#btn-chan-leave').textContent = cv.kind === 'channel' ? 'Verlaten' : 'Sluiten';
+}
+function renderChanScope(cv) {
+  const wrap = $('#chan-scope-wrap'), sel = $('#chan-scope'); const ch = cv.kind === 'channel' ? channelByConv(cv) : null;
+  wrap.hidden = !ch; if (!ch) return;
+  const own = S.chanScope[ch.secret]; const cur = own ? (own.mode === 'unscoped' ? 'unscoped' : own.mode === 'default' ? 'default' : 'key:' + own.key) : 'global';
+  const regions = S.settings.regions.slice(); if (S.defaultScope && !regions.some(r => r.key === S.defaultScope.key)) regions.unshift({ name: S.defaultScope.name, key: S.defaultScope.key });
+  let html = `<option value="global">Regio: globaal (${esc(scopeText(S.sendScope))})</option><option value="default">Standaardregio node${S.defaultScope ? ' (' + esc(S.defaultScope.name) + ')' : ''}</option><option value="unscoped">Zonder scope (overal)</option>`;
+  for (const r of regions) html += `<option value="key:${r.key}">${esc(r.name)}</option>`;
+  html += `<option value="new">+ Andere regio…</option>`;
+  sel.innerHTML = html; sel.value = cur; if (sel.value !== cur) { sel.insertAdjacentHTML('beforeend', `<option value="${cur}">${esc(scopeText(own))}</option>`); sel.value = cur; }
+  wrap.classList.toggle('custom', !!own); wrap.title = 'Regio (flood-scope) voor berichten in dit kanaal: ' + (own ? scopeText(own) : 'globaal');
 }
 function renderCompose(cv) {
   const t = $('#target'); t.textContent = cv.kind === 'status' ? 'status' : cv.name; t.dataset.target = cv.key;

@@ -241,6 +241,14 @@ function wire() {
   on('#tree', 'click', (e) => { const it = e.target.closest('.item'); if (it && !e.target.closest('.add')) openConv(it.dataset.target); });
   on('#tree', 'contextmenu', (e) => { const it = e.target.closest('.item'); if (!it) return; e.preventDefault(); const cv = S.convs.get(it.dataset.target); if (!cv) return; const c = cv.pub ? S.contacts.get(cv.pub) : null; showCtx(e.clientX, e.clientY, [{ label: 'Openen', run: () => openConv(cv.key) }, { label: 'Als gelezen markeren', run: () => { cv.unread = 0; cv.hl = false; renderTree(); } }, c ? { label: 'Contactinfo…', run: () => openContactDlg(c) } : null, c && c.type >= 2 ? { label: c.loggedIn ? 'Uitloggen' : 'Inloggen…', run: () => c.loggedIn ? handleInput('/logout') : openLoginDlg(c) } : null, '-', cv.kind === 'channel' ? { label: 'Kanaal verlaten', danger: true, run: () => leaveChannel(channelByConv(cv)) } : cv.kind === 'dm' ? { label: 'Venster sluiten', run: () => closeConv(cv) } : null, { label: 'Geschiedenis wissen', danger: true, run: () => { cv.msgs = []; if (cv.key === S.active) renderMessages(cv); saveState(true); } }]); });
   on('#btn-chan-leave', 'click', () => closeConv(activeConv()));
+  on('#chan-scope', 'change', async (e) => {
+    const cv = activeConv(); const ch = cv.kind === 'channel' ? channelByConv(cv) : null; if (!ch) return; const v = e.target.value;
+    if (v === 'global') await setChannelScope(ch, null);
+    else if (v === 'default') await setChannelScope(ch, { mode: 'default', name: '', key: '' });
+    else if (v === 'unscoped') await setChannelScope(ch, { mode: 'unscoped', name: '', key: '' });
+    else if (v.startsWith('key:')) { const key = v.slice(4); const r = S.settings.regions.find(x => x.key === key) || (S.defaultScope && S.defaultScope.key === key ? S.defaultScope : null); await setChannelScope(ch, { mode: 'custom', name: r ? r.name : '', key }); }
+    else if (v === 'new') { const name = await promptDlg('Andere regio', 'Regionaam (bv. Antwerpen) of 32-tekens hex-sleutel', ''); if (name) await setChannelScope(ch, await parseScopeArgs(name.trim().split(/\s+/))); else renderChanScope(cv); }
+  });
   on('#btn-chan-info', 'click', () => { const cv = activeConv(); const c = cv.pub ? S.contacts.get(cv.pub) : null; if (c) openContactDlg(c); else if (cv.kind === 'channel') { const ch = channelByConv(cv); if (ch) promptDlg('Kanaalsleutel · ' + cv.name, 'Hex (deel dit met wie mee mag lezen) · base64: ' + b64(unhex(ch.secret)), ch.secret); } else fillSettings().then(() => $('#dlg-settings').showModal()); });
   // messages
   on('#messages', 'contextmenu', (e) => { const el = e.target.closest('.m'); if (!el) return; const m = msgFromEl(el); if (!m) return; e.preventDefault(); showCtx(e.clientX, e.clientY, msgContextItems(m, activeConv())); });

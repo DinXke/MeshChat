@@ -3,7 +3,7 @@
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
   <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 19c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.8 0 4.5 1.6 4.5 4"/></symbol>
-  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 0 0-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 0 0-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 0 0-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 0 0-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 0 0 1.066-2.573c-.94-1.543.826-3.31 2.37-2.37 1 .608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
   <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></symbol>
   <symbol id="i-hash" viewBox="0 0 24 24"><path d="M9 3 7 21M17 3l-2 18M3.5 8.5h17M3.5 15.5h17"/></symbol>
   <symbol id="i-ant" viewBox="0 0 24 24"><path d="M12 8v13M8.5 21h7"/><circle cx="12" cy="6" r="2"/><path d="M6.5 9.5a7 7 0 0 1 0-8M17.5 9.5a7 7 0 0 0 0-8M8.8 8a3.8 3.8 0 0 1 0-5M15.2 8a3.8 3.8 0 0 0 0-5"/></symbol>
@@ -53,6 +53,7 @@
   <div id="chan-head" data-target="status">
     <div class="title"><div id="chan-name">MeshChat</div><div id="chan-topic"></div></div>
     <div class="actions">
+      <label id="chan-scope-wrap" class="scope-pick" hidden title="Regio (flood-scope) voor berichten in dit kanaal"><svg class="i"><use href="#i-globe"/></svg><select id="chan-scope" aria-label="Regio voor dit kanaal"></select></label>
       <button class="btn sm ghost" id="btn-chan-info">Info</button>
       <button class="btn sm ghost danger" id="btn-chan-leave" hidden>Verlaten</button>
     </div>
