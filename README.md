@@ -27,6 +27,10 @@ Geen server, geen installatie, geen externe bronnen: open `meshchat.html` in Chr
 
 De volledige handleiding staat in de app onder **?** (of typ `/about`).
 
+## Online
+
+De actuele versie staat op <https://meshmanager.net/chat> (gehost via de MeshManager-site, repo DinXke/MeshStats; het bestand `server/app/static/chat/index.html` daar is een kopie van `meshchat.html` en wordt bij elke release met de hand bijgewerkt).
+
 ## Ontwikkelen
 
 `meshchat.html` wordt samengesteld uit de delen in [`src/`](src/README.md):
