@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>MeshChat</title>
+<meta name="theme-color" content="#141920">
+<meta name="description" content="MeshChat: IRC-achtige webclient voor MeshCore-companion-radio's (USB en Bluetooth), één zelfstandig HTML-bestand.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%234ea1ff'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='Segoe UI,Roboto,Helvetica,Arial,sans-serif' font-weight='700' font-size='28' fill='%2306111f'%3EMC%3C/text%3E%3C/svg%3E">
 <meta name="color-scheme" content="dark light">
 <style>
 /* ========== 1. TOKENS ========== */
@@ -2143,6 +2147,29 @@ function init() {
   if (!S.self && !S.client.connected) { const lastNick = localStorage.getItem('mcirc.nick'); if (lastNick) $('#nick').textContent = lastNick; }
   if (!S.settings.compact) document.body.classList.remove('compact');
   setInterval(() => { if (S.client.connected) renderTree(); }, 60000);
+  initPwa();
+}
+
+// ---------- PWA: service worker + versiecheck ----------
+// De service worker maakt de pagina installeerbaar en offline bruikbaar, maar haalt altijd
+// eerst het netwerk (zie sw.js). De versiecheck haalt de pagina zelf vers op en vergelijkt
+// APP_VERSION; verschilt die, dan verschijnt een melding met een herlaadknop.
+function initPwa() {
+  if (!/^https?:$/.test(location.protocol)) return;
+  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(e => console.warn('sw', e)); }
+  const check = async () => {
+    try {
+      const res = await fetch(location.pathname, { cache: 'no-store' }); if (!res.ok) return;
+      const m = /APP_VERSION = '([^']+)'/.exec(await res.text()); if (!m || m[1] === APP_VERSION) return;
+      if ($('#toast-update')) return;
+      const el = document.createElement('div'); el.className = 'toast ok'; el.id = 'toast-update';
+      el.innerHTML = `<span class="dot on"></span><span>Nieuwe versie beschikbaar: v${esc(m[1])} (nu v${APP_VERSION})</span><button class="btn sm primary" id="btn-reload">Herladen</button><button class="btn icon ghost sm x" aria-label="Sluiten">${icon('x')}</button>`;
+      el.querySelector('.x').onclick = () => el.remove(); el.querySelector('#btn-reload').onclick = () => { saveState(true); location.reload(); };
+      $('#toasts').appendChild(el);
+    } catch (e) { /* offline of geen server: stil */ }
+  };
+  setTimeout(check, 4000); setInterval(check, 6 * 3600 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
 }
 init();
 </script>

@@ -27,9 +27,12 @@ Geen server, geen installatie, geen externe bronnen: open `meshchat.html` in Chr
 
 De volledige handleiding staat in de app onder **?** (of typ `/about`).
 
-## Online
+## Online en als app
 
-De actuele versie staat op <https://meshmanager.net/chat> (gehost via de MeshManager-site, repo DinXke/MeshStats; het bestand `server/app/static/chat/index.html` daar is een kopie van `meshchat.html` en wordt bij elke release met de hand bijgewerkt).
+De actuele versie staat op <https://meshmanager.net/chat>. Daar is MeshChat ook **installeerbaar als PWA** (Chrome/Edge: adresbalk › Installeren; Android: menu › Toevoegen aan startscherm). De geïnstalleerde app haalt bij elke start de nieuwste versie op; is die nieuwer, dan verschijnt een melding met een herlaadknop. Offline start de laatst geladen versie.
+
+
+Hosting: (gehost via de MeshManager-site, repo DinXke/MeshStats; het bestand `server/app/static/chat/index.html` daar is een kopie van `meshchat.html` en wordt bij elke release met de hand bijgewerkt).
 
 ## Ontwikkelen
 

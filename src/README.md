@@ -13,6 +13,7 @@ Deze map bevat de losse delen waaruit het is samengesteld, voor onderhoud:
 - `app3.js`      – verbinding, device-events, in-/uitgaande berichten, /commando's, kanalen
 - `app4.js`      – dialogen, instellingen, config-export/import, contextmenu, wiring, init
 - `mock.js`      – nep-companion voor testen zonder hardware (in de browserconsole plakken)
+- `sw.js` / `manifest.json` / `head-extra.html` – PWA: service worker (netwerk eerst, cache als terugval), manifest (wordt `manifest.webmanifest`) en de extra <head>-regels
 - `serve.js`     – mini-webserver: `node src/serve.js .` (vanuit de projectmap) en open http://localhost:8765/meshchat.html
 - `build.sh`     – bouwt `../meshchat.html` uit deze delen: `bash src/build.sh`
 

@@ -344,5 +344,28 @@ function init() {
   if (!S.self && !S.client.connected) { const lastNick = localStorage.getItem('mcirc.nick'); if (lastNick) $('#nick').textContent = lastNick; }
   if (!S.settings.compact) document.body.classList.remove('compact');
   setInterval(() => { if (S.client.connected) renderTree(); }, 60000);
+  initPwa();
+}
+
+// ---------- PWA: service worker + versiecheck ----------
+// De service worker maakt de pagina installeerbaar en offline bruikbaar, maar haalt altijd
+// eerst het netwerk (zie sw.js). De versiecheck haalt de pagina zelf vers op en vergelijkt
+// APP_VERSION; verschilt die, dan verschijnt een melding met een herlaadknop.
+function initPwa() {
+  if (!/^https?:$/.test(location.protocol)) return;
+  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(e => console.warn('sw', e)); }
+  const check = async () => {
+    try {
+      const res = await fetch(location.pathname, { cache: 'no-store' }); if (!res.ok) return;
+      const m = /APP_VERSION = '([^']+)'/.exec(await res.text()); if (!m || m[1] === APP_VERSION) return;
+      if ($('#toast-update')) return;
+      const el = document.createElement('div'); el.className = 'toast ok'; el.id = 'toast-update';
+      el.innerHTML = `<span class="dot on"></span><span>Nieuwe versie beschikbaar: v${esc(m[1])} (nu v${APP_VERSION})</span><button class="btn sm primary" id="btn-reload">Herladen</button><button class="btn icon ghost sm x" aria-label="Sluiten">${icon('x')}</button>`;
+      el.querySelector('.x').onclick = () => el.remove(); el.querySelector('#btn-reload').onclick = () => { saveState(true); location.reload(); };
+      $('#toasts').appendChild(el);
+    } catch (e) { /* offline of geen server: stil */ }
+  };
+  setTimeout(check, 4000); setInterval(check, 6 * 3600 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
 }
 init();
