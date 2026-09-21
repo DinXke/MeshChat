@@ -2,7 +2,7 @@
 
 MeshChat is an IRC-style web client for [MeshCore](https://meshcore.co.uk) companion radios. It is a single HTML file: no server, no installation, no external resources. Open it in Chrome or Edge and connect your node over USB (Web Serial) or Bluetooth (Web Bluetooth). Everything you see (messages, contacts, settings, map tiles) is stored in your browser only.
 
-The hosted version, installable as an app, lives at **<https://meshmanager.net/chat>**. The same file can be downloaded from there ("Download meshchat.html" in the About dialog) and used standalone.
+The hosted version, installable as an app, lives at **<https://chat.meshmanager.net>**. The same file can be downloaded from there ("Download meshchat.html" in the About dialog) and used standalone.
 
 ![Channel window](screenshots/channel.png)
 

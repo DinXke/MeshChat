@@ -62,7 +62,7 @@ function openContactDlg(c) {
   $('#ce-title').textContent = displayName(c); $('#ce-name').value = c.name; $('#ce-alias').value = x.alias || ''; $('#ce-note').value = x.note || ''; $('#ce-fav').checked = !!((c.flags & 1) || x.fav);
   $('#ce-type').value = c.type; $('#ce-pub').value = c.pub; $('#ce-path').value = p.hashes.length ? p.hashes.map(hashLabel).join(' → ') : p.text;
   $('#ce-advert').value = c.lastAdvert ? fmtDateTime(c.lastAdvert) : t('ago.never'); $('#ce-loc').value = c.lat ? `${c.lat.toFixed(5)}, ${c.lon.toFixed(5)}` + (distanceKm(S.self, c) != null ? ` (${distanceKm(S.self, c).toFixed(1)} km)` : '') : '—';
-  $('#ce-perm').value = c.flags >> 1; $('#dlg-contact').showModal();
+  $('#ce-perm').value = c.flags >> 1; $('#ce-map').hidden = !(c.lat && c.lon); $('#dlg-contact').showModal();
 }
 async function saveContactDlg() {
   const c = S.editContact; if (!c) return; const x = S.extras[c.pub] = S.extras[c.pub] || {};
@@ -334,7 +334,10 @@ function wire() {
   on('#pd-save', 'click', () => savePathDlg().catch(e => toast(e.message, 'err')));
   on('#s-retries', 'change', (e) => { S.settings.retries = Math.max(0, Math.min(9, parseInt(e.target.value) || 0)); saveState(); });
   // kaart
-  on('#map-fit', 'click', () => mapFitAll()); on('#map-me', 'click', () => { if (S.self && S.self.lat) mapFocus(S.self.pub, 11); else toast(t('map_no_location'), 'warn'); });
+  on('#map-fit', 'click', () => mapFitAll());
+  on('#map-search', 'change', (e) => { const q = e.target.value.trim(); if (!q) return; const c = contactByName(q) || Array.from(S.pendingAdverts.values()).find(x => x.name.toLowerCase() === q.toLowerCase()); if (!c) { toast(t('map.searchNone', q), 'warn'); return; } if (S.pendingAdverts.has(c.pub) && !S.contacts.has(c.pub)) { mapShow(); mapObj && mapObj.flyTo({ center: [c.lon, c.lat], zoom: 12 }); } else mapFocus(c.pub); e.target.value = ''; });
+  on('#map-search', 'focus', () => { const dl = $('#map-search-list'); if (dl) dl.innerHTML = Array.from(S.contacts.values()).filter(c => !c.hidden && c.lat && c.lon).map(c => `<option value="${esc(cname(c))}">`).join('') + Array.from(S.pendingAdverts.values()).filter(c => c.lat).map(c => `<option value="${esc(c.name)}">`).join(''); });
+  on('#ce-map', 'click', () => { const c = S.editContact; $('#dlg-contact').close(); $('#dlg-contacts').close(); mapFocus(c.pub); }); on('#map-me', 'click', () => { if (S.self && S.self.lat) mapFocus(S.self.pub, 11); else toast(t('map_no_location'), 'warn'); });
   on('#map-settings', 'click', openMapSettings);
   on('#map-persist', 'click', async () => { const ok = await mapRequestPersist(); toast(ok ? t('map.persistOk') : t('map.persistNo'), ok ? 'ok' : 'warn', 6000); renderMapSettings(); });
   on('#map-clear', 'click', async () => { const st = await mapCacheStats(); if (!await confirmDlg(t('h.mapClear'), t('map.clearConfirm', fmtBytes(st.bytes)), t('h.mapClear'), true)) return; await mapClearCache(); toast(t('map.cleared'), 'ok'); renderMapSettings(); });
@@ -465,6 +468,13 @@ function init() {
   setInterval(() => { if (S.client.connected) renderTree(); }, 60000);
   initPwa();
   devHooks();
+  // Verhuisd: wie de app nog op meshmanager.net/chat/ gebruikt, krijgt een blijvende melding met exportknop.
+  if (location.hostname === 'meshmanager.net' && location.pathname.startsWith('/chat')) {
+    const el = document.createElement('div'); el.className = 'toast warn'; el.id = 'toast-move';
+    el.innerHTML = `<span class="dot busy"></span><span>${esc(t('move.text'))} <a href="https://chat.meshmanager.net/" target="_blank" rel="noopener">chat.meshmanager.net</a></span><button class="btn sm primary" id="btn-move-export">${esc(t('move.export'))}</button><button class="btn icon ghost sm x" aria-label="${esc(t('h.close'))}">${icon('x')}</button>`;
+    el.querySelector('.x').onclick = () => el.remove(); el.querySelector('#btn-move-export').onclick = () => exportConfig(false);
+    $('#toasts').appendChild(el);
+  }
 }
 // Ontwikkelhulp (alleen lokaal): ?mock=1 laadt de nep-companion uit src/mock.js (bestaat niet op de server), ?lang=xx zet de taal,
 // #view=... opent een venster voor schermafbeeldingen (channel | dm | repeater | room | map | contacts | settings:<tab> | about).
