@@ -27,7 +27,7 @@ function loadState() {
   try {
     const st = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
     Object.assign(S.settings, st.settings || {});
-    S.extras = st.extras || {}; S.roomPw = st.roomPw || {}; S.sendScope = st.sendScope || S.sendScope;
+    S.extras = st.extras || {}; S.roomPw = st.roomPw || {}; S.sendScope = st.sendScope || S.sendScope; S.contactsSync = st.contactsSync || null;
     for (const c of (st.contacts || [])) S.contacts.set(c.pub, c);
     S.channels = st.channels || [];
     for (const [key, meta] of Object.entries(st.convs || {})) { const cv = mkConv(key, meta.kind, meta.name, meta.pub, meta.secret); cv.msgs = (st.history || {})[key] || []; cv.lastRead = meta.lastRead || 0; for (const m of cv.msgs) if ((m.kind === 'msg' || m.kind === 'action') && m.nick && !m.self) cv.users.set(m.nick, { nick: m.nick, last: m.t, snr: m.snr, pub: m.pub }); }
@@ -41,7 +41,7 @@ function saveState(now) {
       const convs = {}, history = {};
       for (const [k, cv] of S.convs) { if (k === 'status') continue; convs[k] = { kind: cv.kind, name: cv.name, pub: cv.pub, secret: cv.secret, lastRead: cv.lastRead }; history[k] = cv.msgs.slice(-MAX_HIST).map(m => { const { _timer, ...rest } = m; return rest; }); }
       const contacts = Array.from(S.contacts.values()).map(c => ({ ...c, loggedIn: false }));
-      localStorage.setItem(LS_KEY, JSON.stringify({ settings: S.settings, extras: S.extras, roomPw: S.roomPw, sendScope: S.sendScope, contacts, channels: S.channels, convs, history }));
+      localStorage.setItem(LS_KEY, JSON.stringify({ settings: S.settings, extras: S.extras, roomPw: S.roomPw, sendScope: S.sendScope, contactsSync: S.contactsSync, contacts, channels: S.channels, convs, history }));
     } catch (e) { console.warn('state save', e); toast('Opslaan in browser mislukt: ' + e.message, 'err'); }
   };
   if (now) doSave(); else saveTimer = setTimeout(doSave, 800);

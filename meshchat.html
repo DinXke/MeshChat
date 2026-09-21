@@ -467,7 +467,7 @@ h4.sub{margin:4px 0 8px;font-size:11px;letter-spacing:.8px;text-transform:upperc
     </table>
   </div>
   <div class="dlg-foot wrap">
-    <div class="left row" style="flex-wrap:wrap"><button class="btn sm" id="ct-advert-flood">Advert (flood)</button><button class="btn sm ghost" id="ct-advert-0">Advert (0-hop)</button><button class="btn sm ghost danger" id="ct-prune">Oude verwijderen</button></div>
+    <div class="left row" style="flex-wrap:wrap"><button class="btn sm" id="ct-advert-flood">Advert (flood)</button><button class="btn sm ghost" id="ct-advert-0">Advert (0-hop)</button><button class="btn sm ghost danger" id="ct-prune">Oude verwijderen</button><button class="btn sm ghost" id="ct-refresh" title="Volledige lijst opnieuw van de node halen (normaal worden alleen wijzigingen gesynchroniseerd)">Vernieuwen</button></div>
     <button class="btn sm" id="ct-add">Handmatig toevoegen</button>
     <button class="btn sm" id="ct-import">Importeren (meshcore://)</button>
     <button class="btn sm ghost" id="ct-export">Exporteren</button>
@@ -1019,7 +1019,9 @@ class MeshCoreClient extends EventTarget {
   async getBattery() { const f = await this.cmd([CMD.GET_BATT_AND_STORAGE]); return { mv: rdU16(f, 1), usedKb: f.length >= 11 ? rdU32(f, 3) : null, totalKb: f.length >= 11 ? rdU32(f, 7) : null }; }
   async getContacts(since = 0) {
     const frames = await this.cmd(since ? [CMD.GET_CONTACTS, ...u32le(since)] : [CMD.GET_CONTACTS], { collect: (code) => code === RESP.END_OF_CONTACTS, timeout: 30000 });
-    return frames.filter(f => f[0] === RESP.CONTACT).map(f => parseContact(f, 1)).filter(Boolean);
+    const list = frames.filter(f => f[0] === RESP.CONTACT).map(f => parseContact(f, 1)).filter(Boolean);
+    const end = frames.find(f => f[0] === RESP.END_OF_CONTACTS); list.lastmod = end && end.length >= 5 ? rdU32(end, 1) : 0;
+    return list;
   }
   async getChannel(idx) { const f = await this.cmd([CMD.GET_CHANNEL, idx]); return { idx: f[1], name: cstr(f, 2, 32), secret: hex(f.subarray(34, 50)) }; }
   setChannel(idx, name, secretHex) { return this.cmd(cat([CMD.SET_CHANNEL, idx], padBytes(te.encode(name), 32), padBytes(unhex(secretHex), 16))); }
@@ -1117,7 +1119,7 @@ function loadState() {
   try {
     const st = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
     Object.assign(S.settings, st.settings || {});
-    S.extras = st.extras || {}; S.roomPw = st.roomPw || {}; S.sendScope = st.sendScope || S.sendScope;
+    S.extras = st.extras || {}; S.roomPw = st.roomPw || {}; S.sendScope = st.sendScope || S.sendScope; S.contactsSync = st.contactsSync || null;
     for (const c of (st.contacts || [])) S.contacts.set(c.pub, c);
     S.channels = st.channels || [];
     for (const [key, meta] of Object.entries(st.convs || {})) { const cv = mkConv(key, meta.kind, meta.name, meta.pub, meta.secret); cv.msgs = (st.history || {})[key] || []; cv.lastRead = meta.lastRead || 0; for (const m of cv.msgs) if ((m.kind === 'msg' || m.kind === 'action') && m.nick && !m.self) cv.users.set(m.nick, { nick: m.nick, last: m.t, snr: m.snr, pub: m.pub }); }
@@ -1131,7 +1133,7 @@ function saveState(now) {
       const convs = {}, history = {};
       for (const [k, cv] of S.convs) { if (k === 'status') continue; convs[k] = { kind: cv.kind, name: cv.name, pub: cv.pub, secret: cv.secret, lastRead: cv.lastRead }; history[k] = cv.msgs.slice(-MAX_HIST).map(m => { const { _timer, ...rest } = m; return rest; }); }
       const contacts = Array.from(S.contacts.values()).map(c => ({ ...c, loggedIn: false }));
-      localStorage.setItem(LS_KEY, JSON.stringify({ settings: S.settings, extras: S.extras, roomPw: S.roomPw, sendScope: S.sendScope, contacts, channels: S.channels, convs, history }));
+      localStorage.setItem(LS_KEY, JSON.stringify({ settings: S.settings, extras: S.extras, roomPw: S.roomPw, sendScope: S.sendScope, contactsSync: S.contactsSync, contacts, channels: S.channels, convs, history }));
     } catch (e) { console.warn('state save', e); toast('Opslaan in browser mislukt: ' + e.message, 'err'); }
   };
   if (now) doSave(); else saveTimer = setTimeout(doSave, 800);
@@ -1466,7 +1468,7 @@ const COMMANDS = [
   ['/connect', 'usb|ble', 'Verbinden met de node'], ['/disconnect', '', 'Verbinding verbreken'],
   ['/join', '#kanaal [sleutel|wachtwoord]', 'Kanaal openen of toevoegen'], ['/part', '[kanaal]', 'Kanaal verwijderen van de node'],
   ['/msg', '<nick> <tekst>', 'Privébericht sturen'], ['/query', '<nick>', 'Privévenster openen'], ['/me', '<tekst>', 'Actie-bericht'],
-  ['/nick', '<naam>', 'Eigen naam wijzigen'], ['/whois', '<nick>', 'Contactinfo tonen'], ['/names', '', 'Deelnemers tonen'], ['/list', '', 'Kanalen en contacten'],
+  ['/nick', '<naam>', 'Eigen naam wijzigen'], ['/whois', '<nick>', 'Contactinfo tonen'], ['/names', '', 'Deelnemers tonen'], ['/list', '', 'Kanalen en contacten'], ['/contacts', '', 'Contactenlijst volledig herladen van de node'],
   ['/advert', '[flood]', 'Eigen advert versturen'], ['/login', '[wachtwoord]', 'Inloggen op room/repeater'], ['/logout', '', 'Uitloggen'],
   ['/cli', '<commando>', 'CLI-commando naar repeater'], ['/status', '', 'Statistieken opvragen'], ['/telemetry', '[nick]', 'Telemetrie opvragen'],
   ['/trace', '[nick]', 'Pad traceren met SNR per hop'], ['/path', '[nick]', 'Pad opnieuw ontdekken'], ['/resetpath', '[nick]', 'Pad wissen (terug naar flood)'],
@@ -1516,7 +1518,7 @@ async function afterConnect() {
   try { S.batt = await C.getBattery(); renderBattery(); } catch (e) {}
   try { S.defaultScope = await C.getDefaultScope(); } catch (e) { S.defaultScope = null; }
   await applySendScope(false);
-  await refreshContacts(true);
+  await refreshContacts(false);
   await refreshChannels();
   if (!S.convs.has(S.active) || S.active === 'status') { const pub = S.channels.find(c => c && c.secret === PUBLIC_KEY_HEX); if (pub) openConv(convKeyForChannel(pub)); }
   renderTree(); renderHead(activeConv()); renderUsers(activeConv());
@@ -1526,12 +1528,18 @@ async function afterConnect() {
   clearInterval(S.battTimer); S.battTimer = setInterval(async () => { if (C.connected) { try { S.batt = await C.getBattery(); renderBattery(); } catch (e) {} } }, 60000);
 }
 async function refreshContacts(full) {
-  const list = await C.getContacts(0);
+  // Incrementeel: de node geeft met 'since' alleen contacten die sinds de vorige sync gewijzigd zijn.
+  // Volledig (full) bij de eerste keer, een andere node, of op verzoek (Contacten › Vernieuwen).
+  const cached = S.contactsSync && S.self && S.contactsSync.pub === S.self.pub && S.contacts.size > 0;
+  const since = (!full && cached) ? S.contactsSync.lastmod : 0;
+  const list = await C.getContacts(since);
+  if (since) { for (const c of S.contacts.values()) if (c.hidden === undefined) c.hidden = false; }
   const seen = new Set();
   for (const c of list) { seen.add(c.pub); const old = S.contacts.get(c.pub) || {}; S.contacts.set(c.pub, { ...old, ...c, hidden: false }); }
-  if (full) for (const [pub, c] of S.contacts) if (!seen.has(pub)) c.hidden = true; // not on device (anymore)
+  if (!since) for (const [pub, c] of S.contacts) if (!seen.has(pub)) c.hidden = true; // not on device (anymore)
+  if (list.lastmod) S.contactsSync = { pub: S.self.pub, lastmod: Math.max(list.lastmod, since || 0) };
   for (const c of S.contacts.values()) if (!c.hidden && c.type >= 2) convForContact(c);
-  notice(`${list.length} contacten geladen van de node.`, S.convs.get('status'), false);
+  notice(since ? `${list.length} gewijzigde contacten gesynchroniseerd (${Array.from(S.contacts.values()).filter(c => !c.hidden).length} totaal, uit cache).` : `${list.length} contacten geladen van de node.`, S.convs.get('status'), false);
   renderTree(); saveState();
 }
 async function refreshContact(pub) {
@@ -1693,6 +1701,7 @@ async function handleInput(raw) {
     switch (cmd) {
       case '/help': notice('Commando\'s: ' + COMMANDS.map(c => c[0]).join(' '), cv, false); notice('Typ /about voor de handleiding. Typ / om de lijst met uitleg te zien. In een repeater-venster gaat gewone tekst als CLI-commando naar de repeater; in een room als post; in een kanaal of privévenster als bericht.', cv, false); break;
       case '/about': case '/version': $('#dlg-about').showModal(); break;
+      case '/contacts': case '/refresh': if (!requireConn(cv)) break; await refreshContacts(true); notice('Contactenlijst volledig opnieuw geladen.', cv, false); break;
       case '/connect': connect(/bl|bt/i.test(arg) ? 'ble' : 'usb'); break;
       case '/disconnect': case '/quit': await C.disconnect(); break;
       case '/join': await joinChannel(argv[0], argv.slice(1).join(' ')); break;
@@ -2073,6 +2082,7 @@ function wire() {
   on('#ct-add', 'click', () => { $('#ac-pub').value = ''; $('#ac-name').value = ''; $('#dlg-addcontact').showModal(); });
   on('#dlg-addcontact form', 'submit', (e) => { if (e.submitter?.value === 'ok') addContactManual().catch(err => toast(err.message, 'err')); });
   on('#ct-prune', 'click', pruneStale);
+  on('#ct-refresh', 'click', async () => { if (!requireConn(activeConv())) return; await refreshContacts(true); renderContactsDlg(); toast('Contacten volledig herladen', 'ok'); });
   on('#ct-export', 'click', () => downloadJson({ app: 'MeshChat', contacts: Array.from(S.contacts.values()).filter(c => !c.hidden), extras: S.extras }, 'meshchat-contacten.json'));
   // contact edit dialog
   on('#ce-save', 'click', () => saveContactDlg().then(() => $('#dlg-contact').close()));

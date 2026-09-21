@@ -295,7 +295,9 @@ class MeshCoreClient extends EventTarget {
   async getBattery() { const f = await this.cmd([CMD.GET_BATT_AND_STORAGE]); return { mv: rdU16(f, 1), usedKb: f.length >= 11 ? rdU32(f, 3) : null, totalKb: f.length >= 11 ? rdU32(f, 7) : null }; }
   async getContacts(since = 0) {
     const frames = await this.cmd(since ? [CMD.GET_CONTACTS, ...u32le(since)] : [CMD.GET_CONTACTS], { collect: (code) => code === RESP.END_OF_CONTACTS, timeout: 30000 });
-    return frames.filter(f => f[0] === RESP.CONTACT).map(f => parseContact(f, 1)).filter(Boolean);
+    const list = frames.filter(f => f[0] === RESP.CONTACT).map(f => parseContact(f, 1)).filter(Boolean);
+    const end = frames.find(f => f[0] === RESP.END_OF_CONTACTS); list.lastmod = end && end.length >= 5 ? rdU32(end, 1) : 0;
+    return list;
   }
   async getChannel(idx) { const f = await this.cmd([CMD.GET_CHANNEL, idx]); return { idx: f[1], name: cstr(f, 2, 32), secret: hex(f.subarray(34, 50)) }; }
   setChannel(idx, name, secretHex) { return this.cmd(cat([CMD.SET_CHANNEL, idx], padBytes(te.encode(name), 32), padBytes(unhex(secretHex), 16))); }

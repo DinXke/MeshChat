@@ -283,6 +283,7 @@ function wire() {
   on('#ct-add', 'click', () => { $('#ac-pub').value = ''; $('#ac-name').value = ''; $('#dlg-addcontact').showModal(); });
   on('#dlg-addcontact form', 'submit', (e) => { if (e.submitter?.value === 'ok') addContactManual().catch(err => toast(err.message, 'err')); });
   on('#ct-prune', 'click', pruneStale);
+  on('#ct-refresh', 'click', async () => { if (!requireConn(activeConv())) return; await refreshContacts(true); renderContactsDlg(); toast('Contacten volledig herladen', 'ok'); });
   on('#ct-export', 'click', () => downloadJson({ app: 'MeshChat', contacts: Array.from(S.contacts.values()).filter(c => !c.hidden), extras: S.extras }, 'meshchat-contacten.json'));
   // contact edit dialog
   on('#ce-save', 'click', () => saveContactDlg().then(() => $('#dlg-contact').close()));

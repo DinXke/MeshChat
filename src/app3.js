@@ -28,7 +28,7 @@ async function afterConnect() {
   try { S.batt = await C.getBattery(); renderBattery(); } catch (e) {}
   try { S.defaultScope = await C.getDefaultScope(); } catch (e) { S.defaultScope = null; }
   await applySendScope(false);
-  await refreshContacts(true);
+  await refreshContacts(false);
   await refreshChannels();
   if (!S.convs.has(S.active) || S.active === 'status') { const pub = S.channels.find(c => c && c.secret === PUBLIC_KEY_HEX); if (pub) openConv(convKeyForChannel(pub)); }
   renderTree(); renderHead(activeConv()); renderUsers(activeConv());
@@ -38,12 +38,18 @@ async function afterConnect() {
   clearInterval(S.battTimer); S.battTimer = setInterval(async () => { if (C.connected) { try { S.batt = await C.getBattery(); renderBattery(); } catch (e) {} } }, 60000);
 }
 async function refreshContacts(full) {
-  const list = await C.getContacts(0);
+  // Incrementeel: de node geeft met 'since' alleen contacten die sinds de vorige sync gewijzigd zijn.
+  // Volledig (full) bij de eerste keer, een andere node, of op verzoek (Contacten › Vernieuwen).
+  const cached = S.contactsSync && S.self && S.contactsSync.pub === S.self.pub && S.contacts.size > 0;
+  const since = (!full && cached) ? S.contactsSync.lastmod : 0;
+  const list = await C.getContacts(since);
+  if (since) { for (const c of S.contacts.values()) if (c.hidden === undefined) c.hidden = false; }
   const seen = new Set();
   for (const c of list) { seen.add(c.pub); const old = S.contacts.get(c.pub) || {}; S.contacts.set(c.pub, { ...old, ...c, hidden: false }); }
-  if (full) for (const [pub, c] of S.contacts) if (!seen.has(pub)) c.hidden = true; // not on device (anymore)
+  if (!since) for (const [pub, c] of S.contacts) if (!seen.has(pub)) c.hidden = true; // not on device (anymore)
+  if (list.lastmod) S.contactsSync = { pub: S.self.pub, lastmod: Math.max(list.lastmod, since || 0) };
   for (const c of S.contacts.values()) if (!c.hidden && c.type >= 2) convForContact(c);
-  notice(`${list.length} contacten geladen van de node.`, S.convs.get('status'), false);
+  notice(since ? `${list.length} gewijzigde contacten gesynchroniseerd (${Array.from(S.contacts.values()).filter(c => !c.hidden).length} totaal, uit cache).` : `${list.length} contacten geladen van de node.`, S.convs.get('status'), false);
   renderTree(); saveState();
 }
 async function refreshContact(pub) {
@@ -205,6 +211,7 @@ async function handleInput(raw) {
     switch (cmd) {
       case '/help': notice('Commando\'s: ' + COMMANDS.map(c => c[0]).join(' '), cv, false); notice('Typ /about voor de handleiding. Typ / om de lijst met uitleg te zien. In een repeater-venster gaat gewone tekst als CLI-commando naar de repeater; in een room als post; in een kanaal of privévenster als bericht.', cv, false); break;
       case '/about': case '/version': $('#dlg-about').showModal(); break;
+      case '/contacts': case '/refresh': if (!requireConn(cv)) break; await refreshContacts(true); notice('Contactenlijst volledig opnieuw geladen.', cv, false); break;
       case '/connect': connect(/bl|bt/i.test(arg) ? 'ble' : 'usb'); break;
       case '/disconnect': case '/quit': await C.disconnect(); break;
       case '/join': await joinChannel(argv[0], argv.slice(1).join(' ')); break;

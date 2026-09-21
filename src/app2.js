@@ -237,7 +237,7 @@ const COMMANDS = [
   ['/connect', 'usb|ble', 'Verbinden met de node'], ['/disconnect', '', 'Verbinding verbreken'],
   ['/join', '#kanaal [sleutel|wachtwoord]', 'Kanaal openen of toevoegen'], ['/part', '[kanaal]', 'Kanaal verwijderen van de node'],
   ['/msg', '<nick> <tekst>', 'Privébericht sturen'], ['/query', '<nick>', 'Privévenster openen'], ['/me', '<tekst>', 'Actie-bericht'],
-  ['/nick', '<naam>', 'Eigen naam wijzigen'], ['/whois', '<nick>', 'Contactinfo tonen'], ['/names', '', 'Deelnemers tonen'], ['/list', '', 'Kanalen en contacten'],
+  ['/nick', '<naam>', 'Eigen naam wijzigen'], ['/whois', '<nick>', 'Contactinfo tonen'], ['/names', '', 'Deelnemers tonen'], ['/list', '', 'Kanalen en contacten'], ['/contacts', '', 'Contactenlijst volledig herladen van de node'],
   ['/advert', '[flood]', 'Eigen advert versturen'], ['/login', '[wachtwoord]', 'Inloggen op room/repeater'], ['/logout', '', 'Uitloggen'],
   ['/cli', '<commando>', 'CLI-commando naar repeater'], ['/status', '', 'Statistieken opvragen'], ['/telemetry', '[nick]', 'Telemetrie opvragen'],
   ['/trace', '[nick]', 'Pad traceren met SNR per hop'], ['/path', '[nick]', 'Pad opnieuw ontdekken'], ['/resetpath', '[nick]', 'Pad wissen (terug naar flood)'],
