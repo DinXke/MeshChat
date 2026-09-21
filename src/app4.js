@@ -290,6 +290,7 @@ function msgContextItems(m, cv) {
     { label: t('ctx.copyText'), run: () => copyText(m.text) },
     m.rawHex || m.rx ? { label: t('ctx.copyRaw'), run: () => copyText(m.rx ? m.rx.rawHex : m.rawHex) } : null,
     m.self && m.ack === 'fail' && cv.kind !== 'channel' ? { label: t('ctx.resend'), run: () => sendToConv(cv, m.text) } : null,
+    m.self && cv.kind === 'channel' && (m.heard === 'no' || m.heard === null || m.heard === undefined) && !m.heardVia ? { label: t('ctx.resendSame'), run: () => resendChannelMsg(cv, m) } : null,
     '-',
     { label: t('ctx.deleteLocal'), danger: true, run: () => { cv.msgs = cv.msgs.filter(x => x.id !== m.id); renderMessages(cv, true); saveState(); } },
   ];

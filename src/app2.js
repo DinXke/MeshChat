@@ -93,6 +93,7 @@ function metaText(m) {
   if (m.self && m.scope) parts.push(m.scope);
   const sc = scopeLabelFor(m); if (sc && !m.self) parts.push(sc);
   if (m.self && m.attempt) parts.push(t('retry.attempt', m.attempt, S.settings.retries ?? 3));
+  if (m.self && m.heard === 'ok') parts.push(m.heardVia ? t('heard.via', hashLabel(m.heardVia)) : t('heard.ok')); else if (m.self && m.heard === 'no') parts.push(t('heard.no')); else if (m.self && m.heard === 'pending') parts.push(t('heard.wait'));
   if (m.trip) parts.push(m.trip + ' ms');
   return parts.join(' · ');
 }
