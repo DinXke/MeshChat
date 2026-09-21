@@ -43,3 +43,4 @@ h4.sub{margin:4px 0 8px;font-size:11px;letter-spacing:.8px;text-transform:upperc
 #lang-sel{height:26px;padding:0 4px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg-2);color:var(--fg-dim);font:inherit;font-size:11px;font-weight:600;letter-spacing:.3px;cursor:pointer}
 #lang-sel:hover{background:var(--bg-3);color:var(--fg);border-color:var(--fg-mute)}
 #lang-sel:focus{outline:none;border-color:var(--accent)}
+.pd-chip{height:auto;padding:3px 4px 3px 8px;gap:2px} .pd-chip .x{border:0;background:transparent;color:var(--fg-mute);cursor:pointer;padding:0 4px;font-size:12px} .pd-chip .x:hover{color:var(--fg)} .pd-chip .x:disabled{opacity:.3}

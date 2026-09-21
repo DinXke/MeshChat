@@ -137,6 +137,10 @@ class BleTransport {
 }
 
 // ---------- parsers ----------
+// Padlengte-byte zoals in Packet.path_len (v1.11+): count = laagste 6 bits, hash-grootte = (byte>>6)+1 bytes.
+function decodePathLen(b) { return { count: b & 63, size: (b >> 6) + 1 }; }
+function encodePathLen(count, size) { return ((size - 1) << 6) | (count & 63); }
+function splitPath(hexStr, size) { const r = []; for (let i = 0; i + size * 2 <= hexStr.length; i += size * 2) r.push(hexStr.slice(i, i + size * 2)); return r; }
 function parseContact(b, o = 1) {
   if (b.length < o + 32 + 3 + 64 + 32 + 4) return null;
   const c = { pub: hex(b.subarray(o, o + 32)), type: b[o + 32], flags: b[o + 33], outPathLen: rdI8(b[o + 34]), outPath: hex(b.subarray(o + 35, o + 99)), name: cstr(b, o + 99, 32), lastAdvert: rdU32(b, o + 131) };
@@ -279,8 +283,10 @@ class MeshCoreClient extends EventTarget {
       }
       case PUSH.NEW_ADVERT: this.emit('newAdvert', parseContact(f, 1)); break;
       case PUSH.PATH_DISCOVERY_RESPONSE: {
-        const prefix = hex(f.subarray(2, 8)); const ol = f[8]; const out = hex(f.subarray(9, 9 + ol)); const il = f[9 + ol]; const inp = hex(f.subarray(10 + ol, 10 + ol + il));
-        this.emit('pathDiscovery', { prefix, outLen: ol, outPath: out, inLen: il, inPath: inp }); break;
+        // padlengte-byte: bovenste 2 bits = hash-grootte-1, onderste 6 bits = aantal hops
+        const prefix = hex(f.subarray(2, 8)); const o = decodePathLen(f[8]); const ob = o.count * o.size; const out = hex(f.subarray(9, 9 + ob));
+        const i = decodePathLen(f[9 + ob]); const ib = i.count * i.size; const inp = hex(f.subarray(10 + ob, 10 + ob + ib));
+        this.emit('pathDiscovery', { prefix, outLen: o.count, outSize: o.size, outPath: out, inLen: i.count, inSize: i.size, inPath: inp }); break;
       }
       case PUSH.LOG_RX_DATA: this.emit('rxLog', { snr: rdI8(f[1]) / 4, rssi: rdI8(f[2]), raw: f.subarray(3) }); break;
       case PUSH.CONTACT_DELETED: this.emit('contactDeleted', { pub: hex(f.subarray(1, 33)) }); break;
@@ -330,7 +336,7 @@ class MeshCoreClient extends EventTarget {
   async statusReq(pubHex) { const f = await this.cmd(cat([CMD.SEND_STATUS_REQ], unhex(pubHex))); return { timeoutMs: rdU32(f, 6) }; }
   async telemetryReq(pubHex) { const f = await this.cmd(cat([CMD.SEND_TELEMETRY_REQ, 0, 0, 0], unhex(pubHex))); return { timeoutMs: rdU32(f, 6) }; }
   async pathDiscovery(pubHex) { const f = await this.cmd(cat([CMD.SEND_PATH_DISCOVERY_REQ, 0], unhex(pubHex))); return { timeoutMs: rdU32(f, 6) }; }
-  async tracePath(pathHex) { const tag = (Math.random() * 0xFFFFFFFF) >>> 0, auth = (Math.random() * 0xFFFFFFFF) >>> 0; const f = await this.cmd(cat([CMD.SEND_TRACE_PATH, ...u32le(tag), ...u32le(auth), 0], unhex(pathHex))); return { tag, auth, timeoutMs: rdU32(f, 6) }; }
+  async tracePath(pathHex, hashSize = 1) { const tag = (Math.random() * 0xFFFFFFFF) >>> 0, auth = (Math.random() * 0xFFFFFFFF) >>> 0; const f = await this.cmd(cat([CMD.SEND_TRACE_PATH, ...u32le(tag), ...u32le(auth), (hashSize - 1) & 3], unhex(pathHex))); return { tag, auth, timeoutMs: rdU32(f, 6) }; }
   async getStats(type) { return this.cmd([CMD.GET_STATS, type]); }
   async getAdvertPath(pubHex) { const f = await this.cmd(cat([CMD.GET_ADVERT_PATH, 0], unhex(pubHex))); return { ts: rdU32(f, 1), len: f[5], path: hex(f.subarray(6)) }; }
   async exportPrivateKey() { const f = await this.cmd([CMD.EXPORT_PRIVATE_KEY], { allowErr: true }); if (f[0] !== RESP.PRIVATE_KEY) throw new Error(t('core.disabledFw')); return hex(f.subarray(1)); }

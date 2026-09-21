@@ -64,10 +64,42 @@ async function refreshChannels() {
   renderTree(); saveState();
 }
 async function drainMessages() {
-  if (S.syncing || !C.connected) return; S.syncing = true;
-  try { for (let n = 0; n < 200; n++) { const m = await C.syncNext(); if (!m) break; handleIncoming(m); } }
+  if (S.syncing || !C.connected) return 0; S.syncing = true; let n = 0;
+  try { for (; n < 200; n++) { const m = await C.syncNext(); if (!m) break; handleIncoming(m); } }
   catch (e) { debugLog('sync: ' + e.message); }
   finally { S.syncing = false; }
+  return n;
+}
+// Room: synchronisatiepunt op de node resetten door het contact te verwijderen en opnieuw toe te voegen, daarna inloggen.
+// Handmatig pad naar een contact op de node zetten: hashes = eerste `size` bytes van elke repeater-sleutel, in volgorde.
+async function setManualPath(c, repeaterPubs, size) {
+  const cv = convForContact(c); if (!requireConn(cv)) return false;
+  const n = repeaterPubs.length; if (n * size > 64) { errorMsg(t('path.tooLong'), cv); return false; }
+  const outPath = repeaterPubs.map(pk => pk.slice(0, size * 2)).join('');
+  const outPathLen = n === 0 ? -1 : (size > 1 ? encodePathLen(n, size) : n);
+  await C.addUpdateContact({ ...c, outPathLen, outPath }); await refreshContact(c.pub);
+  const c2 = S.contacts.get(c.pub) || c; notice(n ? t('path.set', displayName(c2), pathInfo(c2).hashes.map(hashLabel).join(' → ')) : t('path.cleared', displayName(c2)), cv, true); return true;
+}
+// Automatisch opnieuw verzenden: attempt 1..max; vanaf de 2e mislukking eerst het pad resetten (volgende poging als flood).
+function scheduleRetry(cv, c, m, text, txtType, r) {
+  const max = S.settings.retries ?? 3;
+  m._timer = setTimeout(async () => {
+    if (m.ack !== 'pending' || !C.connected) return;
+    const attempt = (m.attempt || 0) + 1;
+    if (attempt > max) { m.ack = 'fail'; if (m.kind === 'cli' && !m.text) m.text = t('cli.noAnswer'); updateMsgDom(m); saveState(); return; }
+    m.attempt = attempt; updateMsgDom(m);
+    try {
+      if (attempt >= 2 && c.outPathLen >= 0) { try { await C.resetPath(c.pub); c.outPathLen = -1; c.outPath = ''; notice(t('retry.pathReset', displayName(c)), cv, false); } catch (e) { debugLog('resetPath: ' + e.message); } }
+      const r2 = await C.sendText(c.pub, text, txtType, attempt); m.ackCode = r2.ack; m.flood = r2.flood; updateMsgDom(m); scheduleRetry(cv, c, m, text, txtType, r2);
+    } catch (e) { m.ack = 'fail'; updateMsgDom(m); errorMsg(t('send.failed', e.message), cv); }
+  }, Math.max(m.kind === 'cli' ? 8000 : 5000, r.timeoutMs) + 2000);
+}
+async function resyncRoom(c) {
+  const cv = convForContact(c); if (!requireConn(cv)) return; if (c.type !== 3) { errorMsg(t('resync.onlyRoom'), cv); return; }
+  if (!await confirmDlg(t('resync.title'), t('resync.text', displayName(c)), t('resync.btn'), true)) return;
+  const uri = await C.exportContact(c.pub); await C.removeContact(c.pub); await C.importContact(uri); await refreshContacts(true);
+  const c2 = S.contacts.get(c.pub); if (!c2) { errorMsg(t('err.2'), cv); return; }
+  const pw = S.roomPw[c.pub]?.pw; if (pw) { await doLogin(c2, pw, true); notice(t('resync.started'), cv, true); } else { notice(t('resync.needLogin'), cv, true); openLoginDlg(c2); }
 }
 function autoLogin() { for (const [pub, r] of Object.entries(S.roomPw)) { const c = S.contacts.get(pub); if (c && !c.hidden && r.auto && r.pw != null) doLogin(c, r.pw, true); } }
 
@@ -109,15 +141,26 @@ C.addEventListener('trace', (e) => {
   addMsg(cv, { kind: 'cli', nick: 'trace', cmd: 'trace ' + hashes.join(','), text: lines.join('\n') }); S.traceConv = null;
 });
 C.addEventListener('pathDiscovery', (e) => {
-  const c = contactByPrefix(e.detail.prefix); const cv = c ? convForContact(c) : S.convs.get('status'); const sz = 1 << (S.dev?.pathHashMode || 0);
-  const split = (h) => { const r = []; for (let i = 0; i < h.length; i += sz * 2) r.push(h.slice(i, i + sz * 2)); return r; };
-  addMsg(cv, { kind: 'cli', nick: c ? displayName(c) : '?', cmd: t('disc.cmd'), text: t('disc.text', e.detail.outLen, split(e.detail.outPath).map(hashLabel).join(' → ') || t('disc.direct'), e.detail.inLen, split(e.detail.inPath).map(hashLabel).join(' → ') || t('disc.direct')) });
+  const c = contactByPrefix(e.detail.prefix); const cv = c ? convForContact(c) : S.convs.get('status');
+  const split = (h, sz) => splitPath(h, sz || 1);
+  addMsg(cv, { kind: 'cli', nick: c ? displayName(c) : '?', cmd: t('disc.cmd'), text: t('disc.text', e.detail.outLen, split(e.detail.outPath, e.detail.outSize).map(hashLabel).join(' → ') || t('disc.direct'), e.detail.inLen, split(e.detail.inPath, e.detail.inSize).map(hashLabel).join(' → ') || t('disc.direct')) });
   if (c) refreshContact(c.pub);
 });
 C.addEventListener('rxLog', (e) => {
   const pkt = decodePacket(e.detail.raw); S.rxLog.push({ at: Date.now(), snr: e.detail.snr, rssi: e.detail.rssi, pkt }); if (S.rxLog.length > 300) S.rxLog.shift();
   if (S.settings.debug) debugLog(`rx ${pkt.ptypeName} ${routeName(pkt.route)} ${pkt.hashCount} hops SNR ${e.detail.snr} RSSI ${e.detail.rssi}`);
+  mapAnimateRx(pkt);
 });
+// Ontvangen pakket op de kaart tekenen (alleen als de kaart open staat en 'Live pakketten' aanstaat)
+const PKT_COLORS = { 2: '#5cc8ff', 5: '#4ea1ff', 4: '#f7b955', 3: '#3ccf83', 0: '#c4a3ff', 1: '#c4a3ff', 7: '#c4a3ff', 9: '#ff8fab' };
+function mapAnimateRx(pkt) {
+  if (typeof mapObj === 'undefined' || !mapObj || $('#mapwrap').hidden || !$('#map-live')?.checked || !pkt || !pkt.hashes) return;
+  const pts = mapPacketPath(pkt.advertPub || null, pkt.hashes); if (pts.length >= 2) mapAnimatePacket(pts, PKT_COLORS[pkt.ptype] || '#8e9baa');
+}
+function mapAnimateMsg(msg, c) {
+  if (typeof mapObj === 'undefined' || !mapObj || $('#mapwrap').hidden || !$('#map-live')?.checked || msg.rx || !c || !c.lat) return;
+  const pts = mapPacketPath(c.pub, []); if (pts.length >= 2) mapAnimatePacket(pts, '#5cc8ff');
+}
 C.addEventListener('push', (e) => debugLog('push 0x' + e.detail.code.toString(16) + ' ' + hex(e.detail.raw)));
 C.addEventListener('unsolicited', (e) => debugLog('onverwacht frame ' + hex(e.detail).slice(0, 80)));
 
@@ -128,7 +171,7 @@ function handleIncoming(m) {
     const cv = convForChannel(ch); const mt = /^([^:]{1,40}): ([\s\S]*)$/.exec(m.text); const nick = mt ? mt[1] : '?', text = mt ? mt[2] : m.text;
     const msg = { kind: text.startsWith('* ') ? 'action' : 'msg', nick, text: text.startsWith('* ') ? text.slice(2) : text, t: saneTs(m.ts), snr: m.snr, pathLen: m.pathLen, chan: m.idx, hl: mentionsMe(text), rawHex: hex(m.raw || new Uint8Array()) };
     correlateRx(msg); const c = contactByName(nick); if (c) { msg.pub = c.pub; if (m.snr != null && (msg.pathLen === 0 || msg.pathLen === 0xFF)) c.lastSnr = m.snr; }
-    addMsg(cv, msg); return;
+    addMsg(cv, msg); mapAnimateMsg(msg, c); return;
   }
   if (m.kind === 'contact') {
     const c = contactByPrefix(m.prefix);
@@ -145,9 +188,10 @@ function handleIncoming(m) {
       const author = contactByPrefix(m.sig); const mine = isSelfPub(m.sig);
       if (mine) { const echo = cv.msgs.slice(-30).reverse().find(x => x.self && x.text === m.text && nowSecs() - x.t < 900 && !x.echoed); if (echo) { echo.ack = 'ok'; echo.echoed = true; clearTimeout(echo._timer); updateMsgDom(echo); saveState(); return; } }
       const nick = mine ? myNick() : author ? cname(author) : '?' + m.sig; c.loggedIn = true;
+      const ts0 = saneTs(m.ts); if (cv.msgs.some(x => x.kind === 'msg' && x.text === m.text && x.nick === nick && Math.abs((x.t || 0) - ts0) < 3)) return; // dubbel (bv. na opnieuw ophalen)
       const msg = { kind: 'msg', nick, text: m.text, t: saneTs(m.ts), snr: m.snr, pathLen: m.pathLen, self: mine, pub: author?.pub, hl: !mine && mentionsMe(m.text), sig: m.sig }; correlateRx(msg); addMsg(cv, msg); renderTree(); return;
     }
-    const msg = { kind: 'msg', nick: displayName(c), text: m.text, t: saneTs(m.ts), snr: m.snr, pathLen: m.pathLen, pub: c.pub, hl: mentionsMe(m.text), txtType: m.txtType }; correlateRx(msg); addMsg(cv, msg);
+    const msg = { kind: 'msg', nick: displayName(c), text: m.text, t: saneTs(m.ts), snr: m.snr, pathLen: m.pathLen, pub: c.pub, hl: mentionsMe(m.text), txtType: m.txtType }; correlateRx(msg); addMsg(cv, msg); mapAnimateMsg(msg, c);
     if (!S.convs.get(cv.key) || cv.kind === 'dm') renderTree();
     return;
   }
@@ -173,8 +217,8 @@ async function sendToConv(cv, text, asAction = false) {
   if (cv.kind === 'room' && !c.loggedIn) { notice(t('send.roomNotLoggedIn'), cv, false); openLoginDlg(c); return; }
   const m = addMsg(cv, { kind: asAction ? 'action' : 'msg', nick: myNick(), text, self: true, ack: 'pending' });
   try {
-    await ensureDeviceScope(S.sendScope); const r = await C.sendText(c.pub, asAction ? '* ' + text : text, TXT.PLAIN, 0); m.t = r.ts; m.ackCode = r.ack; m.flood = r.flood; updateMsgDom(m);
-    m._timer = setTimeout(() => { if (m.ack === 'pending') { m.ack = 'fail'; updateMsgDom(m); saveState(); } }, Math.max(5000, r.timeoutMs) + 2000);
+    await ensureDeviceScope(S.sendScope); const body = asAction ? '* ' + text : text; const r = await C.sendText(c.pub, body, TXT.PLAIN, 0); m.t = r.ts; m.ackCode = r.ack; m.flood = r.flood; m.attempt = 0; updateMsgDom(m);
+    scheduleRetry(cv, c, m, body, TXT.PLAIN, r);
   } catch (e) { m.ack = 'fail'; updateMsgDom(m); errorMsg(t('send.failed', e.message), cv); }
 }
 // Stuur een CLI-commando en wacht op het (eerste) antwoord van deze repeater.
@@ -201,7 +245,7 @@ async function sendCli(cv, c, cmdText) {
   if (!requireConn(cv)) return;
   if (!c.loggedIn && !/^(ver|clock|board)$/.test(cmdText)) notice(t('cli.notLoggedIn'), cv, false);
   const m = addMsg(cv, { kind: 'cli', nick: displayName(c), cmd: cmdText, text: '', self: false, ack: 'pending' });
-  try { await ensureDeviceScope(S.sendScope); const r = await C.sendText(c.pub, cmdText, TXT.CLI, 0); m.flood = r.flood; m.pathLen = null; m._timer = setTimeout(() => { if (m.ack === 'pending') { m.ack = 'fail'; m.text = m.text || t('cli.noAnswer'); updateMsgDom(m); } }, Math.max(8000, r.timeoutMs) + 4000); }
+  try { await ensureDeviceScope(S.sendScope); const r = await C.sendText(c.pub, cmdText, TXT.CLI, 0); m.flood = r.flood; m.pathLen = null; m.attempt = 0; scheduleRetry(cv, c, m, cmdText, TXT.CLI, r); }
   catch (e) { m.ack = 'fail'; m.text = t('cli.err', e.message); updateMsgDom(m); }
 }
 async function doLogin(c, pw, silent) {
@@ -246,6 +290,10 @@ async function handleInput(raw) {
     switch (cmd) {
       case '/help': notice(t('help.list', COMMANDS.map(c => c[0]).join(' ')), cv, false); notice(t('help.hint'), cv, false); break;
       case '/about': case '/version': $('#dlg-about').showModal(); break;
+      case '/sync': { if (!requireConn(cv)) break; const n = await drainMessages(); notice(n ? t('sync.done', n) : t('sync.none'), cv, false); break; }
+      case '/setpath': { const c = targetContact(argv[0]); if (!c) break; openPathDlg(c); break; }
+      case '/resync': { const c = activeContact(); if (!c) { errorMsg(t('resync.onlyRoom'), cv); break; } await resyncRoom(c); break; }
+      case '/map': { if (argv[0]) { const c = contactByName(argv[0]); if (c) { mapFocus(c.pub); break; } } openConv('map'); break; }
       case '/contacts': case '/refresh': if (!requireConn(cv)) break; await refreshContacts(true); notice(t('contacts.reloaded'), cv, false); break;
       case '/connect': connect(/bl|bt/i.test(arg) ? 'ble' : 'usb'); break;
       case '/disconnect': case '/quit': await C.disconnect(); break;
@@ -264,7 +312,7 @@ async function handleInput(raw) {
       case '/cli': { const c = activeContact(); if (!c) { errorMsg(t('cli.openFirst'), cv); break; } await sendCli(cv, c, arg); break; }
       case '/status': { const c = targetContact(argv[0]); if (!c) break; if (!requireConn(cv)) break; await C.statusReq(c.pub); notice(t('status.sent', displayName(c)), convForContact(c), false); break; }
       case '/telemetry': case '/telemetrie': { if (!requireConn(cv)) break; if (argv[0] === 'self' || (!argv[0] && !activeContact())) { await C.selfTelemetry(); break; } const c = targetContact(argv[0]); if (!c) break; await C.telemetryReq(c.pub); notice(t('telem.sent', displayName(c)), convForContact(c), false); break; }
-      case '/trace': { const c = targetContact(argv[0]); if (!c) break; if (!requireConn(cv)) break; const p = pathInfo(c); if (!p.hashes.length) { errorMsg(t('trace.noPath', displayName(c)), cv); break; } S.traceConv = convForContact(c); await C.tracePath(c.outPath.slice(0, c.outPathLen * 2)); notice(t('trace.sent', p.hashes.join(',')), S.traceConv, false); break; }
+      case '/trace': { const c = targetContact(argv[0]); if (!c) break; if (!requireConn(cv)) break; const p = pathInfo(c); if (!p.hashes.length) { errorMsg(t('trace.noPath', displayName(c)), cv); break; } S.traceConv = convForContact(c); await C.tracePath(p.hashes.join(''), p.size); notice(t('trace.sent', p.hashes.join(',')), S.traceConv, false); break; }
       case '/path': case '/discover': { const c = targetContact(argv[0]); if (!c) break; if (!requireConn(cv)) break; await C.pathDiscovery(c.pub); notice(t('disc.sent', displayName(c)), convForContact(c), false); break; }
       case '/resetpath': { const c = targetContact(argv[0]); if (!c) break; if (!requireConn(cv)) break; await C.resetPath(c.pub); await refreshContact(c.pub); notice(t('path.reset', displayName(c)), convForContact(c), true); break; }
       case '/scope': await setSendScopeCmd(argv); break;

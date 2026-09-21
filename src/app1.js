@@ -80,11 +80,13 @@ function isSelfPub(prefixHex) { return S.self && S.self.pub.startsWith(prefixHex
 function myNick() { return S.self ? S.self.name : ''; }
 
 function pathInfo(c, hashMode) {
-  const sz = 1 << (hashMode || S.dev?.pathHashMode || 0);
-  if (c.outPathLen < 0) return { text: 'flood', hops: null, hashes: [] };
-  const hashes = []; const bytes = c.outPath.slice(0, c.outPathLen * 2);
-  for (let i = 0; i < bytes.length; i += sz * 2) hashes.push(bytes.slice(i, i + sz * 2));
-  return { text: hashes.length ? (hashes.length === 1 ? t('path.hop1', hashes.join(',')) : t('path.hopN', hashes.length, hashes.join(','))) : t('path.direct0'), hops: hashes.length, hashes };
+  // out_path_len: -1 = onbekend (flood). Anders: bovenste 2 bits = hash-grootte-1, onderste 6 bits = aantal hops.
+  // Oudere firmware zonder hash-modus schrijft gewoon het aantal bytes (= hops bij 1-byte hashes); dat valt samen.
+  if (c.outPathLen < 0) return { text: t('path.flood'), hops: null, hashes: [], size: 1 };
+  const v = c.outPathLen & 255; let size = (v >> 6) + 1, count = v & 63;
+  if (size === 1 && (hashMode ?? S.dev?.pathHashMode)) { const sz = 1 << (hashMode ?? S.dev?.pathHashMode); if (count % sz === 0) { size = sz; count = count / sz; } }
+  const hashes = splitPath((c.outPath || '').slice(0, count * size * 2), size);
+  return { text: hashes.length ? t('path.hops', hashes.length, hashes.join(',')) : t('path.direct'), hops: hashes.length, hashes, size };
 }
 function resolveHash(h) { // path hash -> contact names (repeaters first)
   const m = []; for (const c of S.contacts.values()) if (c.pub.startsWith(h)) m.push(c);

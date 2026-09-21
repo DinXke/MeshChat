@@ -3,12 +3,14 @@
 # Gebruik: bash build.sh
 set -e
 cd "$(dirname "$0")"
-cat core.js core2.js i18n.js app1.js app2.js app3.js app4.js > .all.js
+cat vendor/pmtiles.js vendor/maplibre-gl.js core.js core2.js i18n.js app1.js map_style.js map_data.js map.js app2.js app3.js app4.js > .all.js
 node --check .all.js
 {
   # <head> + CSS uit het ontwerp; titel hernoemen en de PWA/meta-regels uit head-extra.html erachter
   sed -n '1,311p' design.html | sed 's#<title>MeshCore IRC</title>#<title>MeshChat</title>#' | sed '/<title>MeshChat<\/title>/r head-extra.html'
   cat extra.css
+  cat vendor/maplibre-gl.css
+  cat map.css
   echo '</style>'
   echo '</head>'
   cat body.html

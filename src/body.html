@@ -27,6 +27,7 @@
   <button class="btn sm" id="btn-usb" title="Verbinden via USB (Web Serial)" data-i18n-title="h.usbTitle"><svg class="i"><use href="#i-usb"/></svg><span class="no-mobile">USB</span></button>
   <button class="btn sm" id="btn-bt" title="Verbinden via Bluetooth (Web Bluetooth)" data-i18n-title="h.btTitle"><svg class="i"><use href="#i-bt"/></svg><span class="no-mobile">Bluetooth</span></button>
   <button class="btn sm ghost no-mobile" id="btn-disconnect" disabled data-i18n="h.disconnect">Verbreken</button>
+  <button class="btn sm ghost no-mobile" id="btn-sync" disabled data-i18n="h.sync" data-i18n-title="h.syncTitle" title="Wachtrij van de node nu leeghalen">Sync</button>
   <span class="spacer"></span>
   <span id="battery" title="Batterijspanning" data-i18n-title="h.battTitle" hidden><span class="cell"><i></i></span><span class="v">—</span></span>
   <span class="sep no-mobile"></span>
@@ -60,6 +61,12 @@
     </div>
   </div>
   <div id="messages" role="log" aria-live="polite" aria-label="Berichten" data-i18n-aria="h.messages"></div>
+  <div id="mapwrap" hidden>
+    <div id="map"></div>
+    <div id="map-notice" hidden></div>
+    <div id="map-tools"><button class="btn sm" id="map-fit" data-i18n="map.tools.fit">Alles tonen</button><button class="btn sm" id="map-me" data-i18n="map.tools.me">Mijn node</button><label class="btn sm" style="gap:6px"><input type="checkbox" id="map-live" checked> <span data-i18n="map.tools.live">Live pakketten</span></label><button class="btn sm ghost" id="map-settings" data-i18n="map.tools.settings">Offline kaarten…</button></div>
+    <div id="map-legend"><span><i style="background:#3ccf83"></i><span data-i18n="map.legend.you">jij</span></span><span><i style="background:#f7b955"></i><span data-i18n="map.legend.repeater">repeater</span></span><span><i style="background:#c4a3ff"></i>room</span><span><i style="background:#5cc8ff"></i>chat</span><span><i style="background:#5fd6c5"></i><span data-i18n="map.legend.sensor">sensor</span></span></div>
+  </div>
   <button class="btn sm" id="scroll-bottom" aria-label="Naar nieuwste berichten" data-i18n-aria="h.toNewest"><svg class="i"><use href="#i-down"/></svg><span data-i18n="h.newMessages">Nieuwe berichten</span></button>
   <div id="compose">
     <div class="quick-cmds" hidden></div>
@@ -151,6 +158,7 @@
     <div class="row" style="flex-wrap:wrap;gap:6px">
       <button class="btn sm" id="ce-discover" type="button" data-needs-conn data-i18n="h.discover">Pad zoeken</button>
       <button class="btn sm ghost" id="ce-resetpath" type="button" data-needs-conn data-i18n="h.pathReset">Pad reset</button>
+      <button class="btn sm" id="ce-path-set" type="button" data-needs-conn data-i18n="h.pathSet">Pad instellen…</button>
       <button class="btn sm" id="ce-export" type="button" data-needs-conn data-i18n="h.shareUri">Deel-URI</button>
       <button class="btn sm" id="ce-share" type="button" data-needs-conn data-i18n="h.shareMesh">Delen op mesh</button>
     </div>
@@ -176,7 +184,7 @@
   <div class="dlg-head"><h2 id="dlg-settings-t" data-i18n="h.settings">Instellingen</h2><button class="btn icon ghost" data-close aria-label="Sluiten" data-i18n-aria="h.close"><svg class="i"><use href="#i-x"/></svg></button></div>
   <div class="tabs" role="tablist">
     <button class="tab active" role="tab" data-tab="node" data-i18n="h.tabNode">Node</button><button class="tab" role="tab" data-tab="radio" data-i18n="h.tabRadio">Radio</button><button class="tab" role="tab" data-tab="region" data-i18n="h.tabRegion">Regio's</button>
-    <button class="tab" role="tab" data-tab="location" data-i18n="h.tabLocation">Locatie</button><button class="tab" role="tab" data-tab="device" data-i18n="h.tabDevice">Apparaat</button><button class="tab" role="tab" data-tab="view" data-i18n="h.tabView">Weergave</button><button class="tab" role="tab" data-tab="data" data-i18n="h.tabData">Gegevens</button>
+    <button class="tab" role="tab" data-tab="location" data-i18n="h.tabLocation">Locatie</button><button class="tab" role="tab" data-tab="map" data-i18n="h.tabMap">Kaart</button><button class="tab" role="tab" data-tab="device" data-i18n="h.tabDevice">Apparaat</button><button class="tab" role="tab" data-tab="view" data-i18n="h.tabView">Weergave</button><button class="tab" role="tab" data-tab="data" data-i18n="h.tabData">Gegevens</button>
   </div>
   <div class="dlg-body">
     <section class="pane active" data-pane="node">
@@ -197,6 +205,7 @@
         <div class="field"><label for="s-telem-loc" data-i18n="h.location">Locatie</label><select id="s-telem-loc" data-needs-conn><option value="0" data-i18n="h.never">Nooit</option><option value="1" data-i18n="h.perContact">Per contact</option><option value="2" data-i18n="h.everyone">Iedereen</option></select></div>
         <div class="field"><label for="s-telem-env" data-i18n="h.telemEnv">Omgeving (sensoren)</label><select id="s-telem-env" data-needs-conn><option value="0" data-i18n="h.never">Nooit</option><option value="1" data-i18n="h.perContact">Per contact</option><option value="2" data-i18n="h.everyone">Iedereen</option></select></div>
       </div>
+      <div class="field" style="max-width:340px"><label for="s-retries" data-i18n="h.retries">Automatisch opnieuw verzenden (pogingen, 0 = uit)</label><input id="s-retries" class="mono" type="number" min="0" max="9"><span class="help" data-i18n="h.retriesHelp">Bij geen bevestiging opnieuw proberen; vanaf de tweede poging wordt het pad gewist en gaat het bericht als flood.</span></div>
       <label class="check"><input type="checkbox" id="s-multiacks" data-needs-conn><span data-i18n="h.multiAcks"> Meerdere ACK's sturen (betrouwbaarder, meer airtime)</span></label>
       <div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn" id="s-advert" data-needs-conn data-i18n="h.sendAdvert">Advert versturen</button><button class="btn primary" id="s-node-save" data-needs-conn data-i18n="h.save">Opslaan</button></div>
     </section>
@@ -296,6 +305,18 @@
       <div class="field" style="max-width:260px"><label for="s-stale" data-i18n="h.staleDays">Contact geldt als "oud" na (dagen zonder advert)</label><input id="s-stale" type="number" min="1" max="365" class="mono"></div>
     </section>
 
+    <section class="pane" data-pane="map">
+      <div class="callout" style="margin-bottom:12px" data-i18n="h.mapCallout">De kaart gebruikt de zelf-gehoste OpenStreetMap-tiles van meshmanager.net. Alles wat je bekijkt of hier voorlaadt, wordt in deze browser bewaard en werkt daarna offline.</div>
+      <div class="row" style="flex-wrap:wrap;gap:8px;margin-bottom:8px"><span id="map-cache-stats" class="dim" style="font-size:12px"></span><span class="grow"></span><button class="btn sm" id="map-persist" data-i18n="h.mapPersist">Opslag vastzetten</button><button class="btn sm ghost danger" id="map-clear" data-i18n="h.mapClear">Cache wissen</button></div>
+      <div class="grid2">
+        <div class="field"><label for="map-ovz" data-i18n="h.mapOverview">Overzicht heel West-Europa tot zoom</label><select id="map-ovz"><option value="6">6</option><option value="7" selected>7</option><option value="8">8</option><option value="9">9</option></select></div>
+        <div class="field"><label for="map-detz" data-i18n="h.mapDetail">Detail per gekozen land tot zoom</label><select id="map-detz"><option value="10">10</option><option value="11">11</option><option value="12" selected>12</option><option value="13">13</option><option value="14">14</option></select></div>
+      </div>
+      <h4 class="sub" data-i18n="h.mapCountries">Landen in hoge resolutie</h4>
+      <div class="map-countries" id="map-countries"></div>
+      <div class="row" style="flex-wrap:wrap;gap:8px"><b id="map-total"></b><span class="grow"></span><button class="btn primary" id="map-download" data-i18n="h.mapDownload">Voorladen</button><button class="btn ghost" id="map-cancel" hidden data-i18n="h.mapCancel">Stoppen</button></div>
+      <div id="map-progress" hidden><i></i></div><div id="map-progress-txt" class="dim" style="font-size:11.5px"></div>
+    </section>
     <section class="pane" data-pane="data">
       <div class="callout" style="margin-bottom:12px" data-i18n="h.dataCallout">Berichten, aliassen en voorkeuren staan alleen in deze browser (localStorage). Er gaat niets naar een server. Room-wachtwoorden worden alleen bewaard als "automatisch inloggen" aanstaat.</div>
       <h4 class="sub" data-i18n="h.fullConfig">Volledige configuratie</h4>
@@ -330,6 +351,18 @@
     <label class="check" style="margin-top:10px"><input type="checkbox" id="rg-set-global" checked><span data-i18n="h.alsoGlobal"> Gekozen node-standaard ook als globale verzendscope gebruiken</span></label>
   </div>
   <div class="dlg-foot"><button class="btn" data-close data-i18n="h.cancel">Annuleren</button><button class="btn primary" id="rg-apply" data-i18n="h.takeOver">Overnemen</button></div>
+</dialog>
+
+<!-- Handmatig pad -->
+<dialog class="dlg" id="dlg-path" aria-labelledby="pd-title">
+  <div class="dlg-head"><h2 id="pd-title">Pad</h2><button class="btn icon ghost" data-close aria-label="Sluiten" data-i18n-aria="h.close"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="dlg-body">
+    <p class="help" style="margin:0 0 8px;font-size:12px;color:var(--fg-dim)" data-i18n="h.pathHelp">Kies in volgorde de repeaters waarlangs berichten naar dit contact moeten gaan (van jou naar het contact). Een leeg pad betekent flood.</p>
+    <div id="pd-chips" class="row" style="flex-wrap:wrap;gap:6px;min-height:28px;margin-bottom:8px"></div>
+    <div class="row" style="flex-wrap:wrap;gap:6px"><select id="pd-add" class="grow" aria-label="Repeater"></select><button class="btn" id="pd-add-btn" type="button" data-i18n="h.add">Toevoegen</button><button class="btn ghost" id="pd-flood" type="button" data-i18n="h.pathFlood">Leegmaken (flood)</button></div>
+    <div class="row" style="margin-top:10px;gap:8px"><label for="pd-size" class="dim" style="font-size:12px" data-i18n="h.pathHashSize">Hash-grootte</label><select id="pd-size"><option value="1">1 byte</option><option value="2">2 bytes</option><option value="3">3 bytes</option></select><span id="pd-info" class="dim" style="font-size:11.5px"></span></div>
+  </div>
+  <div class="dlg-foot"><button class="btn" data-close data-i18n="h.cancel">Annuleren</button><button class="btn primary" id="pd-save" data-i18n="h.save">Opslaan</button></div>
 </dialog>
 
 <!-- Berichtinfo -->

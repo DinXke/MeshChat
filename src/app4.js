@@ -4,7 +4,7 @@ const val = (sel) => ($(sel)?.value ?? '').trim();
 const num = (sel) => parseFloat(String(val(sel)).replace(',', '.'));
 
 // ---------- theme ----------
-function setTheme(t) { S.settings.theme = t; if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t; $('#s-theme').value = t; saveState(); }
+function setTheme(t) { S.settings.theme = t; if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t; if (typeof mapSetTheme === 'function') setTimeout(mapSetTheme, 0); $('#s-theme').value = t; saveState(); }
 function applyView() { document.body.classList.toggle('compact', !!S.settings.compact); document.body.classList.toggle('no-ts', !S.settings.ts); }
 
 // ---------- channel dialog ----------
@@ -89,7 +89,47 @@ async function pruneStale() {
 
 // ---------- settings dialog ----------
 const RADIO_PRESETS = { 'eu-869': [869.618, 250, 11, 5, 'EU/UK 869.618 · BW250 · SF11 · CR5 (standaard)'], 'eu-868n': [869.618, 62.5, 8, 8, 'EU narrow 869.618 · BW62.5 · SF8 · CR8'], 'eu-433': [433.650, 250, 10, 5, 'EU 433.650 · BW250 · SF10 · CR5'], 'us-910': [910.525, 62.5, 7, 5, 'USA/Canada 910.525 · BW62.5 · SF7 · CR5'], 'au-915': [915.800, 250, 11, 5, 'AU/NZ 915.800 · BW250 · SF11 · CR5'], 'anz-9': [917.5, 250, 10, 5, 'ANZ 917.500 · BW250 · SF10 · CR5'] };
+// ---------- handmatig pad ----------
+function openPathDlg(c) {
+  S.pathTarget = c; const p = pathInfo(c); S.pathList = p.hashes.map(h => { const m = resolveHash(h); return { hash: h, pub: m.length ? m[0].pub : null, name: m.length ? cname(m[0]) : null }; });
+  S.pathSize = p.hashes.length ? p.size : (1 << (S.dev?.pathHashMode || 0));
+  $('#pd-title').textContent = t('path.dlgTitle', displayName(c)); $('#pd-size').value = S.pathSize;
+  const rpts = Array.from(S.contacts.values()).filter(x => !x.hidden && x.pub !== c.pub).sort((a, b) => (a.type === 2 ? 0 : 1) - (b.type === 2 ? 0 : 1) || cname(a).localeCompare(cname(b)));
+  $('#pd-add').innerHTML = rpts.map(x => `<option value="${x.pub}">${esc(cname(x))} (${esc(advType(x.type))})</option>`).join('');
+  renderPathDlg(); $('#dlg-path').showModal();
+}
+function renderPathDlg() {
+  const sz = S.pathSize; const list = S.pathList;
+  $('#pd-chips').innerHTML = list.length ? list.map((h, i) => `<span class="chip pd-chip" data-i="${i}"><span class="mono">${i + 1}. ${esc(h.pub ? h.pub.slice(0, sz * 2) : h.hash)}</span>&nbsp;${esc(h.name || '?')}&nbsp;<button class="x" data-act="up" title="↑" ${i === 0 ? 'disabled' : ''}>↑</button><button class="x" data-act="del" aria-label="×">×</button></span>`).join('') : `<span class="dim">${esc(t('path.flood'))}</span>`;
+  $('#pd-info').textContent = t('path.dlgInfo', list.length, list.length * sz, 64);
+}
+async function savePathDlg() {
+  const c = S.pathTarget; if (!c) return; const pubs = S.pathList.map(h => h.pub || null); if (pubs.some(p => !p)) { toast(t('path.unknownHop'), 'err'); return; }
+  const ok = await setManualPath(c, pubs, S.pathSize); if (ok) { $('#dlg-path').close(); const cv = activeConv(); if (cv.pub === c.pub) { renderHead(cv); renderUsers(cv); } }
+}
+function openMapSettings() { fillSettings().then(() => { $('#dlg-settings').showModal(); $$('.tab').find(x => x.dataset.tab === 'map')?.click(); }); }
+async function renderMapSettings() {
+  if (!$('#map-countries')) return;
+  const ovz = S.settings.mapOvz || 7, detz = S.settings.mapDetz || 12, sel = new Set(S.settings.mapCountries || []);
+  $('#map-ovz').value = ovz; $('#map-detz').value = detz;
+  const codes = Object.keys(MAP_SIZES.countries).sort((a, b) => MAP_SIZES.countries[a].name.localeCompare(MAP_SIZES.countries[b].name, i18nLocale()));
+  $('#map-countries').innerHTML = codes.map(code => { const c = MAP_SIZES.countries[code]; const extra = Math.max(0, mapEstimate(code, detz) - mapEstimate(code, ovz)); return `<label><input type="checkbox" value="${code}" ${sel.has(code) ? 'checked' : ''}> ${esc(c.name)}<span class="sz">${fmtBytes(extra)}</span></label>`; }).join('');
+  const ov = mapEstimateOverview(ovz); let cs = 0; for (const code of sel) cs += Math.max(0, mapEstimate(code, detz) - mapEstimate(code, ovz));
+  $('#map-total').textContent = t('map.total', fmtBytes(ov + cs), fmtBytes(ov), fmtBytes(cs));
+  try { const st = await mapCacheStats(); $('#map-cache-stats').textContent = t('map.cacheStats', fmtBytes(st.bytes), st.count, st.quota ? fmtBytes(st.quota.usage) : '?', st.quota ? fmtBytes(st.quota.quota) : '?', st.persisted ? t('map.persisted') : t('map.notPersisted')); $('#map-persist').hidden = !!st.persisted; } catch (e) {}
+}
+async function startMapPrefetch() {
+  if (!(await mapAvailable()) || mapAvailReason.startsWith('offline')) { toast(t('map.needOnline'), 'err'); return; }
+  const btn = $('#map-download'), bar = $('#map-progress'), txt = $('#map-progress-txt'); btn.disabled = true; $('#map-cancel').hidden = false; bar.hidden = false;
+  const plan = { overviewZ: S.settings.mapOvz || 7, countries: (S.settings.mapCountries || []).map(code => ({ code, zmax: S.settings.mapDetz || 12 })) };
+  try {
+    const r = await mapPrefetch(plan, (p) => { bar.querySelector('i').style.width = Math.round(100 * p.done / Math.max(1, p.total)) + '%'; txt.textContent = t('map.progress', p.done, p.total, fmtBytes(p.bytes), p.failed); });
+    toast(t('map.done', r.done, fmtBytes(r.bytes)), 'ok', 6000);
+  } catch (e) { toast(e.message, 'err'); }
+  finally { btn.disabled = false; $('#map-cancel').hidden = true; renderMapSettings(); }
+}
 async function fillSettings() {
+  renderMapSettings();
   const conn = C.connected; $$('#dlg-settings [data-needs-conn]').forEach(el => el.disabled = !conn);
   if (S.self) {
     $('#s-name').value = S.self.name; $('#s-pub').value = S.self.pub; $('#s-lat').value = S.self.lat || ''; $('#s-lon').value = S.self.lon || '';
@@ -101,6 +141,7 @@ async function fillSettings() {
   $('#s-region-name').value = S.defaultScope?.name || ''; $('#s-region-key').value = S.defaultScope?.key || '';
   renderRegions();
   $('#s-scope-mode').value = S.sendScope.mode; $('#s-scope-name').value = S.sendScope.name || ''; $('#s-scope-key').value = S.sendScope.key || ''; scopeModeUpdate();
+  $('#s-retries').value = S.settings.retries ?? 3;
   $('#s-theme').value = S.settings.theme; $('#s-lang').value = LANG; $('#s-ts').checked = S.settings.ts; $('#s-meta').checked = S.settings.meta; $('#s-compact').checked = !!S.settings.compact; $('#s-notif').checked = S.settings.notif; $('#s-debug').checked = !!S.settings.debug; $('#s-stale').value = S.settings.staleDays; $('#s-favonly').checked = !!S.settings.favOnly;
   try { $('#s-storage').textContent = t('set.storage', ((localStorage.getItem(LS_KEY) || '').length / 1024).toFixed(0), Array.from(S.convs.values()).reduce((n, c) => n + c.msgs.length, 0)); } catch (e) {}
   if (conn) {
@@ -244,6 +285,7 @@ function msgContextItems(m, cv) {
     { label: t('ctx.reply', m.nick), run: () => { const inp = $('#input'); inp.value = (cv.kind === 'channel' ? '@' + m.nick + ' ' : '') + inp.value; inp.focus(); } },
     c && !m.self ? { label: t('ctx.dm', cname(c)), run: () => { const cv2 = convForContact(c); cv2.open = true; openConv(cv2.key); } } : null,
     c ? { label: t('ctx.contactInfo', cname(c)), run: () => openContactDlg(c) } : null,
+    c && c.lat ? { label: t('ctx.onMap', cname(c)), run: () => mapFocus(c.pub) } : null,
     '-',
     { label: t('ctx.copyText'), run: () => copyText(m.text) },
     m.rawHex || m.rx ? { label: t('ctx.copyRaw'), run: () => copyText(m.rx ? m.rx.rawHex : m.rawHex) } : null,
@@ -280,8 +322,24 @@ function wire() {
   $$('.tab').forEach(t => t.onclick = () => { const d = t.closest('dialog'); $$('.tab,.pane', d).forEach(e => e.classList.remove('active')); t.classList.add('active'); $(`[data-pane="${t.dataset.tab}"]`, d).classList.add('active'); });
   // tree
   on('#tree', 'click', (e) => { const it = e.target.closest('.item'); if (it && !e.target.closest('.add')) openConv(it.dataset.target); });
-  on('#tree', 'contextmenu', (e) => { const it = e.target.closest('.item'); if (!it) return; e.preventDefault(); const cv = S.convs.get(it.dataset.target); if (!cv) return; const c = cv.pub ? S.contacts.get(cv.pub) : null; showCtx(e.clientX, e.clientY, [{ label: t('ctx.open'), run: () => openConv(cv.key) }, { label: t('ctx.markRead'), run: () => { cv.unread = 0; cv.hl = false; renderTree(); } }, c ? { label: t('ctx.contactInfoDots'), run: () => openContactDlg(c) } : null, c && c.type >= 2 ? { label: c.loggedIn ? t('ctx.logout') : t('ctx.login'), run: () => c.loggedIn ? handleInput('/logout') : openLoginDlg(c) } : null, '-', cv.kind === 'channel' ? { label: t('ctx.leaveChannel'), danger: true, run: () => leaveChannel(channelByConv(cv)) } : cv.kind === 'dm' ? { label: t('ctx.closeWindow'), run: () => closeConv(cv) } : null, { label: t('ctx.clearHistory'), danger: true, run: () => { cv.msgs = []; if (cv.key === S.active) renderMessages(cv); saveState(true); } }]); });
+  on('#tree', 'contextmenu', (e) => { const it = e.target.closest('.item'); if (!it) return; e.preventDefault(); const cv = S.convs.get(it.dataset.target); if (!cv) return; const c = cv.pub ? S.contacts.get(cv.pub) : null; showCtx(e.clientX, e.clientY, [{ label: t('ctx.open'), run: () => openConv(cv.key) }, { label: t('ctx.markRead'), run: () => { cv.unread = 0; cv.hl = false; renderTree(); } }, c ? { label: t('ctx.contactInfoDots'), run: () => openContactDlg(c) } : null, c && c.lat ? { label: t('ctx.onMapShort'), run: () => mapFocus(c.pub) } : null, c && c.type >= 2 ? { label: c.loggedIn ? t('ctx.logout') : t('ctx.login'), run: () => c.loggedIn ? handleInput('/logout') : openLoginDlg(c) } : null, c && c.type === 3 ? { label: t('info.resync'), run: () => resyncRoom(c) } : null, c ? { label: t('path.setBtn') + '…', run: () => openPathDlg(c) } : null, '-', cv.kind === 'channel' ? { label: t('ctx.leaveChannel'), danger: true, run: () => leaveChannel(channelByConv(cv)) } : cv.kind === 'dm' ? { label: t('ctx.closeWindow'), run: () => closeConv(cv) } : null, { label: t('ctx.clearHistory'), danger: true, run: () => { cv.msgs = []; if (cv.key === S.active) renderMessages(cv); saveState(true); } }]); });
   on('#btn-chan-leave', 'click', () => closeConv(activeConv()));
+  on('#btn-sync', 'click', () => handleInput('/sync'));
+  // handmatig pad
+  on('#pd-add-btn', 'click', () => { const pub = val('#pd-add'); const c = S.contacts.get(pub); if (!c) return; if ((S.pathList.length + 1) * S.pathSize > 64) { toast(t('path.tooLong'), 'err'); return; } S.pathList.push({ hash: c.pub.slice(0, S.pathSize * 2), pub: c.pub, name: cname(c) }); renderPathDlg(); });
+  on('#pd-chips', 'click', (e) => { const b = e.target.closest('[data-act]'); const ch = e.target.closest('.pd-chip'); if (!b || !ch) return; const i = +ch.dataset.i; if (b.dataset.act === 'del') S.pathList.splice(i, 1); else if (b.dataset.act === 'up' && i > 0) { const x = S.pathList.splice(i, 1)[0]; S.pathList.splice(i - 1, 0, x); } renderPathDlg(); });
+  on('#pd-size', 'change', () => { S.pathSize = +val('#pd-size'); renderPathDlg(); });
+  on('#pd-flood', 'click', () => { S.pathList = []; renderPathDlg(); });
+  on('#pd-save', 'click', () => savePathDlg().catch(e => toast(e.message, 'err')));
+  on('#s-retries', 'change', (e) => { S.settings.retries = Math.max(0, Math.min(9, parseInt(e.target.value) || 0)); saveState(); });
+  // kaart
+  on('#map-fit', 'click', () => mapFitAll()); on('#map-me', 'click', () => { if (S.self && S.self.lat) mapFocus(S.self.pub, 11); else toast(t('map_no_location'), 'warn'); });
+  on('#map-settings', 'click', openMapSettings);
+  on('#map-persist', 'click', async () => { const ok = await mapRequestPersist(); toast(ok ? t('map.persistOk') : t('map.persistNo'), ok ? 'ok' : 'warn', 6000); renderMapSettings(); });
+  on('#map-clear', 'click', async () => { const st = await mapCacheStats(); if (!await confirmDlg(t('h.mapClear'), t('map.clearConfirm', fmtBytes(st.bytes)), t('h.mapClear'), true)) return; await mapClearCache(); toast(t('map.cleared'), 'ok'); renderMapSettings(); });
+  on('#map-ovz', 'change', () => { S.settings.mapOvz = +val('#map-ovz'); saveState(); renderMapSettings(); }); on('#map-detz', 'change', () => { S.settings.mapDetz = +val('#map-detz'); saveState(); renderMapSettings(); });
+  on('#map-countries', 'change', (e) => { const cb = e.target.closest('input[type=checkbox]'); if (!cb) return; const set = new Set(S.settings.mapCountries || []); cb.checked ? set.add(cb.value) : set.delete(cb.value); S.settings.mapCountries = Array.from(set); saveState(); renderMapSettings(); });
+  on('#map-download', 'click', startMapPrefetch); on('#map-cancel', 'click', () => mapPrefetchCancel());
   on('#chan-scope', 'change', async (e) => {
     const cv = activeConv(); const ch = cv.kind === 'channel' ? channelByConv(cv) : null; if (!ch) return; const v = e.target.value;
     if (v === 'global') await setChannelScope(ch, null);
@@ -299,10 +357,11 @@ function wire() {
   on('#scroll-bottom', 'click', () => { const box = $('#messages'); box.scrollTop = box.scrollHeight; document.body.classList.remove('unread-below'); });
   // users
   on('#userlist', 'click', (e) => { const u = e.target.closest('.user'); if (!u) return; const c = u.dataset.pub ? S.contacts.get(u.dataset.pub) : contactByName(u.dataset.nick); if (c) { const cv = convForContact(c); cv.open = true; openConv(cv.key); } else if (u.dataset.nick) { const inp = $('#input'); inp.value = '@' + u.dataset.nick + ' ' + inp.value; inp.focus(); } });
-  on('#userlist', 'contextmenu', (e) => { const u = e.target.closest('.user'); if (!u) return; e.preventDefault(); const c = u.dataset.pub ? S.contacts.get(u.dataset.pub) : contactByName(u.dataset.nick); showCtx(e.clientX, e.clientY, [c ? { label: t('ctx.dmShort'), run: () => { const cv = convForContact(c); cv.open = true; openConv(cv.key); } } : null, c ? { label: t('ctx.contactInfoDots'), run: () => openContactDlg(c) } : null, c ? { label: t('ctx.whois'), run: () => handleInput('/whois ' + cname(c)) } : null, { label: t('ctx.mention'), run: () => { const inp = $('#input'); inp.value = '@' + (u.dataset.nick || (c && cname(c))) + ' ' + inp.value; inp.focus(); } }]); });
+  on('#userlist', 'contextmenu', (e) => { const u = e.target.closest('.user'); if (!u) return; e.preventDefault(); const c = u.dataset.pub ? S.contacts.get(u.dataset.pub) : contactByName(u.dataset.nick); showCtx(e.clientX, e.clientY, [c ? { label: t('ctx.dmShort'), run: () => { const cv = convForContact(c); cv.open = true; openConv(cv.key); } } : null, c ? { label: t('ctx.contactInfoDots'), run: () => openContactDlg(c) } : null, c ? { label: t('ctx.whois'), run: () => handleInput('/whois ' + cname(c)) } : null, c && c.lat ? { label: t('ctx.onMapShort'), run: () => mapFocus(c.pub) } : null, { label: t('ctx.mention'), run: () => { const inp = $('#input'); inp.value = '@' + (u.dataset.nick || (c && cname(c))) + ' ' + inp.value; inp.focus(); } }]); });
   on('#info', 'click', async (e) => { const b = e.target.closest('[data-act]'); if (!b) return; const cv = activeConv(); const c = cv.pub ? S.contacts.get(cv.pub) : null; const act = b.dataset.act;
     const map = { status: '/status', telemetry: '/telemetry', trace: '/trace', discover: '/path', 'path-reset': '/resetpath', logout: '/logout', 'advert-flood': '/advert flood', 'advert-0': '/advert' };
-    if (act === 'login' && c) openLoginDlg(c); else if (act === 'edit' && c) openContactDlg(c); else if (act === 'contacts') { renderContactsDlg(); $('#dlg-contacts').showModal(); } else if (act === 'download') downloadSelf(); else if (act === 'copy-key') { const ch = channelByConv(cv); if (ch) copyText(ch.secret); } else if (act === 'leave') closeConv(cv); else if (map[act]) handleInput(map[act]); });
+    if (act === 'path-set' && c) openPathDlg(c); else if (act === 'map' && c) mapFocus(c.pub); else if (act === 'resync' && c) resyncRoom(c); else if (act === 'sync') handleInput('/sync'); else if (act === 'map-fit') mapFitAll(); else if (act === 'map-settings') openMapSettings();
+    else if (act === 'login' && c) openLoginDlg(c); else if (act === 'edit' && c) openContactDlg(c); else if (act === 'contacts') { renderContactsDlg(); $('#dlg-contacts').showModal(); } else if (act === 'download') downloadSelf(); else if (act === 'copy-key') { const ch = channelByConv(cv); if (ch) copyText(ch.secret); } else if (act === 'leave') closeConv(cv); else if (map[act]) handleInput(map[act]); });
   // composer
   const inp = $('#input');
   on('#composer', 'submit', (e) => { e.preventDefault(); if (!inp.value.trim()) return; if (!$('#hint').hidden && hintPick()) return; const v = inp.value; inp.value = ''; updateCounter(); $('#hint').hidden = true; S.histIdx = -1; (S.inputHist = S.inputHist || []).unshift(v); if (S.inputHist.length > 50) S.inputHist.pop(); handleInput(v); });
@@ -341,6 +400,7 @@ function wire() {
   on('#ce-export', 'click', async () => { if (!requireConn(activeConv())) return; try { const uri = await C.exportContact(S.editContact.pub); await promptDlg(t('ct.uriTitle', cname(S.editContact)), t('ct.uriLabel'), uri); } catch (e) { toast(e.message, 'err'); } });
   on('#ce-share', 'click', () => handleInput('/share ' + cname(S.editContact)));
   on('#ce-resetpath', 'click', () => handleInput('/resetpath ' + cname(S.editContact)).then(() => openContactDlg(S.editContact)));
+  on('#ce-path-set', 'click', () => { const c = S.editContact; $('#dlg-contact').close(); openPathDlg(c); });
   on('#ce-discover', 'click', () => { handleInput('/path ' + cname(S.editContact)); $('#dlg-contact').close(); });
   on('#ce-delete', 'click', async () => { $('#dlg-contact').close(); await deleteContact(S.editContact); });
   // settings
@@ -389,7 +449,8 @@ function tabComplete(inp) {
 
 // ---------- init ----------
 function init() {
-  loadState(); initLang(); mkConv('status', 'status', 'MeshChat', null, null); S.convs.get('status').open = true;
+  COMMANDS.push(['/setpath', '[naam]', 'cmd.setpath'], ['/sync', '', 'cmd.sync'], ['/resync', '', 'cmd.resync'], ['/map', '[naam]', 'cmd.map']);
+  loadState(); initLang(); mkConv('status', 'status', 'MeshChat', null, null); S.convs.get('status').open = true; mkConv('map', 'map', t('map.title'), null, null).open = true;
   for (const c of S.contacts.values()) { c.loggedIn = false; if (c.type >= 2 && !c.hidden) convForContact(c); }
   for (const ch of S.channels) if (ch && ch.name) convForChannel(ch);
   $$('.app-version').forEach(e => e.textContent = 'v' + APP_VERSION); $$('a.app-repo').forEach(a => { a.href = APP_REPO; a.textContent = APP_REPO.replace(/^https?:\/\//, ''); }); $$('.app-author').forEach(e => e.textContent = APP_AUTHOR);

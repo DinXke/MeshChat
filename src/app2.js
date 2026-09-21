@@ -23,7 +23,7 @@ function promptDlg(title, label, value = '', mono = true) {
 
 // ---------- status bar ----------
 function setStatusKey(cls, key, ...args) { S.statusKey = key; setStatus(cls, t(key, ...args)); }
-function setStatus(cls, text) { const s = $('#status'); s.className = cls; s.textContent = text; const on = cls === 'st-on'; $('#btn-disconnect').disabled = !on; $('#btn-usb').disabled = on || S.connecting; $('#btn-bt').disabled = on || S.connecting; }
+function setStatus(cls, text) { const s = $('#status'); s.className = cls; s.textContent = text; const on = cls === 'st-on'; $('#btn-disconnect').disabled = !on; const bs = $('#btn-sync'); if (bs) bs.disabled = !on; $('#btn-usb').disabled = on || S.connecting; $('#btn-bt').disabled = on || S.connecting; }
 function renderBattery() {
   const b = $('#battery'); if (!S.batt) { b.hidden = true; return; } b.hidden = false;
   const v = S.batt.mv / 1000, pct = Math.max(0, Math.min(100, (v - 3.3) / (4.2 - 3.3) * 100));
@@ -41,7 +41,8 @@ function renderTree() {
   const stale = (c) => c.lastAdvert && nowSecs() - c.lastAdvert > S.settings.staleDays * 86400;
   const contacts = Array.from(S.contacts.values()).filter(c => !c.hidden).sort((a, b) => cname(a).localeCompare(cname(b), LANG, { sensitivity: 'base' }));
   const statusCv = S.convs.get('status');
-  let html = `<section class="sec" data-sec="server">${item(statusCv, 'usb')}</section>`;
+  const mapCv = S.convs.get('map'); if (mapCv) mapCv.name = t('map.title');
+  let html = `<section class="sec" data-sec="server">${item(statusCv, 'usb')}${mapCv ? item(mapCv, 'globe') : ''}</section>`;
   const isFav = (c) => !!((c.flags & 1) || S.extras[c.pub]?.fav);
   const show = (c) => { if (!S.settings.favOnly) return true; const cv = S.convs.get(convKeyFor(c)); return isFav(c) || c.loggedIn || (cv && (cv.unread || cv.key === S.active)); };
   const q = (S.sbQuery || "").trim().toLowerCase();
@@ -70,6 +71,7 @@ function renderTree() {
   html += '</section>';
   if (q && !rooms.length && !dms.length && !rpts.length && !chans.some(ch => hit(channelLabel(ch)))) html += `<div class="empty">${t('sb.nothingFound', esc(q))}</div>`;
   tree.innerHTML = html;
+  if (typeof mapRefreshNodes === 'function' && typeof mapObj !== 'undefined' && mapObj) mapRefreshNodes();
   let longest = 0; for (const el of tree.querySelectorAll('.item .name')) longest = Math.max(longest, el.textContent.length); $('#app').style.setProperty('--sb-w', Math.min(340, Math.max(230, Math.round(longest * 7.6) + 96)) + 'px');
   updateTitle();
 }
@@ -90,6 +92,7 @@ function metaText(m) {
   if (m.self && m.flood != null) parts.push(m.flood ? 'flood' : 'direct');
   if (m.self && m.scope) parts.push(m.scope);
   const sc = scopeLabelFor(m); if (sc && !m.self) parts.push(sc);
+  if (m.self && m.attempt) parts.push(t('retry.attempt', m.attempt, S.settings.retries ?? 3));
   if (m.trip) parts.push(m.trip + ' ms');
   return parts.join(' · ');
 }
@@ -158,17 +161,19 @@ function openConv(key) {
   if (S.active !== cv.key) { const prev = S.convs.get(S.active); if (prev) { prev.lastRead = nowSecs(); } }
   S.active = cv.key; cv.unread = 0; cv.hl = false;
   renderMessages(cv); cv.lastRead = nowSecs(); renderHead(cv); renderUsers(cv); renderTree(); renderCompose(cv);
+  if (cv.kind === 'map') mapShow(); else mapHide();
   document.body.classList.remove('sidebar-open', 'users-open'); $('#input').focus(); saveState();
 }
 function renderHead(cv) {
   $('#chan-head').dataset.target = cv.key; $('#chan-name').textContent = cv.name;
   let topic = '';
-  if (cv.kind === 'status') topic = S.client.connected ? `${S.dev?.model || 'MeshCore'} · fw ${S.dev?.version || '?'} · ${S.self?.freq} MHz · BW ${S.self?.bw} · SF${S.self?.sf} · CR${S.self?.cr}` : esc(t('head.notConnected'));
+  if (cv.kind === 'map') topic = esc(t('map.topic', typeof mapNodeFeatures === 'function' ? mapNodeFeatures().features.length : 0));
+  else if (cv.kind === 'status') topic = S.client.connected ? `${S.dev?.model || 'MeshCore'} · fw ${S.dev?.version || '?'} · ${S.self?.freq} MHz · BW ${S.self?.bw} · SF${S.self?.sf} · CR${S.self?.cr}` : esc(t('head.notConnected'));
   else if (cv.kind === 'channel') { const ch = channelByConv(cv); const kind = ch?.secret === PUBLIC_KEY_HEX ? t('head.chPublic') : ch?.name.startsWith('#') ? t('head.chHashtag') : t('head.chPrivate'); topic = `${esc(kind)} · ${esc(t('head.key'))} <span class="key">${ch ? ch.secret.slice(0, 4) + '…' + ch.secret.slice(-4) : '?'}</span> · ${esc(cv.users.size === 1 ? t('head.seen1') : t('head.seenN', cv.users.size))}${ch ? ' · ' + esc(t('head.slot', ch.idx)) : ''}`; }
   else { const c = S.contacts.get(cv.pub); if (c) { const p = pathInfo(c); topic = esc(`${advType(c.type)} · ${c.pub.slice(0, 12)}… · ${t('head.advertAgo', fmtAgo(c.lastAdvert))} · ${t('head.path', p.text)}` + (c.type >= 2 ? (c.loggedIn ? ' · ' + t('head.loggedIn') : ' · ' + t('head.notLoggedIn')) : '')); } }
   $('#chan-topic').innerHTML = topic;
   renderChanScope(cv);
-  $('#btn-chan-leave').hidden = cv.kind === 'status'; $('#btn-chan-leave').textContent = cv.kind === 'channel' ? t('ui.leave') : t('ui.close');
+  $('#btn-chan-leave').hidden = cv.kind === 'status' || cv.kind === 'map'; $('#btn-chan-leave').textContent = cv.kind === 'channel' ? t('ui.leave') : t('ui.close');
 }
 function renderChanScope(cv) {
   const wrap = $('#chan-scope-wrap'), sel = $('#chan-scope'); const ch = cv.kind === 'channel' ? channelByConv(cv) : null;
@@ -200,7 +205,7 @@ function renderUsers(cv) {
     const me = myNick(); html += me ? `<div class="user me" data-nick="${esc(me)}"><span class="dot on"></span>${icon('user')}<span class="nm">${esc(me)}</span></div>` : '';
     for (const u of users) { if (u.nick === me) continue; const c = contactByName(u.nick); const age = nowSecs() - (u.last || 0); html += `<div class="user" data-nick="${esc(u.nick)}" ${c ? `data-pub="${c.pub}"` : ''} title="${esc(t('users.lastAgo', fmtAgo(u.last)))}${c ? '' : ' · ' + esc(t('users.noContact'))}"><span class="dot ${age < 3600 ? 'on' : age < 86400 ? 'busy' : 'off'}"></span>${icon(c ? TYPE_ICON[c.type] || 'user' : 'user')}<span class="nm ${nickColor(u.nick)}">${esc(u.nick)}</span>${u.snr != null ? `<span class="snr">${u.snr.toFixed(1)}</span>` : ''}</div>`; }
     $('#users-count').textContent = `(${users.length + (me ? 1 : 0)})`;
-  } else if (cv.kind === 'status') {
+  } else if (cv.kind === 'status' || cv.kind === 'map') {
     const cs = Array.from(S.contacts.values()).sort((a, b) => (b.lastAdvert || 0) - (a.lastAdvert || 0)).slice(0, 60);
     for (const c of cs) html += `<div class="user" data-pub="${c.pub}" data-type="${ADV_TYPE[c.type]}"><span class="dot ${nowSecs() - c.lastAdvert < 3600 ? 'on' : nowSecs() - c.lastAdvert < 86400 ? 'busy' : 'off'}"></span>${icon(TYPE_ICON[c.type] || 'user')}<span class="nm">${esc(displayName(c))}</span>${c.lastSnr != null ? `<span class="snr">${c.lastSnr.toFixed(1)}</span>` : ''}</div>`;
     $('#users-count').textContent = `(${S.contacts.size})`;
@@ -214,9 +219,10 @@ function renderUsers(cv) {
 }
 function renderInfo(cv) {
   const info = $('#info'); const c = cv.pub ? S.contacts.get(cv.pub) : null;
+  if (cv.kind === 'map') { const n = typeof mapNodeFeatures === 'function' ? mapNodeFeatures().features.length : 0; info.innerHTML = `<h3>${esc(t('map.title'))}</h3><dl><dt>${esc(t('info.contacts'))}</dt><dd>${n}</dd><dt>${esc(t('info.mapCache'))}</dt><dd id="info-map-cache">${typeof mapCacheBytes !== 'undefined' && mapCacheBytes != null ? fmtBytes(mapCacheBytes) : '…'}</dd></dl><div class="acts"><button class="btn sm" data-act="map-fit">${esc(t('map.tools.fit'))}</button><button class="btn sm ghost" data-act="map-settings">${esc(t('info.mapOffline'))}</button></div>`; if (typeof mapCacheStats === 'function') mapCacheStats().then(s => { const el = $('#info-map-cache'); if (el) el.textContent = fmtBytes(s.bytes); }); return; }
   if (cv.kind === 'status') {
     if (!S.self) { info.innerHTML = `<h3>${esc(t('info.node'))}</h3><div class="dim">${esc(t('info.notConnected'))}</div>`; return; }
-    info.innerHTML = `<h3>${esc(t('info.ownNode'))}</h3><dl><dt>${esc(t('info.name'))}</dt><dd>${esc(S.self.name)}</dd><dt>${esc(t('info.key'))}</dt><dd>${S.self.pub.slice(0, 16)}…</dd><dt>${esc(t('info.radio'))}</dt><dd>${S.self.freq} MHz · BW${S.self.bw} · SF${S.self.sf} · CR${S.self.cr} · ${S.self.txPower} dBm</dd><dt>${esc(t('info.region'))}</dt><dd>${S.defaultScope ? esc(S.defaultScope.name) : esc(t('info.regionNone'))}</dd><dt>${esc(t('info.sendScope'))}</dt><dd>${esc(sendScopeText())}</dd><dt>${esc(t('info.contacts'))}</dt><dd>${S.contacts.size}${S.dev?.maxContacts ? ' / ' + S.dev.maxContacts : ''}</dd></dl><div class="acts"><button class="btn sm" data-act="advert-flood">${esc(t('info.advertFlood'))}</button><button class="btn sm ghost" data-act="advert-0">${esc(t('info.advert0'))}</button><button class="btn sm ghost" data-act="contacts">${esc(t('info.contacts'))}</button>${/^https?:$/.test(location.protocol) ? `<button class="btn sm ghost" data-act="download" title="${esc(t('info.downloadTitle'))}">⬇ HTML</button>` : ''}</div>`;
+    info.innerHTML = `<h3>${esc(t('info.ownNode'))}</h3><dl><dt>${esc(t('info.name'))}</dt><dd>${esc(S.self.name)}</dd><dt>${esc(t('info.key'))}</dt><dd>${S.self.pub.slice(0, 16)}…</dd><dt>${esc(t('info.radio'))}</dt><dd>${S.self.freq} MHz · BW${S.self.bw} · SF${S.self.sf} · CR${S.self.cr} · ${S.self.txPower} dBm</dd><dt>${esc(t('info.region'))}</dt><dd>${S.defaultScope ? esc(S.defaultScope.name) : esc(t('info.regionNone'))}</dd><dt>${esc(t('info.sendScope'))}</dt><dd>${esc(sendScopeText())}</dd><dt>${esc(t('info.contacts'))}</dt><dd>${S.contacts.size}${S.dev?.maxContacts ? ' / ' + S.dev.maxContacts : ''}</dd></dl><div class="acts"><button class="btn sm" data-act="advert-flood">${esc(t('info.advertFlood'))}</button><button class="btn sm ghost" data-act="advert-0">${esc(t('info.advert0'))}</button><button class="btn sm ghost" data-act="contacts">${esc(t('info.contacts'))}</button><button class="btn sm ghost" data-act="sync" title="${esc(t('h.syncTitle'))}">${esc(t('info.sync'))}</button>${/^https?:$/.test(location.protocol) ? `<button class="btn sm ghost" data-act="download" title="${esc(t('info.downloadTitle'))}">⬇ HTML</button>` : ''}</div>`;
     return;
   }
   if (cv.kind === 'channel') { const ch = channelByConv(cv); info.innerHTML = `<h3>${esc(t('info.channel'))}</h3><dl><dt>${esc(t('info.name'))}</dt><dd>${esc(ch?.name || cv.name)}</dd><dt>${esc(t('info.key'))}</dt><dd class="mono" style="font-size:10.5px">${ch?.secret || '?'}</dd><dt>Base64</dt><dd style="font-size:10.5px">${ch ? esc(b64(unhex(ch.secret))) : ''}</dd><dt>${esc(t('info.slot'))}</dt><dd>${ch?.idx ?? '?'}</dd></dl><div class="acts"><button class="btn sm" data-act="copy-key">${esc(t('info.copyKey'))}</button><button class="btn sm ghost danger" data-act="leave">${esc(t('ui.leave'))}</button></div>`; return; }
@@ -237,9 +243,9 @@ function renderInfo(cv) {
     <button class="btn sm" data-act="telemetry">${esc(t('info.telemetry'))}</button>
     ${p.hashes.length ? `<button class="btn sm" data-act="trace">${esc(t('info.trace'))}</button>` : ''}
     <button class="btn sm" data-act="discover">${esc(t('info.discover'))}</button>
-    <button class="btn sm ghost" data-act="path-reset">${esc(t('info.pathReset'))}</button>
+    <button class="btn sm ghost" data-act="path-set">${esc(t('path.setBtn'))}</button><button class="btn sm ghost" data-act="path-reset">${esc(t('info.pathReset'))}</button>
     ${c.type >= 2 ? (c.loggedIn ? `<button class="btn sm ghost" data-act="logout">${esc(t('info.logout'))}</button>` : `<button class="btn sm primary" data-act="login">${esc(t('info.loginBtn'))}</button>`) : ''}
-    <button class="btn sm ghost" data-act="edit">${esc(t('info.edit'))}</button>
+    ${c.lat && c.lon ? `<button class="btn sm ghost" data-act="map">${esc(t('info.onMap'))}</button>` : ''}${c.type === 3 ? `<button class="btn sm ghost" data-act="resync" title="${esc(t('resync.title'))}">${esc(t('info.resync'))}</button>` : ''}<button class="btn sm ghost" data-act="edit">${esc(t('info.edit'))}</button>
   </div>`;
 }
 function sendScopeText() { return scopeText(S.sendScope); }

@@ -1,0 +1,21 @@
+
+/* ========== 14. KAART ========== */
+#mapwrap{flex:1;min-height:0;position:relative;display:flex;flex-direction:column;background:var(--bg)}
+#mapwrap[hidden]{display:none!important}
+#map{flex:1;min-height:0}
+#map-notice{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:var(--fg-dim);font-size:13px;background:var(--bg);z-index:2;white-space:pre-line}
+#map-notice[hidden]{display:none!important}
+#map-tools{position:absolute;left:10px;top:10px;z-index:3;display:flex;gap:6px;flex-wrap:wrap}
+#map-legend{position:absolute;right:10px;bottom:28px;z-index:3;display:flex;gap:8px;flex-wrap:wrap;padding:5px 8px;border-radius:var(--r);background:color-mix(in srgb,var(--bg-1) 85%,transparent);border:1px solid var(--line);font-size:11px;color:var(--fg-dim)}
+#map-legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:-1px;border:1px solid #fff}
+.maplibregl-popup-content{background:var(--bg-1)!important;color:var(--fg)!important;border:1px solid var(--line);border-radius:var(--r)!important;box-shadow:var(--shadow)!important;font:12.5px var(--sans);padding:10px 12px!important}
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip{border-top-color:var(--bg-1)!important} .maplibregl-popup-anchor-top .maplibregl-popup-tip{border-bottom-color:var(--bg-1)!important}
+.maplibregl-popup-close-button{color:var(--fg-dim)!important;font-size:16px;padding:2px 6px}
+.maplibregl-ctrl-group{background:var(--bg-1)!important;border:1px solid var(--line)!important;box-shadow:none!important} .maplibregl-ctrl-group button{background:transparent!important} .maplibregl-ctrl-group button+button{border-top:1px solid var(--line)!important}
+:root:not([data-theme="light"]) .maplibregl-ctrl-group button .maplibregl-ctrl-icon{filter:invert(.85)}
+.maplibregl-ctrl-attrib{background:color-mix(in srgb,var(--bg-1) 80%,transparent)!important;color:var(--fg-dim)!important;font-size:10px!important} .maplibregl-ctrl-attrib a{color:var(--fg-dim)!important}
+.maplibregl-ctrl-scale{background:color-mix(in srgb,var(--bg-1) 80%,transparent)!important;color:var(--fg-dim)!important;border-color:var(--fg-mute)!important;font-size:10px!important}
+#map-progress{height:4px;background:var(--bg-3);border-radius:2px;overflow:hidden;margin:6px 0} #map-progress i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.map-countries{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:2px 12px;margin:6px 0 10px}
+.map-countries label{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0} .map-countries .sz{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--fg-mute)}
+@media (max-width:900px){ #map-legend{display:none} }
