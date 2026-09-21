@@ -253,7 +253,7 @@ function wire() {
   on('#userlist', 'contextmenu', (e) => { const u = e.target.closest('.user'); if (!u) return; e.preventDefault(); const c = u.dataset.pub ? S.contacts.get(u.dataset.pub) : contactByName(u.dataset.nick); showCtx(e.clientX, e.clientY, [c ? { label: 'Privébericht', run: () => { const cv = convForContact(c); cv.open = true; openConv(cv.key); } } : null, c ? { label: 'Contactinfo…', run: () => openContactDlg(c) } : null, c ? { label: 'Whois in venster', run: () => handleInput('/whois ' + cname(c)) } : null, { label: 'Vermelden', run: () => { const inp = $('#input'); inp.value = '@' + (u.dataset.nick || (c && cname(c))) + ' ' + inp.value; inp.focus(); } }]); });
   on('#info', 'click', async (e) => { const b = e.target.closest('[data-act]'); if (!b) return; const cv = activeConv(); const c = cv.pub ? S.contacts.get(cv.pub) : null; const act = b.dataset.act;
     const map = { status: '/status', telemetry: '/telemetry', trace: '/trace', discover: '/path', 'path-reset': '/resetpath', logout: '/logout', 'advert-flood': '/advert flood', 'advert-0': '/advert' };
-    if (act === 'login' && c) openLoginDlg(c); else if (act === 'edit' && c) openContactDlg(c); else if (act === 'contacts') { renderContactsDlg(); $('#dlg-contacts').showModal(); } else if (act === 'copy-key') { const ch = channelByConv(cv); if (ch) copyText(ch.secret); } else if (act === 'leave') closeConv(cv); else if (map[act]) handleInput(map[act]); });
+    if (act === 'login' && c) openLoginDlg(c); else if (act === 'edit' && c) openContactDlg(c); else if (act === 'contacts') { renderContactsDlg(); $('#dlg-contacts').showModal(); } else if (act === 'download') downloadSelf(); else if (act === 'copy-key') { const ch = channelByConv(cv); if (ch) copyText(ch.secret); } else if (act === 'leave') closeConv(cv); else if (map[act]) handleInput(map[act]); });
   // composer
   const inp = $('#input');
   on('#composer', 'submit', (e) => { e.preventDefault(); if (!inp.value.trim()) return; if (!$('#hint').hidden && hintPick()) return; const v = inp.value; inp.value = ''; updateCounter(); $('#hint').hidden = true; S.histIdx = -1; (S.inputHist = S.inputHist || []).unshift(v); if (S.inputHist.length > 50) S.inputHist.pop(); handleInput(v); });
@@ -351,8 +351,16 @@ function init() {
 // De service worker maakt de pagina installeerbaar en offline bruikbaar, maar haalt altijd
 // eerst het netwerk (zie sw.js). De versiecheck haalt de pagina zelf vers op en vergelijkt
 // APP_VERSION; verschilt die, dan verschijnt een melding met een herlaadknop.
+async function downloadSelf() {
+  try {
+    const res = await fetch(location.pathname, { cache: 'no-store' }); if (!res.ok) throw new Error('HTTP ' + res.status);
+    const html = await res.text(); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = 'meshchat.html'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast('meshchat.html gedownload. Open het in Chrome of Edge; voor USB/Bluetooth via https of localhost hosten.', 'ok', 7000);
+  } catch (e) { toast('Downloaden mislukt: ' + e.message, 'err'); }
+}
 function initPwa() {
   if (!/^https?:$/.test(location.protocol)) return;
+  $$('.only-online').forEach(el => el.hidden = false); on('#btn-download', 'click', downloadSelf);
   if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(e => console.warn('sw', e)); }
   const check = async () => {
     try {
