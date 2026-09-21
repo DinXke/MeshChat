@@ -34,3 +34,4 @@ h4.sub{margin:4px 0 8px;font-size:11px;letter-spacing:.8px;text-transform:upperc
 #tree .empty{padding:10px 14px;color:var(--fg-mute);font-size:12px}
 .about{font-size:12.5px;line-height:1.5} .about p{margin:0 0 10px} .about ul,.about ol{margin:0 0 10px;padding-left:20px} .about li{margin:2px 0} .about code{font-family:var(--mono);color:var(--accent);font-size:12px} .about dl.meta{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:0 0 12px;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg-2)} .about dl.meta dt{color:var(--fg-mute)} .about dl.meta dd{margin:0} .about a{color:var(--accent)} .about .cmds td{padding:4px 6px;vertical-align:top} .about .cmds td:first-child{white-space:nowrap}
 #btn-about{font-weight:700}
+@media (min-width:901px){ .m{grid-template-columns:max-content var(--nickw,11ch) minmax(0,1fr) max-content} }

@@ -30,7 +30,7 @@ function loadState() {
     S.extras = st.extras || {}; S.roomPw = st.roomPw || {}; S.sendScope = st.sendScope || S.sendScope;
     for (const c of (st.contacts || [])) S.contacts.set(c.pub, c);
     S.channels = st.channels || [];
-    for (const [key, meta] of Object.entries(st.convs || {})) { const cv = mkConv(key, meta.kind, meta.name, meta.pub, meta.secret); cv.msgs = (st.history || {})[key] || []; cv.lastRead = meta.lastRead || 0; }
+    for (const [key, meta] of Object.entries(st.convs || {})) { const cv = mkConv(key, meta.kind, meta.name, meta.pub, meta.secret); cv.msgs = (st.history || {})[key] || []; cv.lastRead = meta.lastRead || 0; for (const m of cv.msgs) if ((m.kind === 'msg' || m.kind === 'action') && m.nick && !m.self) cv.users.set(m.nick, { nick: m.nick, last: m.t, snr: m.snr, pub: m.pub }); }
   } catch (e) { console.warn('state load', e); }
 }
 let saveTimer = null;

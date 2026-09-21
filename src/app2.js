@@ -69,6 +69,7 @@ function renderTree() {
   html += '</section>';
   if (q && !rooms.length && !dms.length && !rpts.length && !chans.some(ch => hit(channelLabel(ch)))) html += `<div class="empty">Niets gevonden voor "${esc(q)}".</div>`;
   tree.innerHTML = html;
+  let longest = 0; for (const el of tree.querySelectorAll('.item .name')) longest = Math.max(longest, el.textContent.length); $('#app').style.setProperty('--sb-w', Math.min(340, Math.max(230, Math.round(longest * 7.6) + 96)) + 'px');
   updateTitle();
 }
 function updateTitle() { let n = 0, hl = false; for (const cv of S.convs.values()) { n += cv.unread; hl = hl || (cv.unread && cv.hl); } document.title = (n ? `(${n}${hl ? '!' : ''}) ` : '') + 'MeshChat'; }
@@ -105,7 +106,14 @@ function renderMsg(m) {
   }
   return `<div class="${cls.join(' ')}" data-id="${m.id}">${t}${body}${meta}</div>`;
 }
+function updateNickWidth(cv) {
+  // irssi-stijl: de nickkolom is zo breed als de langste naam in dit venster (met een plafond)
+  let n = (myNick() || '').length;
+  for (const m of cv.msgs.slice(-600)) if ((m.kind === 'msg' || m.kind === 'cli') && m.nick && m.nick.length > n) n = m.nick.length;
+  $('#messages').style.setProperty('--nickw', (Math.min(28, Math.max(6, n)) + 3) + 'ch'); // +3: de <> rondom de nick en vet lettertype
+}
 function renderMessages(cv, keepScroll = false) {
+  updateNickWidth(cv);
   const box = $('#messages'); const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
   let html = '', lastDay = null, markerDone = false;
   const msgs = cv.msgs.slice(-600);
@@ -123,6 +131,7 @@ function appendMsgDom(cv, m) {
   const box = $('#messages'); const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
   $('#empty')?.remove();
   const prev = cv.msgs[cv.msgs.length - 2]; if (!prev || dayKey(prev.t) !== dayKey(m.t)) box.insertAdjacentHTML('beforeend', `<div class="day-sep" data-date="${dayKey(m.t)}">— ${esc(fmtDate(m.t))} —</div>`);
+  if (m.nick && m.nick.length > parseInt(box.style.getPropertyValue('--nickw') || '0')) updateNickWidth(cv);
   box.insertAdjacentHTML('beforeend', renderMsg(m));
   if (atBottom || m.self) box.scrollTop = box.scrollHeight; else document.body.classList.add('unread-below');
 }
@@ -188,6 +197,7 @@ function renderUsers(cv) {
     else $('#users-count').textContent = '(1)';
   }
   list.innerHTML = html; renderInfo(cv);
+  let longest = 0; for (const el of list.querySelectorAll('.nm')) longest = Math.max(longest, el.textContent.length); $('#app').style.setProperty('--users-w', Math.min(340, Math.max(200, Math.round(longest * 7.6) + 78)) + 'px');
 }
 function renderInfo(cv) {
   const info = $('#info'); const c = cv.pub ? S.contacts.get(cv.pub) : null;
