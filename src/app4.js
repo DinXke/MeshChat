@@ -99,6 +99,7 @@ async function fillSettings() {
   }
   if (S.dev) { $('#s-model').value = S.dev.model || '?'; $('#s-fw').value = (S.dev.version || '?') + ' (protocol v' + S.dev.fwVer + ')'; $('#s-build').value = S.dev.build || '?'; $('#s-pin').value = S.dev.blePin || ''; $('#s-repeat').checked = !!S.dev.repeatEn; $('#s-hashmode').value = S.dev.pathHashMode ?? 0; $('#s-limits').value = `${S.dev.maxContacts || '?'} contacten · ${S.dev.maxChannels || '?'} kanalen`; }
   $('#s-region-name').value = S.defaultScope?.name || ''; $('#s-region-key').value = S.defaultScope?.key || '';
+  renderRegions();
   $('#s-scope-mode').value = S.sendScope.mode; $('#s-scope-name').value = S.sendScope.name || ''; $('#s-scope-key').value = S.sendScope.key || ''; scopeModeUpdate();
   $('#s-theme').value = S.settings.theme; $('#s-ts').checked = S.settings.ts; $('#s-meta').checked = S.settings.meta; $('#s-compact').checked = !!S.settings.compact; $('#s-notif').checked = S.settings.notif; $('#s-debug').checked = !!S.settings.debug; $('#s-stale').value = S.settings.staleDays; $('#s-favonly').checked = !!S.settings.favOnly;
   try { $('#s-storage').textContent = 'Opslag in browser: ' + ((localStorage.getItem(LS_KEY) || '').length / 1024).toFixed(0) + ' kB · ' + Array.from(S.convs.values()).reduce((n, c) => n + c.msgs.length, 0) + ' berichten'; } catch (e) {}
@@ -109,6 +110,44 @@ async function fillSettings() {
     try { const r = await C.getAllowedRepeatFreq(); $('#s-repeat-help').textContent = r.length ? 'Client-repeat toegestaan op: ' + r.map(x => x[0] === x[1] ? x[0] + ' MHz' : x[0] + '–' + x[1] + ' MHz').join(', ') : ''; } catch (e) {}
     try { S.batt = await C.getBattery(); renderBattery(); $('#s-battery').value = (S.batt.mv / 1000).toFixed(2) + ' V' + (S.batt.totalKb ? ` · opslag ${S.batt.usedKb}/${S.batt.totalKb} kB` : ''); } catch (e) {}
   }
+}
+function renderRegions() {
+  const regions = S.settings.regions; const tb = $('#regions-table tbody'); if (!tb) return;
+  tb.innerHTML = regions.map((r, i) => `<tr data-i="${i}"><td class="mono">${esc(r.name)}${S.defaultScope && S.defaultScope.key === r.key ? ' <span class="type room" title="standaardregio van de node">node</span>' : ''}${S.sendScope.mode === 'custom' && S.sendScope.key === r.key ? ' <span class="type chat" title="globale verzendscope">globaal</span>' : ''}</td><td class="hide-m mono dim" style="font-size:10.5px">${r.key}</td><td><div class="acts"><button class="btn sm" data-act="global" title="Als globale verzendscope gebruiken">Globaal</button><button class="btn sm" data-act="node" data-needs-conn title="Als standaardregio op de node zetten">Node</button><button class="btn sm ghost danger" data-act="del" aria-label="Verwijderen">${icon('x')}</button></div></td></tr>`).join('') || '<tr><td colspan="3" class="dim" style="padding:10px">Nog geen regio\'s. Voeg er een toe of haal ze op van een repeater.</td></tr>';
+  const sel = $('#rg-rpt'); if (sel) { const rpts = Array.from(S.contacts.values()).filter(c => !c.hidden && c.type === 2).sort((a, b) => (b.loggedIn ? 1 : 0) - (a.loggedIn ? 1 : 0) || cname(a).localeCompare(cname(b))); sel.innerHTML = rpts.map(c => `<option value="${c.pub}">${esc(cname(c))}${c.loggedIn ? ' (ingelogd)' : ''}</option>`).join('') || '<option value="">— geen repeaters —</option>'; }
+  $$('#dlg-settings [data-needs-conn]').forEach(el => el.disabled = !C.connected);
+}
+async function addRegion(name, key) {
+  name = (name || '').trim().replace(/^#/, ''); if (!name) { toast('Geef een regionaam', 'err'); return null; }
+  key = (key || '').trim().toLowerCase(); if (!/^[0-9a-f]{32}$/.test(key)) key = await scopeKeyFromName(name);
+  const r = S.settings.regions; const ex = r.find(x => x.key === key); if (ex) { ex.name = name; } else r.push({ name, key });
+  saveState(); renderRegions(); return { name, key };
+}
+async function discoverRegions() {
+  const c = S.contacts.get(val('#rg-rpt')); if (!c) { toast('Kies een repeater', 'err'); return; }
+  if (!requireConn(activeConv())) return;
+  if (!c.loggedIn) { toast('Log eerst in op ' + cname(c) + ' (admin) — het venster wordt geopend', 'warn', 6000); openConv(convKeyFor(c)); openLoginDlg(c); $('#dlg-settings').close(); return; }
+  const btn = $('#rg-discover'); btn.disabled = true; btn.textContent = 'Wachten op antwoord…';
+  try {
+    const text = await askCli(c, 'region');
+    const { names, home } = parseRegionReply(text);
+    if (!names.length) { toast('Geen regionamen herkend in het antwoord: ' + text.slice(0, 80), 'warn', 8000); return; }
+    S.rgCandidates = []; for (const n of names) { const key = await scopeKeyFromName(n); S.rgCandidates.push({ name: n, key, known: S.settings.regions.some(r => r.key === key) }); }
+    $('#rg-src').textContent = cname(c); $('#rg-raw').textContent = text;
+    const nodeKey = S.defaultScope?.key; const pre = home || null;
+    $('#rg-pick tbody').innerHTML = S.rgCandidates.map((r, i) => `<tr><td><input type="checkbox" data-i="${i}" ${r.known ? '' : 'checked'}></td><td class="mono">${esc(r.name)}${r.known ? ' <span class="dim">(al bekend)</span>' : ''}${r.name === home ? ' <span class="type room">home</span>' : ''}</td><td class="hide-m mono dim" style="font-size:10.5px">${r.key}</td><td><input type="radio" name="rg-node" value="${i}" ${(pre ? r.name === pre : r.key === nodeKey) ? 'checked' : ''}></td></tr>`).join('');
+    $('#dlg-regions').showModal();
+  } catch (e) { toast(e.message, 'err', 7000); }
+  finally { btn.disabled = false; btn.textContent = "Regio's ophalen van repeater"; }
+}
+async function applyDiscovered() {
+  const picks = $$('#rg-pick input[type=checkbox]:checked').map(i => S.rgCandidates[+i.dataset.i]); const nodeSel = $('#rg-pick input[name=rg-node]:checked');
+  for (const p of picks) await addRegion(p.name, p.key);
+  if (nodeSel) { const r = S.rgCandidates[+nodeSel.value]; await addRegion(r.name, r.key);
+    if (C.connected) { try { await C.setDefaultScope(r.name, r.key); S.defaultScope = { name: r.name, key: r.key }; $('#s-region-name').value = r.name; $('#s-region-key').value = r.key; } catch (e) { toast('Standaardregio op node zetten mislukt: ' + e.message, 'err'); } }
+    if ($('#rg-set-global').checked) { S.sendScope = { mode: 'custom', name: r.name, key: r.key }; $('#s-scope-mode').value = 'custom'; $('#s-scope-name').value = r.name; $('#s-scope-key').value = r.key; scopeModeUpdate(); await applySendScope(true); }
+  }
+  saveState(); renderRegions(); $('#dlg-regions').close(); toast(`${picks.length} regio's overgenomen`, 'ok'); renderHead(activeConv());
 }
 function scopeModeUpdate() { const m = $('#s-scope-mode').value; $('#s-scope-custom').hidden = m !== 'custom'; }
 async function saveNode() {
@@ -139,7 +178,7 @@ async function saveTuning() { if (!requireConn(activeConv())) return; await C.se
 async function saveRegion() {
   if (!requireConn(activeConv())) return; const name = val('#s-region-name').replace(/^#/, ''); let key = val('#s-region-key').toLowerCase();
   if (!name) { await C.setDefaultScope('', ''); S.defaultScope = null; toast('Regio gewist', 'ok'); }
-  else { if (!/^[0-9a-f]{32}$/.test(key)) { key = await scopeKeyFromName(name); $('#s-region-key').value = key; } await C.setDefaultScope(name, key); S.defaultScope = { name, key }; toast('Regio opgeslagen', 'ok'); }
+  else { if (!/^[0-9a-f]{32}$/.test(key)) { key = await scopeKeyFromName(name); $('#s-region-key').value = key; } await C.setDefaultScope(name, key); S.defaultScope = { name, key }; rememberRegion(name, key); renderRegions(); toast('Regio opgeslagen', 'ok'); }
   await applySendScope(false); saveState(); renderInfo(activeConv());
 }
 async function applyScopeDlg() {
@@ -311,6 +350,13 @@ function wire() {
   on('#s-tuning-save', 'click', () => saveTuning().catch(e => toast(e.message, 'err')));
   on('#s-region-derive', 'click', async () => { $('#s-region-key').value = await scopeKeyFromName(val('#s-region-name')); });
   on('#s-region-save', 'click', () => saveRegion().catch(e => toast(e.message, 'err'))); on('#s-region-clear', 'click', () => { $('#s-region-name').value = ''; $('#s-region-key').value = ''; saveRegion().catch(e => toast(e.message, 'err')); });
+  on('#rg-add', 'click', async () => { const r = await addRegion(val('#rg-name'), val('#rg-key')); if (r) { $('#rg-name').value = ''; $('#rg-key').value = ''; toast('Regio toegevoegd: ' + r.name, 'ok'); } });
+  on('#rg-discover', 'click', () => discoverRegions().catch(e => toast(e.message, 'err')));
+  on('#rg-apply', 'click', () => applyDiscovered().catch(e => toast(e.message, 'err')));
+  on('#regions-table', 'click', async (e) => { const b = e.target.closest('[data-act]'); const tr = e.target.closest('tr[data-i]'); if (!b || !tr) return; const r = S.settings.regions[+tr.dataset.i]; if (!r) return;
+    if (b.dataset.act === 'del') { S.settings.regions.splice(+tr.dataset.i, 1); saveState(); renderRegions(); }
+    else if (b.dataset.act === 'global') { S.sendScope = { mode: 'custom', name: r.name, key: r.key }; $('#s-scope-mode').value = 'custom'; $('#s-scope-name').value = r.name; $('#s-scope-key').value = r.key; scopeModeUpdate(); await applySendScope(true); renderRegions(); }
+    else if (b.dataset.act === 'node') { if (!requireConn(activeConv())) return; try { await C.setDefaultScope(r.name, r.key); S.defaultScope = { name: r.name, key: r.key }; $('#s-region-name').value = r.name; $('#s-region-key').value = r.key; await applySendScope(false); renderRegions(); toast('Standaardregio van de node: ' + r.name, 'ok'); } catch (err) { toast(err.message, 'err'); } } });
   on('#s-scope-mode', 'change', scopeModeUpdate); on('#s-scope-derive', 'click', async () => { $('#s-scope-key').value = await scopeKeyFromName(val('#s-scope-name')); }); on('#s-scope-apply', 'click', () => applyScopeDlg().catch(e => toast(e.message, 'err')));
   on('#s-sync-time', 'click', async () => { if (!requireConn(activeConv())) return; await C.setTime(); toast('Tijd gesynchroniseerd', 'ok'); fillSettings(); });
   on('#s-reboot', 'click', async () => { if (!requireConn(activeConv())) return; if (await confirmDlg('Node herstarten', 'De verbinding valt weg en moet opnieuw gemaakt worden.', 'Herstarten', true)) { await C.reboot(); toast('Herstart verstuurd', 'ok'); } });

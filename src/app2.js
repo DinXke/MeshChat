@@ -253,7 +253,7 @@ const COMMANDS = [
   ['/advert', '[flood]', 'Eigen advert versturen'], ['/login', '[wachtwoord]', 'Inloggen op room/repeater'], ['/logout', '', 'Uitloggen'],
   ['/cli', '<commando>', 'CLI-commando naar repeater'], ['/status', '', 'Statistieken opvragen'], ['/telemetry', '[nick]', 'Telemetrie opvragen'],
   ['/trace', '[nick]', 'Pad traceren met SNR per hop'], ['/path', '[nick]', 'Pad opnieuw ontdekken'], ['/resetpath', '[nick]', 'Pad wissen (terug naar flood)'],
-  ['/scope', '<naam|hex|off|default>', 'Verzendscope (regio) kiezen'], ['/region', '<naam> [hex]', 'Standaardregio van de node instellen'],
+  ['/scope', '<naam|hex|off|default>', 'Verzendscope (regio) kiezen'], ['/region', '<naam> [hex]', 'Standaardregio van de node instellen'], ['/regions', '[repeater]', 'Regio\'s ophalen van een repeater en kiezen'],
   ['/export', '[nick]', 'Contact als meshcore:// URI'], ['/import', '<meshcore://…>', 'Contact importeren'], ['/share', '<nick>', 'Contact delen op het mesh'], ['/del', '<nick>', 'Contact verwijderen'],
   ['/time', '', 'Tijd van de node'], ['/settime', '', 'Tijd synchroniseren'], ['/battery', '', 'Batterij'], ['/stats', '', 'Statistieken van de node'],
   ['/raw', '<hex>', 'Ruw commando-frame sturen'], ['/debug', '', 'Debug-uitvoer aan/uit'], ['/clear', '', 'Venster leegmaken'], ['/theme', 'dark|light|auto', 'Thema'], ['/quit', '', 'Verbreken en venster sluiten'],

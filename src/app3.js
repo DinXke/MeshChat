@@ -135,6 +135,7 @@ function handleIncoming(m) {
     if (!c) { addMsg(S.convs.get('status'), { kind: 'msg', nick: '?' + m.prefix.slice(0, 6), text: m.text, t: saneTs(m.ts), snr: m.snr, pathLen: m.pathLen }); return; }
     const cv = convForContact(c); cv.open = true; if (m.snr != null && (m.pathLen === 0xFF || (m.pathLen & 63) === 0)) c.lastSnr = m.snr; c.lastSeen = nowSecs();
     if (m.txtType === TXT.CLI) { // CLI reply from repeater/sensor
+      for (const w of (S.cliWaiters || []).filter(w => w.pub === c.pub)) { clearTimeout(w.timer); w.resolve(m.text); } S.cliWaiters = (S.cliWaiters || []).filter(w => w.pub !== c.pub);
       const pending = cv.msgs.slice(-20).reverse().find(x => x.kind === 'cli' && x.ack === 'pending');
       if (pending) { pending.text = (pending.text ? pending.text + '\n' : '') + m.text; pending.ack = null; pending.snr = m.snr; pending.pathLen = m.pathLen; clearTimeout(pending._timer); updateMsgDom(pending); if (cv.key !== S.active) { cv.unread++; renderTree(); } saveState(); }
       else addMsg(cv, { kind: 'cli', nick: displayName(c), cmd: '', text: m.text, t: saneTs(m.ts), snr: m.snr, pathLen: m.pathLen });
@@ -175,6 +176,26 @@ async function sendToConv(cv, text, asAction = false) {
     await ensureDeviceScope(S.sendScope); const r = await C.sendText(c.pub, asAction ? '* ' + text : text, TXT.PLAIN, 0); m.t = r.ts; m.ackCode = r.ack; m.flood = r.flood; updateMsgDom(m);
     m._timer = setTimeout(() => { if (m.ack === 'pending') { m.ack = 'fail'; updateMsgDom(m); saveState(); } }, Math.max(5000, r.timeoutMs) + 2000);
   } catch (e) { m.ack = 'fail'; updateMsgDom(m); errorMsg('Verzenden mislukt: ' + e.message, cv); }
+}
+// Stuur een CLI-commando en wacht op het (eerste) antwoord van deze repeater.
+function askCli(c, cmdText, timeoutMs = 20000) {
+  const cv = convForContact(c);
+  return new Promise((resolve, reject) => {
+    const w = { pub: c.pub, resolve, timer: setTimeout(() => { S.cliWaiters = (S.cliWaiters || []).filter(x => x !== w); reject(new Error('geen antwoord van ' + displayName(c) + ' binnen ' + Math.round(timeoutMs / 1000) + ' s')); }, timeoutMs) };
+    (S.cliWaiters = S.cliWaiters || []).push(w); sendCli(cv, c, cmdText).catch(e => { clearTimeout(w.timer); reject(e); });
+  });
+}
+// Regionamen uit de uitvoer van 'region' halen. Markeringen: '*' wildcard, '^' home, 'F' flood-vlag, '$naam' = privésleutel (niet af te leiden).
+function parseRegionReply(text) {
+  const out = []; let home = null;
+  for (const raw of text.split(/[\s\/,;|()]+/)) {
+    let tok = raw.trim(); if (!tok) continue;
+    const isHome = tok.includes('^'); tok = tok.replace(/[\^*]/g, '');
+    if (!tok || tok === 'F' || /^F+$/.test(tok) || tok.startsWith('$')) continue;
+    tok = tok.replace(/^#/, '').replace(/[^\w.\-]/g, ''); if (!tok || /^\d+$/.test(tok)) continue;
+    if (!out.includes(tok)) out.push(tok); if (isHome) home = tok;
+  }
+  return { names: out, home };
 }
 async function sendCli(cv, c, cmdText) {
   if (!requireConn(cv)) return;
@@ -248,6 +269,7 @@ async function handleInput(raw) {
       case '/resetpath': { const c = targetContact(argv[0]); if (!c) break; if (!requireConn(cv)) break; await C.resetPath(c.pub); await refreshContact(c.pub); notice('Pad naar ' + displayName(c) + ' gewist (flood).', convForContact(c), true); break; }
       case '/scope': await setSendScopeCmd(argv); break;
       case '/region': case '/regio': await setRegionCmd(argv); break;
+      case '/regions': { const c = argv[0] ? contactByName(argv[0]) : (activeContact()?.type === 2 ? activeContact() : null); await fillSettings(); $('#dlg-settings').showModal(); $$('.tab').find(x => x.dataset.tab === 'region').click(); if (c) { $('#rg-rpt').value = c.pub; discoverRegions().catch(e => toast(e.message, 'err')); } break; }
       case '/export': { if (!requireConn(cv)) break; const c = argv[0] ? contactByName(argv[0]) : null; const uri = await C.exportContact(c ? c.pub : null); notice((c ? displayName(c) : 'Eigen node') + ': ' + uri, cv, false); copyText(uri); break; }
       case '/import': if (!requireConn(cv)) break; await C.importContact(arg); await refreshContacts(); notice('Contact geïmporteerd.', cv, true); break;
       case '/share': { const c = targetContact(argv[0]); if (!c) break; if (!requireConn(cv)) break; await C.shareContact(c.pub); notice('Contact ' + displayName(c) + ' gedeeld op het mesh.', cv, true); break; }

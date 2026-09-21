@@ -232,6 +232,19 @@
       </div>
       <div class="row" style="justify-content:flex-end"><button class="btn ghost" id="s-region-clear" data-needs-conn>Regio wissen</button><button class="btn primary" id="s-region-save" data-needs-conn>Regio opslaan</button></div>
       <div class="hr"></div>
+      <h4 class="sub">Mijn regio's</h4>
+      <table class="tbl" id="regions-table"><thead><tr><th>Naam</th><th class="hide-m">Sleutel</th><th></th></tr></thead><tbody></tbody></table>
+      <div class="row" style="margin:8px 0 4px;flex-wrap:wrap">
+        <input id="rg-name" class="inp mono" placeholder="naam, bv. be-vlg" maxlength="30" style="width:160px">
+        <input id="rg-key" class="inp mono" placeholder="sleutel (leeg = afleiden)" style="flex:1;min-width:160px">
+        <button class="btn" id="rg-add">Toevoegen</button>
+      </div>
+      <div class="row" style="flex-wrap:wrap;gap:6px;margin-bottom:6px">
+        <select id="rg-rpt" aria-label="Repeater" style="min-width:180px"></select>
+        <button class="btn" id="rg-discover" data-needs-conn>Regio's ophalen van repeater</button>
+        <span class="help" style="font-size:11px;color:var(--fg-mute)">Stuurt het CLI-commando <span class="mono">region</span>; login als admin is nodig.</span>
+      </div>
+      <div class="hr"></div>
       <h4 class="sub">Verzendscope voor deze sessie</h4>
       <div class="field"><label for="s-scope-mode">Scope bij het verzenden</label><select id="s-scope-mode"><option value="default">Standaardregio van de node</option><option value="unscoped">Zonder scope (overal heen floods)</option><option value="custom">Andere regio…</option></select></div>
       <div id="s-scope-custom" hidden class="grid2">
@@ -302,6 +315,17 @@
     </div>
     <div class="dlg-foot"><button class="btn" value="cancel" formnovalidate>Annuleren</button><button class="btn primary" value="ok" id="login-ok">Inloggen</button></div>
   </form>
+</dialog>
+
+<!-- Regio's van repeater overnemen -->
+<dialog class="dlg" id="dlg-regions" aria-labelledby="dlg-regions-t">
+  <div class="dlg-head"><h2 id="dlg-regions-t">Regio's van <span class="mono" id="rg-src"></span></h2><button class="btn icon ghost" data-close aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button></div>
+  <div class="dlg-body">
+    <div class="callout" style="margin-bottom:10px">Antwoord van de repeater: <span class="mono" id="rg-raw" style="overflow-wrap:anywhere"></span></div>
+    <table class="tbl" id="rg-pick"><thead><tr><th></th><th>Regio</th><th class="hide-m">Sleutel</th><th title="Als standaardregio van mijn node instellen">Node-std.</th></tr></thead><tbody></tbody></table>
+    <label class="check" style="margin-top:10px"><input type="checkbox" id="rg-set-global" checked> Gekozen node-standaard ook als globale verzendscope gebruiken</label>
+  </div>
+  <div class="dlg-foot"><button class="btn" data-close>Annuleren</button><button class="btn primary" id="rg-apply">Overnemen</button></div>
 </dialog>
 
 <!-- Berichtinfo -->
