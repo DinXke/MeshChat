@@ -16,4 +16,8 @@ Deze map bevat de losse delen waaruit het is samengesteld, voor onderhoud:
 - `sw.js` / `manifest.json` / `head-extra.html` – PWA: service worker (netwerk eerst, cache als terugval), manifest (wordt `manifest.webmanifest`) en de extra <head>-regels
 - `serve.js`     – mini-webserver: `node src/serve.js .` (vanuit de projectmap) en open http://localhost:8765/meshchat.html
 - `build.sh`     – bouwt `../meshchat.html` uit deze delen: `bash src/build.sh`
+- `tools/shots.js`  – maakt de schermafbeeldingen in `docs/screenshots/` met headless Chrome (DevTools-protocol): `node src/serve.js .` laten draaien en dan `node src/tools/shots.js [naam…]`
+- `tools/pmtiles_sizes.py` – berekent per land de tile-groottes uit `basemap.pmtiles` op de MeshManager-server (→ `data/tile_sizes.json` → `map_data.js`)
+- `map.js` / `map.css` / `map_style.js` / `map_data.js` / `vendor/` – kaart (MapLibre GL + pmtiles, stijl van MeshManager, groottetabel)
 
+Ontwikkelparameters (alleen lokaal, de server heeft geen `src/`): `?mock=1` laadt de nep-companion, `&fresh=1` wist de lokale opslag, `&lang=en`, `&theme=dark`, `#view=channel|dm|repeater|room|map|contacts|settings:<tab>|about|path` opent een venster.

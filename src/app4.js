@@ -450,6 +450,7 @@ function tabComplete(inp) {
 
 // ---------- init ----------
 function init() {
+  if (/[?&]fresh=1/.test(location.search)) { try { localStorage.removeItem(LS_KEY); } catch (e) {} } // ontwikkelhulp: schone start voor schermafbeeldingen
   COMMANDS.push(['/setpath', '[naam]', 'cmd.setpath'], ['/sync', '', 'cmd.sync'], ['/resync', '', 'cmd.resync'], ['/map', '[naam]', 'cmd.map']);
   loadState(); initLang(); mkConv('status', 'status', 'MeshChat', null, null); S.convs.get('status').open = true; mkConv('map', 'map', t('map.title'), null, null).open = true;
   for (const c of S.contacts.values()) { c.loggedIn = false; if (c.type >= 2 && !c.hidden) convForContact(c); }
@@ -463,6 +464,27 @@ function init() {
   if (!S.settings.compact) document.body.classList.remove('compact');
   setInterval(() => { if (S.client.connected) renderTree(); }, 60000);
   initPwa();
+  devHooks();
+}
+// Ontwikkelhulp (alleen lokaal): ?mock=1 laadt de nep-companion uit src/mock.js (bestaat niet op de server), ?lang=xx zet de taal,
+// #view=... opent een venster voor schermafbeeldingen (channel | dm | repeater | room | map | contacts | settings:<tab> | about).
+async function devHooks() {
+  const q = new URLSearchParams(location.search); if (!q.has('mock')) return; S.devMode = true;
+  if (q.get('lang')) setLang(q.get('lang')); if (q.get('theme')) setTheme(q.get('theme'));
+  try { const r = await fetch('src/mock.js', { cache: 'no-store' }); if (!r.ok) return; await eval(await r.text()); } catch (e) { console.warn('mock', e); return; }
+  await new Promise(r => setTimeout(r, 1500));
+  const v = (location.hash.match(/view=([\w:-]+)/) || [])[1] || '';
+  const cs = Array.from(S.contacts.values()); const byType = (ty) => cs.find(c => c.type === ty);
+  if (v === 'channel') openConv('ch:' + S.channels[1].secret);
+  else if (v === 'dm') { const c = cs.find(c => c.name === 'Sofie'); if (c) { const cv = convForContact(c); cv.open = true; openConv(cv.key); } }
+  else if (v === 'repeater') { const c = byType(2); if (c) { openConv(convKeyFor(c)); await handleInput('/login password'); await new Promise(r => setTimeout(r, 1500)); await handleInput('ver'); await handleInput('/status'); await new Promise(r => setTimeout(r, 1500)); } }
+  else if (v === 'room') { const c = byType(3); if (c) { openConv(convKeyFor(c)); await handleInput('/login password'); await new Promise(r => setTimeout(r, 1500)); await handleInput('hello room!'); await new Promise(r => setTimeout(r, 2500)); } }
+  else if (v === 'map') { openConv('map'); }
+  else if (v === 'contacts') { openConv('ch:' + S.channels[1].secret); renderContactsDlg(); $('#dlg-contacts').showModal(); }
+  else if (v.startsWith('settings')) { openConv('ch:' + S.channels[1].secret); await fillSettings(); $('#dlg-settings').showModal(); const tab = v.split(':')[1]; if (tab) $$('.tab').find(x => x.dataset.tab === tab)?.click(); }
+  else if (v === 'about') { openConv('ch:' + S.channels[1].secret); $('#dlg-about').showModal(); }
+  else if (v === 'path') { const c = cs.find(c => c.name === 'Sofie'); if (c) { openConv(convKeyFor(c)); openPathDlg(c); } }
+  document.documentElement.classList.add('shots-ready');
 }
 
 // ---------- PWA: service worker + versiecheck ----------

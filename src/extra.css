@@ -59,4 +59,4 @@ h4.sub{margin:4px 0 8px;font-size:11px;letter-spacing:.8px;text-transform:upperc
   #battery{display:none}
   #topbar .brand .logo{display:none}
 }
-@media (max-width:900px){ .m .meta{white-space:normal;text-align:right;max-width:55%} .m .n{min-width:6ch} }
+@media (max-width:900px){ .m{grid-template-columns:max-content minmax(0,1fr)} .m .n{grid-column:2;min-width:0} .m .x{grid-column:1/-1} .m .meta{grid-column:1/-1;grid-row:auto;justify-self:end;white-space:normal;text-align:right;max-width:100%;margin-top:-2px} .m-notice .x,.m-error .x,.m-action .x,.m-cli .x{grid-column:1/-1} }

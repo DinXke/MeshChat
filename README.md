@@ -5,6 +5,18 @@ Geen server, geen installatie, geen externe bronnen: open `meshchat.html` in Chr
 
 > Onafhankelijk hobbyproject van DinX. Niet verbonden aan het MeshCore-team.
 
+**[User manual (English) with screenshots →](docs/MANUAL.md)**
+
+![Channel window](docs/screenshots/channel.png)
+
+| Map with live packets | Repeater console |
+|---|---|
+| ![Map](docs/screenshots/map.png) | ![Repeater console](docs/screenshots/repeater.png) |
+
+| Contacts | Offline maps |
+|---|---|
+| ![Contacts](docs/screenshots/contacts.png) | ![Offline maps](docs/screenshots/settings-map.png) |
+
 ## Functies
 
 - **Verbinding** via USB of Bluetooth met het companion-protocol (frames `>`/`<` + lengte, v3-berichtformaten, alle push-codes).

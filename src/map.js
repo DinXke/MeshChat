@@ -81,7 +81,7 @@ function mapInit(container) {
     mapProtoAdded = true;
   }
   const center = (S.self && S.self.lat) ? [S.self.lon, S.self.lat] : [4.5, 50.9];
-  mapObj = new maplibregl.Map({ container, style: mapStyle(), center, zoom: S.self && S.self.lat ? 9 : 7, attributionControl: { compact: true }, maxZoom: 16, minZoom: 3 });
+  mapObj = new maplibregl.Map({ container, style: mapStyle(), center, zoom: S.self && S.self.lat ? 9 : 7, attributionControl: { compact: true }, maxZoom: 16, minZoom: 3, preserveDrawingBuffer: !!S.devMode });
   mapObj.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
   mapObj.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
   // overlays (nodes/pakketten) toevoegen zodra de stijl er is; 'styledata' vuurt ook na setStyle (themawissel)
