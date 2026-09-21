@@ -44,3 +44,18 @@ h4.sub{margin:4px 0 8px;font-size:11px;letter-spacing:.8px;text-transform:upperc
 #lang-sel:hover{background:var(--bg-3);color:var(--fg);border-color:var(--fg-mute)}
 #lang-sel:focus{outline:none;border-color:var(--accent)}
 .pd-chip{height:auto;padding:3px 4px 3px 8px;gap:2px} .pd-chip .x{border:0;background:transparent;color:var(--fg-mute);cursor:pointer;padding:0 4px;font-size:12px} .pd-chip .x:hover{color:var(--fg)} .pd-chip .x:disabled{opacity:.3}
+
+/* kleine schermen: topbar compact houden (geen horizontale overloop) */
+@media (max-width:900px){
+  #lang-sel{display:none}
+  #battery .v{display:none}
+  #status{max-width:120px;overflow:hidden;text-overflow:ellipsis}
+  #topbar .sep{display:none}
+  #topbar{gap:4px;padding:0 6px}
+  #btn-usb,#btn-bt{padding:0 6px}
+}
+@media (max-width:420px){
+  #status{max-width:90px;font-size:11px}
+  #battery{display:none}
+}
+@media (max-width:900px){ .m .meta{white-space:normal;text-align:right;max-width:55%} .m .n{min-width:6ch} }

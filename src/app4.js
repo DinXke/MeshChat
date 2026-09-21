@@ -112,7 +112,7 @@ async function renderMapSettings() {
   if (!$('#map-countries')) return;
   const ovz = S.settings.mapOvz || 7, detz = S.settings.mapDetz || 12, sel = new Set(S.settings.mapCountries || []);
   $('#map-ovz').value = ovz; $('#map-detz').value = detz;
-  const codes = Object.keys(MAP_SIZES.countries).sort((a, b) => MAP_SIZES.countries[a].name.localeCompare(MAP_SIZES.countries[b].name, i18nLocale()));
+  const codes = Object.keys(MAP_SIZES.countries).filter(code => mapEstimate(code, 14) > 2e6).sort((a, b) => MAP_SIZES.countries[a].name.localeCompare(MAP_SIZES.countries[b].name, i18nLocale()));
   $('#map-countries').innerHTML = codes.map(code => { const c = MAP_SIZES.countries[code]; const extra = Math.max(0, mapEstimate(code, detz) - mapEstimate(code, ovz)); return `<label><input type="checkbox" value="${code}" ${sel.has(code) ? 'checked' : ''}> ${esc(c.name)}<span class="sz">${fmtBytes(extra)}</span></label>`; }).join('');
   const ov = mapEstimateOverview(ovz); let cs = 0; for (const code of sel) cs += Math.max(0, mapEstimate(code, detz) - mapEstimate(code, ovz));
   $('#map-total').textContent = t('map.total', fmtBytes(ov + cs), fmtBytes(ov), fmtBytes(cs));

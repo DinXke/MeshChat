@@ -7,6 +7,7 @@ let LANG = 'nl';
 const I18N = {};
 
 I18N.nl = {
+  'map.legend.pending': 'wachtend advert', 'map_pending': 'Wachtend advert (nog geen contact op de node).', 'map_accept': 'Toevoegen', 'map_ignore': 'Negeren',
   // ---- pad / retries ----
   'path.flood': 'flood', 'path.direct': 'direct (0 hops)', 'path.hops': '{0} hop(s) via {1}', 'path.tooLong': 'Pad te lang (max. 64 bytes).', 'path.set': 'Pad naar {0} ingesteld: {1}', 'path.cleared': 'Pad naar {0} gewist (flood).', 'path.setBtn': 'Pad instellen', 'path.dlgTitle': 'Pad naar {0}', 'path.dlgInfo': '{0} hop(s) · {1} van {2} bytes', 'path.unknownHop': 'Een hop in het pad is geen bekend contact; verwijder die eerst.',
   'cmd.setpath': 'Pad naar contact handmatig instellen', 'cmd.sync': 'Wachtrij van de node nu ophalen', 'cmd.resync': 'Room: geschiedenis opnieuw ophalen', 'cmd.map': 'Kaart openen of contact op de kaart tonen',
@@ -239,6 +240,7 @@ I18N.nl = {
 };
 
 I18N.en = {
+  'map.legend.pending': 'pending advert', 'map_pending': 'Pending advert (not yet a contact on the node).', 'map_accept': 'Add', 'map_ignore': 'Ignore',
   // ---- path / retries ----
   'path.flood': 'flood', 'path.direct': 'direct (0 hops)', 'path.hops': '{0} hop(s) via {1}', 'path.tooLong': 'Path too long (max. 64 bytes).', 'path.set': 'Path to {0} set: {1}', 'path.cleared': 'Path to {0} cleared (flood).', 'path.setBtn': 'Set path', 'path.dlgTitle': 'Path to {0}', 'path.dlgInfo': '{0} hop(s) · {1} of {2} bytes', 'path.unknownHop': 'A hop in the path is not a known contact; remove it first.',
   'cmd.setpath': 'Set the path to a contact manually', 'cmd.sync': 'Fetch the node\'s queue now', 'cmd.resync': 'Room: fetch history again', 'cmd.map': 'Open the map or show a contact on it',
@@ -450,6 +452,7 @@ I18N.en = {
 };
 
 I18N.fr = {
+  'map.legend.pending': 'advert en attente', 'map_pending': 'Advert en attente (pas encore un contact sur le nœud).', 'map_accept': 'Ajouter', 'map_ignore': 'Ignorer',
   // ---- chemin / renvois ----
   'path.flood': 'flood', 'path.direct': 'direct (0 saut)', 'path.hops': '{0} saut(s) via {1}', 'path.tooLong': 'Chemin trop long (max. 64 octets).', 'path.set': 'Chemin vers {0} défini : {1}', 'path.cleared': 'Chemin vers {0} effacé (flood).', 'path.setBtn': 'Définir le chemin', 'path.dlgTitle': 'Chemin vers {0}', 'path.dlgInfo': '{0} saut(s) · {1} sur {2} octets', 'path.unknownHop': 'Un saut du chemin n\'est pas un contact connu ; retirez-le d\'abord.',
   'cmd.setpath': 'Définir manuellement le chemin vers un contact', 'cmd.sync': 'Récupérer maintenant la file du nœud', 'cmd.resync': 'Room : récupérer à nouveau l\'historique', 'cmd.map': 'Ouvrir la carte ou y montrer un contact',
