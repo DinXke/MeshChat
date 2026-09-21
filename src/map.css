@@ -19,3 +19,4 @@
 .map-countries{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:2px 12px;margin:6px 0 10px}
 .map-countries label{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0} .map-countries .sz{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--fg-mute)}
 @media (max-width:900px){ #map-legend{display:none} }
+.maplibregl-popup{z-index:5}
