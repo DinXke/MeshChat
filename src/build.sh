@@ -3,7 +3,8 @@
 # Gebruik: bash build.sh
 set -e
 cd "$(dirname "$0")"
-cat vendor/pmtiles.js vendor/maplibre-gl.js core.js core2.js i18n.js app1.js map_style.js map_data.js map.js app2.js app3.js app4.js > .all.js
+BUILD="$(date -u +%Y%m%d-%H%M)-$(git -C .. rev-parse --short HEAD 2>/dev/null || echo dev)"
+cat vendor/pmtiles.js vendor/maplibre-gl.js core.js core2.js i18n.js app1.js map_style.js map_data.js map.js app2.js app3.js app4.js | sed "s/__BUILD__/$BUILD/" > .all.js
 node --check .all.js
 {
   # <head> + CSS uit het ontwerp; titel hernoemen en de PWA/meta-regels uit head-extra.html erachter
