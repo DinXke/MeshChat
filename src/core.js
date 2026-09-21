@@ -343,6 +343,23 @@ class MeshCoreClient extends EventTarget {
   raw(bytes) { return this.cmd(bytes, { allowErr: true }); }
 }
 
+// ---------- meshcore:// advert-URI decoderen (voorvertoning bij importeren) ----------
+// pakket: pubkey(32) timestamp(4) signatuur(64) appdata: flags(1) [lat(4) lon(4) als 0x10] [feat1(2) als 0x20] [feat2(2) als 0x40] naam (als 0x80)
+function parseAdvertUri(uri) {
+  try {
+    const s = String(uri).trim().replace(/^web\+/i, '').replace(/^meshcore:\/\//i, '').replace(/[^0-9a-f]/gi, '');
+    let b = unhex(s); if (b.length < 103) return null;
+    // de URI is het volledige pakket: header(1) [transportcodes(4)] padlengte(1) pad(...) payload
+    let o = 1; const route = b[0] & 3; if (route === 0 || route === 3) o += 4; const pl = b[o++]; o += (pl & 63) * ((pl >> 6) + 1);
+    if (((b[0] >> 2) & 15) !== 4) return null; // geen advert
+    b = b.subarray(o); if (b.length < 101) return null;
+    const pub = hex(b.subarray(0, 32)), ts = rdU32(b, 32); let i = 100; const flags = b[i++]; const r = { pub, ts, type: flags & 0x0f, flags };
+    if (flags & 0x10) { r.lat = rdI32(b, i) / 1e6; r.lon = rdI32(b, i + 4) / 1e6; i += 8; }
+    if (flags & 0x20) i += 2; if (flags & 0x40) i += 2;
+    if (flags & 0x80) r.name = td.decode(b.subarray(i)).replace(/\0.*$/, '');
+    return r;
+  } catch (e) { return null; }
+}
 // ---------- channel key derivation ----------
 async function hashtagKey(name) { const n = name.startsWith('#') ? name : '#' + name; return hex((await sha256(te.encode(n.toLowerCase()))).subarray(0, 16)); }
 async function passwordKey(pw) { return hex((await sha256(te.encode(pw))).subarray(0, 16)); }

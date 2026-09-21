@@ -363,6 +363,7 @@ function wire() {
   on('#messages', 'scroll', () => { const box = $('#messages'); if (box.scrollHeight - box.scrollTop - box.clientHeight < 40) document.body.classList.remove('unread-below'); });
   on('#scroll-bottom', 'click', () => { const box = $('#messages'); box.scrollTop = box.scrollHeight; document.body.classList.remove('unread-below'); });
   // users
+  on('#users-search', 'input', applyUsersFilter); on('#users-search', 'keydown', (e) => { if (e.key === 'Escape') { e.target.value = ''; applyUsersFilter(); } else if (e.key === 'Enter') { const first = $('#userlist .user:not(.hide)'); if (first) first.click(); } });
   on('#userlist', 'click', (e) => { const u = e.target.closest('.user'); if (!u) return; const c = u.dataset.pub ? S.contacts.get(u.dataset.pub) : contactByName(u.dataset.nick); if (c) { const cv = convForContact(c); cv.open = true; openConv(cv.key); } else if (u.dataset.nick) { const inp = $('#input'); inp.value = '@' + u.dataset.nick + ' ' + inp.value; inp.focus(); } });
   on('#userlist', 'contextmenu', (e) => { const u = e.target.closest('.user'); if (!u) return; e.preventDefault(); const c = u.dataset.pub ? S.contacts.get(u.dataset.pub) : contactByName(u.dataset.nick); showCtx(e.clientX, e.clientY, [c ? { label: t('ctx.dmShort'), run: () => { const cv = convForContact(c); cv.open = true; openConv(cv.key); } } : null, c ? { label: t('ctx.contactInfoDots'), run: () => openContactDlg(c) } : null, c ? { label: t('ctx.whois'), run: () => handleInput('/whois ' + cname(c)) } : null, c && c.lat ? { label: t('ctx.onMapShort'), run: () => mapFocus(c.pub) } : null, { label: t('ctx.mention'), run: () => { const inp = $('#input'); inp.value = '@' + (u.dataset.nick || (c && cname(c))) + ' ' + inp.value; inp.focus(); } }]); });
   on('#info', 'click', async (e) => { const b = e.target.closest('[data-act]'); if (!b) return; const cv = activeConv(); const c = cv.pub ? S.contacts.get(cv.pub) : null; const act = b.dataset.act;
@@ -411,7 +412,7 @@ function wire() {
   on('#ce-save', 'click', () => saveContactDlg().then(() => $('#dlg-contact').close()));
   on('#ce-chat', 'click', () => { const c = S.editContact; const cv = convForContact(c); cv.open = true; $('#dlg-contact').close(); $('#dlg-contacts').close(); openConv(cv.key); });
   on('#ce-copy-pub', 'click', () => copyText(S.editContact.pub));
-  on('#ce-export', 'click', async () => { if (!requireConn(activeConv())) return; try { const uri = await C.exportContact(S.editContact.pub); await promptDlg(t('ct.uriTitle', cname(S.editContact)), t('ct.uriLabel'), uri); } catch (e) { toast(e.message, 'err'); } });
+  on('#ce-export', 'click', async () => { if (!requireConn(activeConv())) return; try { const uri = await C.exportContact(S.editContact.pub); await promptDlg(t('ct.uriTitle', cname(S.editContact)), t('ct.uriLabel'), uri); await promptDlg(t('ct.uriTitle', cname(S.editContact)), t('uri.weblink'), webLinkFor(uri)); } catch (e) { toast(e.message, 'err'); } });
   on('#ce-share', 'click', () => handleInput('/share ' + cname(S.editContact)));
   on('#ce-resetpath', 'click', () => handleInput('/resetpath ' + cname(S.editContact)).then(() => openContactDlg(S.editContact)));
   on('#ce-path-set', 'click', () => { const c = S.editContact; $('#dlg-contact').close(); openPathDlg(c); });
@@ -478,6 +479,7 @@ function init() {
   setInterval(() => { if (S.client.connected) renderTree(); }, 60000);
   initPwa();
   devHooks();
+  const incomingUri = pickUriFromUrl(); if (incomingUri) setTimeout(() => handleIncomingUri(incomingUri), 800);
   // Verhuisd: wie de app nog op meshmanager.net/chat/ gebruikt, krijgt een blijvende melding met exportknop.
   if (location.hostname === 'meshmanager.net' && location.pathname.startsWith('/chat')) {
     const el = document.createElement('div'); el.className = 'toast warn'; el.id = 'toast-move';

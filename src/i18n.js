@@ -7,6 +7,8 @@ let LANG = 'nl';
 const I18N = {};
 
 I18N.nl = {
+  'users.searchPh': 'Zoek deelnemer…', 'users.searchNone': 'Geen deelnemer voor "{0}".',
+  'uri.title': 'Contact importeren', 'uri.text': 'Dit contact toevoegen aan je node?\n{0}', 'uri.import': 'Importeren', 'uri.done': 'Contact geïmporteerd: {0}', 'uri.failed': 'Importeren mislukt: {0}', 'uri.known': '{0} staat al in je contacten.', 'uri.waitConnect': 'Contact-link ontvangen ({0}). Verbind eerst met je node; daarna volgt de importvraag.', 'uri.weblink': 'Weblink (opent MeshChat met importvraag):',
   'h.emoji': 'Emoji invoegen', 'emoji.recent': 'Recent', 'emoji.smileys': 'Smileys', 'emoji.mesh': 'Mesh & weer', 'emoji.hearts': 'Overig',
   'nb.btn': 'Buren op kaart', 'nb.summary': 'Buren van {0}: {1} met locatie, {2} zonder.', 'nb.unknown': 'Zonder locatie: {0}', 'map.tools.clearNb': 'Buren wissen',
   'move.text': 'MeshChat is verhuisd naar een eigen adres. Exporteer je configuratie, open het nieuwe adres en importeer ze daar; installeer de app daarna opnieuw:', 'move.export': 'Configuratie exporteren', 'map.searchPh': 'Zoek node…', 'map.searchNone': 'Geen node met locatie gevonden voor "{0}".', 'h.showOnMap': 'Toon op kaart',
@@ -15,7 +17,7 @@ I18N.nl = {
   // ---- pad / retries ----
   'path.flood': 'flood', 'path.direct': 'direct (0 hops)', 'path.hops': '{0} hop(s) via {1}', 'path.tooLong': 'Pad te lang (max. 64 bytes).', 'path.set': 'Pad naar {0} ingesteld: {1}', 'path.cleared': 'Pad naar {0} gewist (flood).', 'path.setBtn': 'Pad instellen', 'path.dlgTitle': 'Pad naar {0}', 'path.dlgInfo': '{0} hop(s) · {1} van {2} bytes', 'path.unknownHop': 'Een hop in het pad is geen bekend contact; verwijder die eerst.',
   'cmd.setpath': 'Pad naar contact handmatig instellen', 'cmd.sync': 'Wachtrij van de node nu ophalen', 'cmd.resync': 'Room: geschiedenis opnieuw ophalen', 'cmd.map': 'Kaart openen of contact op de kaart tonen',
-  'h.pathSet': 'Pad instellen…', 'h.pathHelp': 'Kies in volgorde de repeaters waarlangs berichten naar dit contact moeten gaan (van jou naar het contact). Een leeg pad betekent flood.', 'h.add': 'Toevoegen', 'h.pathFlood': 'Leegmaken (flood)', 'h.pathHashSize': 'Hash-grootte', 'h.cancel': 'Annuleren', 'h.save': 'Opslaan',
+  'h.pathSet': 'Pad instellen…', 'h.pathHelp': 'Kies in volgorde de repeaters waarlangs berichten naar dit contact moeten gaan (van jou naar het contact). Een leeg pad betekent flood.', 'h.pathFlood': 'Leegmaken (flood)', 'h.pathHashSize': 'Hash-grootte',
   'h.retries': 'Automatisch opnieuw verzenden (pogingen, 0 = uit)', 'h.retriesHelp': 'Bij geen bevestiging opnieuw proberen; vanaf de tweede poging wordt het pad gewist en gaat het bericht als flood.', 'retry.attempt': 'poging {0}/{1}', 'retry.pathReset': 'Pad naar {0} gewist; volgende poging als flood.',
   // ---- kaart / sync ----
   'h.sync': 'Sync', 'h.syncTitle': 'Wachtrij van de node nu leeghalen', 'h.tabMap': 'Kaart', 'map.title': 'Kaart', 'map.topic': '{0} nodes met bekende locatie · klik op een marker voor het gesprek',
@@ -244,6 +246,8 @@ I18N.nl = {
 };
 
 I18N.en = {
+  'users.searchPh': 'Find participant…', 'users.searchNone': 'No participant for "{0}".',
+  'uri.title': 'Import contact', 'uri.text': 'Add this contact to your node?\n{0}', 'uri.import': 'Import', 'uri.done': 'Contact imported: {0}', 'uri.failed': 'Import failed: {0}', 'uri.known': '{0} is already in your contacts.', 'uri.waitConnect': 'Contact link received ({0}). Connect to your node first; the import prompt follows.', 'uri.weblink': 'Web link (opens MeshChat with an import prompt):',
   'h.emoji': 'Insert emoji', 'emoji.recent': 'Recent', 'emoji.smileys': 'Smileys', 'emoji.mesh': 'Mesh & weather', 'emoji.hearts': 'Other',
   'nb.btn': 'Neighbours on map', 'nb.summary': 'Neighbours of {0}: {1} with a location, {2} without.', 'nb.unknown': 'Without location: {0}', 'map.tools.clearNb': 'Clear neighbours',
   'move.text': 'MeshChat has moved to its own address. Export your configuration, open the new address and import it there; then reinstall the app:', 'move.export': 'Export configuration', 'map.searchPh': 'Find node…', 'map.searchNone': 'No node with a location found for "{0}".', 'h.showOnMap': 'Show on map',
@@ -252,7 +256,7 @@ I18N.en = {
   // ---- path / retries ----
   'path.flood': 'flood', 'path.direct': 'direct (0 hops)', 'path.hops': '{0} hop(s) via {1}', 'path.tooLong': 'Path too long (max. 64 bytes).', 'path.set': 'Path to {0} set: {1}', 'path.cleared': 'Path to {0} cleared (flood).', 'path.setBtn': 'Set path', 'path.dlgTitle': 'Path to {0}', 'path.dlgInfo': '{0} hop(s) · {1} of {2} bytes', 'path.unknownHop': 'A hop in the path is not a known contact; remove it first.',
   'cmd.setpath': 'Set the path to a contact manually', 'cmd.sync': 'Fetch the node\'s queue now', 'cmd.resync': 'Room: fetch history again', 'cmd.map': 'Open the map or show a contact on it',
-  'h.pathSet': 'Set path…', 'h.pathHelp': 'Choose, in order, the repeaters that messages to this contact should travel through (from you to the contact). An empty path means flood.', 'h.add': 'Add', 'h.pathFlood': 'Clear (flood)', 'h.pathHashSize': 'Hash size', 'h.cancel': 'Cancel', 'h.save': 'Save',
+  'h.pathSet': 'Set path…', 'h.pathHelp': 'Choose, in order, the repeaters that messages to this contact should travel through (from you to the contact). An empty path means flood.', 'h.pathFlood': 'Clear (flood)', 'h.pathHashSize': 'Hash size',
   'h.retries': 'Automatic resend (attempts, 0 = off)', 'h.retriesHelp': 'Retry when no acknowledgement arrives; from the second attempt the path is cleared and the message goes as flood.', 'retry.attempt': 'attempt {0}/{1}', 'retry.pathReset': 'Path to {0} cleared; next attempt as flood.',
   // ---- map / sync ----
   'h.sync': 'Sync', 'h.syncTitle': 'Drain the node\'s message queue now', 'h.tabMap': 'Map', 'map.title': 'Map', 'map.topic': '{0} nodes with a known location · click a marker to open the conversation',
@@ -460,6 +464,8 @@ I18N.en = {
 };
 
 I18N.fr = {
+  'users.searchPh': 'Chercher un participant…', 'users.searchNone': 'Aucun participant pour "{0}".',
+  'uri.title': 'Importer un contact', 'uri.text': 'Ajouter ce contact à votre nœud ?\n{0}', 'uri.import': 'Importer', 'uri.done': 'Contact importé : {0}', 'uri.failed': 'Import échoué : {0}', 'uri.known': '{0} est déjà dans vos contacts.', 'uri.waitConnect': 'Lien de contact reçu ({0}). Connectez d\'abord votre nœud ; la demande d\'import suivra.', 'uri.weblink': 'Lien web (ouvre MeshChat avec une demande d\'import) :',
   'h.emoji': 'Insérer un emoji', 'emoji.recent': 'Récents', 'emoji.smileys': 'Smileys', 'emoji.mesh': 'Mesh et météo', 'emoji.hearts': 'Autres',
   'nb.btn': 'Voisins sur la carte', 'nb.summary': 'Voisins de {0} : {1} avec position, {2} sans.', 'nb.unknown': 'Sans position : {0}', 'map.tools.clearNb': 'Effacer les voisins',
   'move.text': 'MeshChat a déménagé vers sa propre adresse. Exportez votre configuration, ouvrez la nouvelle adresse et importez-la ; réinstallez ensuite l\'app :', 'move.export': 'Exporter la configuration', 'map.searchPh': 'Chercher un nœud…', 'map.searchNone': 'Aucun nœud avec position trouvé pour "{0}".', 'h.showOnMap': 'Afficher sur la carte',
@@ -468,7 +474,7 @@ I18N.fr = {
   // ---- chemin / renvois ----
   'path.flood': 'flood', 'path.direct': 'direct (0 saut)', 'path.hops': '{0} saut(s) via {1}', 'path.tooLong': 'Chemin trop long (max. 64 octets).', 'path.set': 'Chemin vers {0} défini : {1}', 'path.cleared': 'Chemin vers {0} effacé (flood).', 'path.setBtn': 'Définir le chemin', 'path.dlgTitle': 'Chemin vers {0}', 'path.dlgInfo': '{0} saut(s) · {1} sur {2} octets', 'path.unknownHop': 'Un saut du chemin n\'est pas un contact connu ; retirez-le d\'abord.',
   'cmd.setpath': 'Définir manuellement le chemin vers un contact', 'cmd.sync': 'Récupérer maintenant la file du nœud', 'cmd.resync': 'Room : récupérer à nouveau l\'historique', 'cmd.map': 'Ouvrir la carte ou y montrer un contact',
-  'h.pathSet': 'Définir le chemin…', 'h.pathHelp': 'Choisissez, dans l\'ordre, les répéteurs par lesquels les messages vers ce contact doivent passer (de vous vers le contact). Un chemin vide signifie flood.', 'h.add': 'Ajouter', 'h.pathFlood': 'Vider (flood)', 'h.pathHashSize': 'Taille du hash', 'h.cancel': 'Annuler', 'h.save': 'Enregistrer',
+  'h.pathSet': 'Définir le chemin…', 'h.pathHelp': 'Choisissez, dans l\'ordre, les répéteurs par lesquels les messages vers ce contact doivent passer (de vous vers le contact). Un chemin vide signifie flood.', 'h.pathFlood': 'Vider (flood)', 'h.pathHashSize': 'Taille du hash',
   'h.retries': 'Renvoi automatique (tentatives, 0 = désactivé)', 'h.retriesHelp': 'Réessaie sans accusé de réception ; à partir de la deuxième tentative le chemin est effacé et le message part en flood.', 'retry.attempt': 'tentative {0}/{1}', 'retry.pathReset': 'Chemin vers {0} effacé ; prochaine tentative en flood.',
   // ---- carte / sync ----
   'h.sync': 'Sync', 'h.syncTitle': 'Vider maintenant la file de messages du nœud', 'h.tabMap': 'Carte', 'map.title': 'Carte', 'map.topic': '{0} nœuds avec position connue · cliquez un marqueur pour ouvrir la conversation',

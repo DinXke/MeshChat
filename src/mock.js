@@ -47,7 +47,7 @@
         case 43: reply(cat([23], u32le(0), u32le(1000))); break;
         case 59: reply([25, 0x1E, 0]); break;
         case 60: reply(cat([26], u32le(869495), u32le(869495))); break;
-        case 17: reply(cat([11, 0x11, 0x00, 0x04], P(selfPub), u32le(now()), new Uint8Array(64), te.encode('Bjorn'))); break;
+        case 17: reply(cat([11, 0x11, 0x00], P(selfPub), u32le(now()), new Uint8Array(64), [0x81 | 0x10], i32le(50930700), i32le(5337800), te.encode('Bjorn'))); break;
         case 30: { const ct = contacts.find(x => x.pub === hex(p.subarray(1, 33))); reply(ct ? contactFrame(3, ct) : [1, 2]); break; }
         default: reply([0]);
       }

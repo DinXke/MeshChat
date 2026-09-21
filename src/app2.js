@@ -223,8 +223,14 @@ function renderUsers(cv) {
     if (cv.kind === 'room') { const users = Array.from(cv.users.values()).sort((a, b) => (b.last || 0) - (a.last || 0)); for (const u of users) html += `<div class="user" data-nick="${esc(u.nick)}" ${u.pub ? `data-pub="${u.pub}"` : ''}><span class="dot busy"></span>${icon('user')}<span class="nm ${nickColor(u.nick)}">${esc(u.nick)}</span></div>`; $('#users-count').textContent = `(${users.length})`; }
     else $('#users-count').textContent = '(1)';
   }
-  list.innerHTML = html; renderInfo(cv);
+  list.innerHTML = html; applyUsersFilter(); renderInfo(cv);
   let longest = 0; for (const el of list.querySelectorAll('.nm')) longest = Math.max(longest, el.textContent.length); $('#app').style.setProperty('--users-w', Math.min(340, Math.max(200, Math.round(longest * 7.6) + 78)) + 'px');
+}
+function applyUsersFilter() {
+  const q = ($('#users-search')?.value || '').trim().toLowerCase(); const list = $('#userlist'); let shown = 0;
+  for (const el of list.querySelectorAll('.user')) { const hit = !q || (el.textContent || '').toLowerCase().includes(q) || (el.dataset.pub || '').startsWith(q); el.classList.toggle('hide', !hit); if (hit) shown++; }
+  const old = list.querySelector('.empty'); if (old) old.remove();
+  if (q && !shown) list.insertAdjacentHTML('beforeend', `<div class="empty">${esc(t('users.searchNone', q))}</div>`);
 }
 function renderInfo(cv) {
   const info = $('#info'); const c = cv.pub ? S.contacts.get(cv.pub) : null;

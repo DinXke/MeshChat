@@ -34,6 +34,7 @@ async function afterConnect() {
   renderTree(); renderHead(activeConv()); renderUsers(activeConv());
   await drainMessages();
   autoLogin();
+  if (S.pendingUri) { const u = S.pendingUri; S.pendingUri = null; setTimeout(() => handleIncomingUri(u), 500); }
   if (S.settings.notif && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
   clearInterval(S.battTimer); S.battTimer = setInterval(async () => { if (C.connected) { try { S.batt = await C.getBattery(); renderBattery(); } catch (e) {} } }, 60000);
 }
@@ -101,6 +102,22 @@ async function resendChannelMsg(cv, m) {
   try { await ensureDeviceScope(scopeFor(cv)); const body = m.chText || (m.kind === 'action' ? '* ' + m.text : m.text); const r = await C.sendChannelText(ch.idx, body); m.t = r.ts; armHeard(m, cv); updateMsgDom(m); saveState(); }
   catch (e) { errorMsg(t('send.failed', e.message), cv); }
 }
+// meshcore://-link uit de URL (?uri=, web+meshcore-handler, Android share target) → importvraag
+function pickUriFromUrl() {
+  const q = new URLSearchParams(location.search); const cand = [q.get('uri'), q.get('text'), q.get('url'), q.get('title')].filter(Boolean).join(' ');
+  const m = /(?:web\+)?meshcore:\/\/[0-9a-f]+/i.exec(cand); if (!m) return null;
+  if (q.has('uri') || q.has('text') || q.has('url') || q.has('title')) { try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
+  return m[0].replace(/^web\+/i, '');
+}
+async function handleIncomingUri(uri) {
+  const a = parseAdvertUri(uri); const label = a ? `${a.name || '?'} (${advType(a.type)}${a.lat ? ', ' + a.lat.toFixed(3) + ', ' + a.lon.toFixed(3) : ''}) · ${a.pub.slice(0, 12)}…` : uri.slice(0, 60) + '…';
+  if (a && S.contacts.has(a.pub) && !S.contacts.get(a.pub).hidden) { const c = S.contacts.get(a.pub); notice(t('uri.known', displayName(c)), S.convs.get('status'), false); const cv = convForContact(c); cv.open = true; openConv(cv.key); return; }
+  if (!C.connected) { S.pendingUri = uri; notice(t('uri.waitConnect', label), S.convs.get('status'), false); toast(t('uri.waitConnect', label), 'warn', 8000); return; }
+  if (!await confirmDlg(t('uri.title'), t('uri.text', label), t('uri.import'))) return;
+  try { await C.importContact(uri); await refreshContacts(true); const c = a ? S.contacts.get(a.pub) : null; notice(t('uri.done', c ? displayName(c) : label), S.convs.get('status'), false); toast(t('uri.done', c ? displayName(c) : label), 'ok'); if (c) { const cv = convForContact(c); cv.open = true; openConv(cv.key); } }
+  catch (e) { errorMsg(t('uri.failed', e.message), S.convs.get('status')); }
+}
+function webLinkFor(uri) { return 'https://chat.meshmanager.net/?uri=' + encodeURIComponent(uri); }
 async function resyncRoom(c) {
   const cv = convForContact(c); if (!requireConn(cv)) return; if (c.type !== 3) { errorMsg(t('resync.onlyRoom'), cv); return; }
   if (!await confirmDlg(t('resync.title'), t('resync.text', displayName(c)), t('resync.btn'), true)) return;
@@ -360,7 +377,7 @@ async function handleInput(raw) {
       case '/scope': await setSendScopeCmd(argv); break;
       case '/region': case '/regio': await setRegionCmd(argv); break;
       case '/regions': { const c = argv[0] ? contactByName(argv[0]) : (activeContact()?.type === 2 ? activeContact() : null); await fillSettings(); $('#dlg-settings').showModal(); $$('.tab').find(x => x.dataset.tab === 'region').click(); if (c) { $('#rg-rpt').value = c.pub; discoverRegions().catch(e => toast(e.message, 'err')); } break; }
-      case '/export': { if (!requireConn(cv)) break; const c = argv[0] ? contactByName(argv[0]) : null; const uri = await C.exportContact(c ? c.pub : null); notice((c ? displayName(c) : t('export.self')) + ': ' + uri, cv, false); copyText(uri); break; }
+      case '/export': { if (!requireConn(cv)) break; const c = argv[0] ? contactByName(argv[0]) : null; const uri = await C.exportContact(c ? c.pub : null); notice((c ? displayName(c) : t('export.self')) + ': ' + uri, cv, false); notice(t('uri.weblink') + ' ' + webLinkFor(uri), cv, false); copyText(uri); break; }
       case '/import': if (!requireConn(cv)) break; await C.importContact(arg); await refreshContacts(); notice(t('import.done'), cv, true); break;
       case '/share': { const c = targetContact(argv[0]); if (!c) break; if (!requireConn(cv)) break; await C.shareContact(c.pub); notice(t('share.done', displayName(c)), cv, true); break; }
       case '/del': case '/delete': { const c = targetContact(argv[0]); if (!c) break; await deleteContact(c); break; }
