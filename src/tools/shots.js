@@ -12,6 +12,8 @@ const SHOTS = [
   { name: 'repeater', view: 'repeater', w: 1400, h: 860, wait: 8000 },
   { name: 'room', view: 'room', w: 1400, h: 860, wait: 9000 },
   { name: 'map', view: 'map', w: 1400, h: 860, wait: 16000, map: true },
+  { name: 'map-tropo', view: 'map', w: 1400, h: 860, wait: 16000, map: true, after: 'tropoSetEnabled(true); 1', afterWait: 9000, check: '({layer: !!mapObj.getLayer("tropo"), src: !!mapObj.getSource("tropo"), legend: document.querySelector("#map-tropo-ts").textContent, notice: document.querySelector("#map-notice").textContent})' },
+  { name: 'status', view: 'repeater', w: 1400, h: 860, wait: 8000, after: 'const rp=[...S.contacts.values()].find(c=>c.type===2); openStatusDlg(rp); (async()=>{ await C.statusReq(rp.pub); await fetchRadioSettings(rp); })(); 1', afterWait: 22000 },
   { name: 'contacts', view: 'contacts', w: 1400, h: 860, wait: 4000 },
   { name: 'settings-map', view: 'settings:map', w: 1400, h: 860, wait: 4000 },
   { name: 'settings-region', view: 'settings:region', w: 1400, h: 860, wait: 4000 },
@@ -50,6 +52,8 @@ async function main() {
         await c.send('Runtime.evaluate', { expression: 'mapFitAll(); const rpt=[...S.contacts.values()].find(c=>c.name==="RPT-Genk"); rpt && mapAnimatePacket(mapPacketPath(rpt.pub, ["a1"]), "#4ea1ff", 60000); 1', returnByValue: true });
         await sleep(2500);
       }
+      if (s.after) { await c.send('Runtime.evaluate', { expression: s.after, returnByValue: true }); await sleep(s.afterWait || 3000); }
+      if (s.check) { const r = await c.send('Runtime.evaluate', { expression: s.check, returnByValue: true }); console.log(`${s.name} check:`, JSON.stringify(r.result.value)); }
       const shot = await c.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
       fs.writeFileSync(path.join(OUT, s.name + '.png'), Buffer.from(shot.data, 'base64'));
       console.log(`${s.name}: ${Buffer.from(shot.data, 'base64').length} bytes`);

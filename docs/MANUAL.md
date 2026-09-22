@@ -61,6 +61,8 @@ Direct messages are acknowledged (✓). Delivery is retried automatically: "atte
 
 Plain text in a repeater window is sent as a CLI command (`ver`, `get radio`, `neighbors`, `advert`, …). Log in first with the admin password. Quick-command chips sit above the input. The info panel offers **Status** (statistics), **Neighbours** (sends `neighbors` and draws them on the map), **Status window**, **Telemetry**, **Trace** (SNR per hop), **Find path**, **Set path** and **Reset path**.
 
+![Status window](screenshots/status.png)
+
 The **status window** shows the last status reply as a table (battery, uptime, noise floor, counters, airtime, duplicates) and, after *Fetch radio settings*, the radio configuration (`get radio`, `get tx`, `get af`, `get repeat`, advert intervals, delays, position, `ver`, `clock`; some values need an admin login). A **Details** button appears under every status reply in the window; tick *Open automatically on a status reply* inside the window if you prefer it to pop up by itself. Key prefixes in CLI replies (for example in `neighbors`) are annotated with the contact name when known.
 
 ## 3. Messages
@@ -89,6 +91,8 @@ The Contacts dialog supports searching, filtering by type, sorting (recent, name
 ![Map](screenshots/map.png)
 
 The map shows every contact with a known position (from its advert) plus your own node, coloured by type. Pending adverts appear as hollow markers with a "?". Click a marker for a popup with *Open* and *Info*; right-click a contact anywhere for *Show on map*. With **Live packets** enabled, packets your node hears are animated along the path of repeaters towards you.
+
+![Tropo overlay](screenshots/map-tropo.png)
 
 **Tropo** (off by default, needs internet) overlays an estimate of tropospheric ducting from the Open-Meteo weather model: for every grid point the refractivity gradient dN/dh is computed between the 1000 and 850 hPa levels; yellow marks super-refraction (below -79 N/km, extended range), red marks ducting (below -157 N/km). Pick *now* or +6/+12/+24 hours. The overlay follows the map view and the legend shows the model hour and the steepest gradient in view. It is a coarse model estimate, not a measurement.
 

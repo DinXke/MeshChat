@@ -30,8 +30,9 @@ function tropoRGBA(g) {
 }
 function tropoGrid() {
   const b = mapObj.getBounds(); const w = b.getWest(), e = b.getEast(), s = b.getSouth(), n = b.getNorth();
-  const pw = (e - w) * 0.15, ph = (n - s) * 0.15; const r = (v) => Math.round(v * 4) / 4;
-  return { w: r(w - pw), e: r(e + pw), s: Math.max(-85, r(s - ph)), n: Math.min(85, r(n + ph)) };
+  // ruim rondom het beeld (15 %, minstens 0,1°) en naar buiten afronden op 0,25°, zodat de laag altijd het hele beeld dekt
+  const pw = Math.max(0.1, (e - w) * 0.15), ph = Math.max(0.1, (n - s) * 0.15); const fl = (v) => Math.floor(v * 4) / 4, ce = (v) => Math.ceil(v * 4) / 4;
+  return { w: fl(w - pw), e: ce(e + pw), s: Math.max(-85, fl(s - ph)), n: Math.min(85, ce(n + ph)) };
 }
 function tropoHourIndex(times, hoursAhead) {
   const target = new Date(); target.setUTCMinutes(0, 0, 0); target.setUTCHours(target.getUTCHours() + hoursAhead);
@@ -76,15 +77,20 @@ function tropoDraw(grad, g) {
     }
   }
   ctx.putImageData(img, 0, 0);
-  const coords = [[g.w, g.n], [g.e, g.n], [g.e, g.s], [g.w, g.s]]; const url = cv.toDataURL('image/png');
-  tropoApply(url, coords);
+  tropoApply([[g.w, g.n], [g.e, g.n], [g.e, g.s], [g.w, g.s]]);
 }
-// bron/laag pas zetten als de stijl geladen is (anders gooit MapLibre); tot dan onthouden
-function tropoApply(url, coords) {
-  if (!mapObj.isStyleLoaded()) { tropoSt.pending = { url, coords }; mapObj.once('idle', () => { const p = tropoSt.pending; if (p) { tropoSt.pending = null; tropoApply(p.url, p.coords); } }); return; }
-  const src = mapObj.getSource('tropo');
-  if (src) src.updateImage({ url, coordinates: coords }); else mapObj.addSource('tropo', { type: 'image', url, coordinates: coords });
-  tropoEnsureLayer();
+// Canvas-bron (geen fetch, dus geen CSP- of offline-probleem); bij elke verversing bron en laag opnieuw zetten,
+// want een niet-geanimeerde canvas-bron leest het canvas maar één keer. Pas als de stijl geladen is.
+function tropoApply(coords) {
+  // isStyleLoaded() wacht ook op alle tegels; hier is alleen de stijl zelf nodig (anders gooit addSource)
+  const defer = (ev) => { tropoSt.pending = coords; mapObj.once(ev, () => { const p = tropoSt.pending; if (p) { tropoSt.pending = null; tropoApply(p); } }); };
+  if (!(mapObj.style && mapObj.style._loaded)) { defer('style.load'); return; }
+  try {
+    if (mapObj.getLayer('tropo')) mapObj.removeLayer('tropo');
+    if (mapObj.getSource('tropo')) mapObj.removeSource('tropo');
+    mapObj.addSource('tropo', { type: 'canvas', canvas: tropoSt.canvas, coordinates: coords, animate: false });
+    tropoEnsureLayer();
+  } catch (e) { defer('idle'); }
 }
 function tropoEnsureLayer() {
   if (!mapObj || !mapObj.getSource('tropo')) return;

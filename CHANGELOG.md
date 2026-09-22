@@ -4,6 +4,11 @@ De versie staat in `src/app1.js` (`APP_VERSION`) en in het Over-venster van de a
 
 Elke release krijgt een git-tag `vX.Y.Z` en een GitHub-release met `meshchat.html` als bijlage. Schema: MINOR bij nieuwe functies, PATCH bij correcties, MAJOR bij een breuk in opslagformaat of protocol.
 
+## 0.3.1 - 2026-09-22
+
+- **Tropo-overlay**: tekent nu via een canvas-bron in plaats van een data-URL (die werd op de gehoste versie door de CSP geblokkeerd en gaf de melding "kaartdelen niet in de cache"); raster wordt naar buiten afgerond zodat de laag altijd het hele beeld dekt; laag verschijnt zodra de stijl er is, zonder op alle tegels te wachten; uren-kiezer compact in de kaartbalk, ook op smartphones.
+- **Docs**: schermafbeeldingen van de tropo-overlay en het statusvenster in de handleiding.
+
 ## 0.3.0 - 2026-09-22
 
 - **Tropo-overlay** op de kaart (aan/uit in de kaartbalk, standaard uit, alleen online): schatting van tropo-ducting uit het Open-Meteo-weermodel (refractiviteitsgradiënt onder 1,5 km); geel = superrefractie, rood = ducting; keuze nu / +6 / +12 / +24 uur; volgt het kaartbeeld.

@@ -94,7 +94,7 @@ function mapInit(container) {
   const pick = (e) => { const fs = mapObj.queryRenderedFeatures([[e.point.x - 16, e.point.y - 16], [e.point.x + 16, e.point.y + 16]], { layers: ['nodes-hit', 'nodes-label'] }); if (!fs.length) return null; let best = fs[0], bd = 1e9; for (const f of fs) { const p = mapObj.project(f.geometry.coordinates); const d = Math.hypot(p.x - e.point.x, p.y - e.point.y); if (d < bd) { bd = d; best = f; } } return best; };
   mapObj.on('click', (e) => { const f = pick(e); if (!f) return; e.preventDefault && e.preventDefault(); mapPopup(f, { lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] }); });
   mapObj.on('mousemove', (e) => { mapObj.getCanvas().style.cursor = pick(e) ? 'pointer' : ''; });
-  mapObj.on('error', (e) => { const msg = e && e.error && e.error.message || ''; if (/pmtiles|tiles|Failed to fetch/i.test(msg)) mapSetNotice(t('map_offline_missing')); });
+  mapObj.on('error', (e) => { if (e && e.sourceId === 'tropo') return; const msg = e && e.error && e.error.message || ''; if (/pmtiles|tiles|Failed to fetch/i.test(msg)) mapSetNotice(t('map_offline_missing')); });
   return mapObj;
 }
 function mapSetTheme() { if (!mapObj) return; mapObj.setStyle(mapStyle()); /* style.load voegt overlays opnieuw toe */ }
