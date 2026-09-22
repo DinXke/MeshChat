@@ -3,11 +3,20 @@ const C = S.client;
 
 async function connect(kind) {
   if (C.connected || S.connecting) return;
-  const Tr = kind === 'ble' ? BleTransport : SerialTransport;
-  if (!Tr.supported()) { errorMsg(kind === 'ble' ? t('conn.noBle') : t('conn.noSerial'), S.convs.get('status')); return; }
+  const Tr = kind === 'ble' ? BleTransport : kind === 'tcp' ? WsTransport : SerialTransport;
+  if (!Tr.supported()) { errorMsg(kind === 'ble' ? t('conn.noBle') : kind === 'tcp' ? t('conn.noWs') : t('conn.noSerial'), S.convs.get('status')); return; }
+  let url = null;
+  if (kind === 'tcp') {
+    url = await promptDlg(t('conn.tcpTitle'), t('conn.tcpLabel'), S.settings.tcpUrl || 'ws://127.0.0.1:5005'); if (url == null) return;
+    url = url.trim(); if (!url) return;
+    if (!/^wss?:\/\//i.test(url)) url = 'ws://' + url; // 'host:poort' volstaat
+    // Een https-pagina mag alleen naar localhost een onbeveiligde ws:// openen (mixed content); waarschuw vooraf.
+    if (location.protocol === 'https:' && /^ws:\/\//i.test(url) && !/^ws:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/i.test(url)) { errorMsg(t('conn.tcpMixed'), S.convs.get('status')); return; }
+    S.settings.tcpUrl = url; saveState();
+  }
   S.connecting = true; setStatusKey('st-busy', 'status.connecting');
   try {
-    await C.connect(new Tr());
+    await C.connect(kind === 'tcp' ? new Tr(url) : new Tr());
     setStatusKey('st-busy', 'status.syncing');
     await afterConnect();
     setStatusKey('st-on', 'status.connected', C.kind);

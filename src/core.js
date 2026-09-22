@@ -56,6 +56,22 @@ const MSG_TERMINALS = new Set([RESP.CONTACT_MSG_RECV, RESP.CHANNEL_MSG_RECV, RES
 // ---------- transports ----------
 const UART_SVC = '6e400001-b5a3-f393-e0a9-e50e24dcca9e', UART_RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e', UART_TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
 
+// Companion-framing over een bytestroom (USB, TCP): de app STUURT '<' (0x3C) + lengte LE16 + data,
+// de node stuurt '>' (0x3E) + lengte LE16 + data (firmware: ArduinoSerialInterface / SerialWifiInterface).
+const FRAME_TX = 0x3C, FRAME_RX = 0x3E;
+function frameSplitter(onFrame) {
+  let state = 0, len = 0, frame = null, fi = 0;
+  return (chunk) => {
+    for (const b of chunk) {
+      if (state === 0) { if (b === FRAME_RX) state = 1; }
+      else if (state === 1) { len = b; state = 2; }
+      else if (state === 2) { len |= b << 8; if (len === 0 || len > 4096) { state = 0; continue; } frame = new Uint8Array(len); fi = 0; state = 3; }
+      else { frame[fi++] = b; if (fi >= len) { state = 0; try { onFrame(frame); } catch (e) { console.error(e); } } }
+    }
+  };
+}
+function frameWrap(payload) { return cat([FRAME_TX, payload.length & 255, payload.length >> 8], payload); }
+
 class SerialTransport {
   constructor() { this.kind = 'USB'; this.onFrame = null; this.onClose = null; this.port = null; this._reading = false; }
   static supported() { return 'serial' in navigator; }
@@ -68,23 +84,18 @@ class SerialTransport {
   }
   async _readLoop() {
     const reader = this.port.readable.getReader(); this.reader = reader;
-    let state = 0, len = 0, frame = null, fi = 0;
+    const feed = frameSplitter((f) => this.onFrame && this.onFrame(f));
     try {
       while (this._reading) {
         const { value, done } = await reader.read(); if (done) break;
-        for (const b of value) {
-          if (state === 0) { if (b === 0x3C) state = 1; }
-          else if (state === 1) { len = b; state = 2; }
-          else if (state === 2) { len |= b << 8; if (len === 0 || len > 4096) { state = 0; continue; } frame = new Uint8Array(len); fi = 0; state = 3; }
-          else { frame[fi++] = b; if (fi >= len) { state = 0; try { this.onFrame && this.onFrame(frame); } catch (e) { console.error(e); } } }
-        }
+        feed(value);
       }
     } catch (e) { console.warn('serial read', e); }
     finally { try { reader.releaseLock(); } catch (e) {} this._closed(); }
   }
   async send(payload) {
     if (!this.writer) throw new Error(t('core.notConnected'));
-    await this.writer.write(cat([0x3E, payload.length & 255, payload.length >> 8], payload));
+    await this.writer.write(frameWrap(payload));
   }
   async close() {
     this._reading = false;
@@ -94,6 +105,27 @@ class SerialTransport {
     this._closed();
   }
   _closed() { if (this.port) { this.port = null; this.writer = null; this.onClose && this.onClose(); } }
+}
+
+// TCP/IP via WebSocket. Een browser kan geen ruwe TCP-socket openen; een kleine brug (src/tools/meshchat-bridge.py,
+// of websocat) geeft de bytes door naar poort 5000 van de WiFi-companion. Zelfde framing als USB.
+class WsTransport {
+  constructor(url) { this.kind = 'TCP/IP'; this.url = url; this.onFrame = null; this.onClose = null; this.ws = null; }
+  static supported() { return 'WebSocket' in globalThis; }
+  connect() {
+    return new Promise((resolve, reject) => {
+      let ws; try { ws = new WebSocket(this.url); } catch (e) { reject(new Error(t('conn.tcpBadUrl', this.url))); return; }
+      ws.binaryType = 'arraybuffer'; const feed = frameSplitter((f) => this.onFrame && this.onFrame(f));
+      const timer = setTimeout(() => { try { ws.close(); } catch (e) {} reject(new Error(t('conn.tcpTimeout', this.url))); }, 10000);
+      ws.onopen = () => { clearTimeout(timer); this.ws = ws; resolve(); };
+      ws.onmessage = (ev) => { if (ev.data instanceof ArrayBuffer) feed(new Uint8Array(ev.data)); };
+      ws.onerror = () => { clearTimeout(timer); if (!this.ws) reject(new Error(t('conn.tcpFailed', this.url))); };
+      ws.onclose = (ev) => { clearTimeout(timer); if (!this.ws) { reject(new Error(ev.reason ? t('conn.tcpClosed', ev.reason) : t('conn.tcpFailed', this.url))); return; } this._closed(); };
+    });
+  }
+  async send(payload) { if (!this.ws || this.ws.readyState !== 1) throw new Error(t('core.notConnected')); this.ws.send(frameWrap(payload)); }
+  async close() { try { this.ws && this.ws.close(); } catch (e) {} this._closed(); }
+  _closed() { if (this.ws) { this.ws = null; this.onClose && this.onClose(); } }
 }
 
 class BleTransport {

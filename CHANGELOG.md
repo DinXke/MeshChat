@@ -4,6 +4,11 @@ De versie staat in `src/app1.js` (`APP_VERSION`) en in het Over-venster van de a
 
 Elke release krijgt een git-tag `vX.Y.Z` en een GitHub-release met `meshchat.html` als bijlage. Schema: MINOR bij nieuwe functies, PATCH bij correcties, MAJOR bij een breuk in opslagformaat of protocol.
 
+## 0.4.0 - 2026-09-22
+
+- **TCP/IP-verbinding** met de WiFi-companion (ESP32-firmware met `WIFI_SSID`, poort 5000), zoals in de officiële app. Een browser kan geen ruwe TCP-socket openen, daarom gaat het via WebSocket: knop **TCP/IP** vraagt het adres van een brug (standaard `ws://127.0.0.1:5005`, onthouden). De brug is `src/tools/meshchat-bridge.py` (alleen standaardbibliotheek: `python meshchat-bridge.py <ip-node>`) of `websocat -b ws-l:127.0.0.1:5005 tcp:<ip-node>:5000`. Vanaf https staat de browser alleen `localhost` toe voor `ws://`; de app legt dat uit.
+- **Fix USB**: de framing stond omgekeerd (MeshChat stuurde `>` en verwachtte `<`, de firmware doet het andersom), waardoor de USB-verbinding nooit antwoord kreeg. Bluetooth had hier geen last van (geen framing). Gedeelde frame-splitter voor USB en TCP/IP.
+
 ## 0.3.8 - 2026-09-22
 
 - **Fix**: in 0.3.7 tekende de tropo-laag niet (een commentaar schakelde de canvas-regel uit). Gebruik 0.3.8 in plaats van 0.3.7.

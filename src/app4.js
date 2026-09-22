@@ -356,7 +356,7 @@ function showMsgInfo(m, cv) {
 
 // ---------- wiring ----------
 function wire() {
-  on('#btn-usb', 'click', () => connect('usb')); on('#btn-bt', 'click', () => connect('ble')); on('#btn-disconnect', 'click', () => C.disconnect());
+  on('#btn-usb', 'click', () => connect('usb')); on('#btn-bt', 'click', () => connect('ble')); on('#btn-tcp', 'click', () => connect('tcp')); on('#btn-disconnect', 'click', () => C.disconnect());
   on('#lang-sel', 'change', (e) => setLang(e.target.value)); on('#s-lang', 'change', (e) => setLang(e.target.value));
   on('#btn-theme', 'click', () => { const dark = matchMedia('(prefers-color-scheme:dark)').matches; const cur = document.documentElement.dataset.theme || (dark ? 'dark' : 'light'); setTheme(cur === 'dark' ? 'light' : 'dark'); });
   on('#btn-sidebar', 'click', () => document.body.classList.toggle('sidebar-open')); on('#btn-users', 'click', () => document.body.classList.toggle('users-open')); on('#backdrop', 'click', () => document.body.classList.remove('sidebar-open', 'users-open'));
