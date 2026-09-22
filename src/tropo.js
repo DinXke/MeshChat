@@ -28,10 +28,10 @@ function tropoGradient(h, ti) {
   }
   return best;
 }
-// gradiënt → niveau 0..10: vanaf -50 N/km (1, marginaal) in stappen van ~13,4 tot -157 (8, ducting); -200 → 9, daaronder 10
+// gradiënt → niveau 0..10: vanaf -60 N/km (1, marginaal; -40 is normaal) in stappen van ~13,9 tot -157 (8, ducting); -200 → 9, daaronder 10
 function tropoLevel(g) {
-  if (g == null || g > -50) return 0;
-  if (g > -157) return Math.min(8, 1 + Math.floor((-50 - g) / 13.4));
+  if (g == null || g > -60) return 0;
+  if (g > -157) return Math.min(8, 1 + Math.floor((-60 - g) / 13.9));
   return g > -200 ? 9 : 10;
 }
 function tropoRGBA(g) { const lv = tropoLevel(g); if (!lv) return [0, 0, 0, 0]; const c = TROPO_SCALE[lv]; return [c[0], c[1], c[2], 230]; }
@@ -53,6 +53,33 @@ function tropoHourIndex(times, hoursAhead) {
   if (idx < 0) idx = Math.max(0, Math.min(times.length - 1, hoursAhead)); return idx;
 }
 const tropoPtKey = (stamp, hours, lat, lon) => stamp + '|' + hours + '|' + lat.toFixed(2) + '|' + lon.toFixed(2);
+// Veld van de MeshManager-server: die haalt het raster één keer per uur op voor heel West-Europa en serveert het
+// als één JSON (GET /api/tropo?h=). Zo doet elke client één aanvraag per uur en loopt niemand tegen de limiet van
+// Open-Meteo per IP. Het losse HTML-bestand haalt het cross-origin (CORS); lukt dat niet, dan rekent de client zelf.
+const TROPO_FIELD_LS = 'mcirc.tropo.field.v1';
+function tropoFieldUrl() { return /(^|\.)meshmanager\.net$/i.test(location.hostname) ? '/api/tropo' : 'https://meshmanager.net/api/tropo'; }
+async function tropoFieldFetch(hours, stamp) {
+  const ck = stamp + '|' + hours; if (tropoSt.field && tropoSt.field.ck === ck) return tropoSt.field.f;
+  const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 12000);
+  try {
+    const res = await fetch(tropoFieldUrl() + '?h=' + hours, { signal: ctl.signal }); if (!res.ok) throw new Error('HTTP ' + res.status);
+    const f = await res.json(); if (!f || !Array.isArray(f.grad) || f.grad.length !== f.nx * f.ny) throw new Error('bad field');
+    tropoSt.field = { ck, f }; try { localStorage.setItem(TROPO_FIELD_LS, JSON.stringify({ ck, f })); } catch (e) {}
+    return f;
+  } finally { clearTimeout(tm); }
+}
+function tropoFieldStale() {
+  if (tropoSt.field) return tropoSt.field.f;
+  try { const o = JSON.parse(localStorage.getItem(TROPO_FIELD_LS) || 'null'); if (o && o.f) { tropoSt.field = o; return o.f; } } catch (e) {}
+  return null;
+}
+function tropoDrawField(f, stale) {
+  const g = { step: f.step, w: f.w, e: f.e, s: f.s, n: f.n, nx: f.nx, ny: f.ny };
+  tropoDraw(f.grad, g);
+  let minG = Infinity; for (const v of f.grad) if (v != null && v < minG) minG = v;
+  const mt = String(f.model_time || '').replace('T', ' ');
+  tropoSetLegend((stale ? t('tropo.stale', mt) : t('tropo.data', mt)) + (minG < Infinity ? ' · max ' + tropoLevel(minG) + ' (' + Math.round(minG) + ' N/km)' : ''));
+}
 // Laatst opgehaalde punten lokaal bewaren, zodat de overlay offline de laatst bekende situatie kan tonen (met modeluur).
 const TROPO_LS = 'mcirc.tropo.v1';
 function tropoPersist() {
@@ -75,10 +102,20 @@ async function tropoRefresh(force) {
   if (!mapObj || !tropoEnabled()) return;
   tropoRestore();
   const g = tropoGrid(); const hours = +(S.settings.tropoH || 0); const stamp = new Date().toISOString().slice(0, 13);
-  if (!navigator.onLine) { if (!tropoDrawStale(g, hours)) { tropoSetLegend(t('tropo.offline')); if (force) toast(t('tropo.offline'), 'warn'); } return; }
+  if (!navigator.onLine) { const sf = tropoFieldStale(); if (sf) tropoDrawField(sf, true); else if (!tropoDrawStale(g, hours)) { tropoSetLegend(t('tropo.offline')); if (force) toast(t('tropo.offline'), 'warn'); } return; }
+  if (tropoSt.busy) { tropoSt.again = true; return; }
+  // 1) het veld van de server: dekt heel West-Europa, dus alleen bij een nieuw uur of andere uurkeuze opnieuw ophalen
+  const fkey = 'field|' + stamp + '|' + hours;
+  if (!force && fkey === tropoSt.key) return;
+  if (!tropoSt.fieldDown || Date.now() > tropoSt.fieldDown) {
+    tropoSt.busy = true;
+    try { const f = await tropoFieldFetch(hours, stamp); tropoDrawField(f, false); tropoSt.key = fkey; return; }
+    catch (e) { tropoSt.fieldDown = Date.now() + (String(e.message).includes('503') ? 120000 : 600000); debugLog('tropo veld: ' + e.message); }
+    finally { tropoSt.busy = false; }
+  }
+  // 2) terugval: zelf rekenen op een raster rond het kaartbeeld (Open-Meteo rechtstreeks)
   const key = [g.step, g.w, g.s, g.e, g.n, hours, stamp].join('|');
   if (!force && key === tropoSt.key) return;
-  if (tropoSt.busy) { tropoSt.again = true; return; }
   const pts = []; for (let j = 0; j < g.ny; j++) for (let i = 0; i < g.nx; i++) pts.push({ lat: g.n - j * g.step, lon: g.w + i * g.step });
   const missing = pts.filter(p => !tropoSt.cache.has(tropoPtKey(stamp, hours, p.lat, p.lon)));
   if (missing.length && Date.now() < tropoSt.retryAt) { tropoSetLegend(t('tropo.rateLimited', Math.ceil((tropoSt.retryAt - Date.now()) / 1000))); clearTimeout(tropoSt.timer); tropoSt.timer = setTimeout(() => tropoRefresh(false), tropoSt.retryAt - Date.now() + 200); return; }
@@ -105,14 +142,14 @@ async function tropoRefresh(force) {
       const mt = tropoSt.modelTime[stamp + '|' + hours] || '';
       tropoSetLegend(t('tropo.data', mt.replace('T', ' ')) + (minG < Infinity ? ' · max ' + tropoLevel(minG) + ' (' + Math.round(minG) + ' N/km)' : ''));
     }
-  } catch (e) { if (!tropoDrawStale(g, hours)) { tropoSetLegend(''); toast(t('tropo.err', e.message || e), 'warn'); } }
+  } catch (e) { const sf = tropoFieldStale(); if (sf) tropoDrawField(sf, true); else if (!tropoDrawStale(g, hours)) { tropoSetLegend(''); toast(t('tropo.err', e.message || e), 'warn'); } }
   finally { tropoSt.busy = false; if (tropoSt.again) { tropoSt.again = false; tropoRefresh(false); } }
 }
 const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
 const mercLat = (y) => (2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180 / Math.PI;
 function tropoDraw(grad, g) {
   // pixelrijen lopen lineair in Mercator-y (zo plaatst MapLibre de afbeelding), kolommen lineair in lengtegraad
-  const W = 512, H = 384; const cv = tropoSt.canvas || (tropoSt.canvas = document.createElement('canvas')); cv.width = W; cv.height = H;
+  const W = g.nx > 30 ? 1024 : 512, H = g.ny > 24 ? 768 : 384; const cv = tropoSt.canvas || (tropoSt.canvas = document.createElement('canvas')); cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d'); const img = ctx.createImageData(W, H); const px = img.data;
   const yN = mercY(g.n), yS = mercY(g.s);
   const at = (i, j) => grad[Math.min(g.ny - 1, Math.max(0, j)) * g.nx + Math.min(g.nx - 1, Math.max(0, i))];
@@ -162,7 +199,7 @@ function tropoSetEnabled(on) {
 }
 function tropoBind() {
   if (!mapObj) return;
-  mapObj.on('moveend', () => { if (!tropoEnabled()) return; clearTimeout(tropoSt.timer); tropoSt.timer = setTimeout(() => tropoRefresh(false), 1500); });
+  mapObj.on('moveend', () => { if (!tropoEnabled() || (tropoSt.key || '').startsWith('field|')) return; clearTimeout(tropoSt.timer); tropoSt.timer = setTimeout(() => tropoRefresh(false), 1500); });
   mapObj.on('style.load', () => { tropoSt.key = null; if (tropoEnabled()) setTimeout(() => tropoRefresh(true), 600); }); // bij themawissel gaan bron en laag verloren
   if (tropoEnabled()) mapObj.once('load', () => tropoRefresh(true));
 }
