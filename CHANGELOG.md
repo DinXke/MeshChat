@@ -4,6 +4,10 @@ De versie staat in `src/app1.js` (`APP_VERSION`) en in het Over-venster van de a
 
 Elke release krijgt een git-tag `vX.Y.Z` en een GitHub-release met `meshchat.html` als bijlage. Schema: MINOR bij nieuwe functies, PATCH bij correcties, MAJOR bij een breuk in opslagformaat of protocol.
 
+## 0.3.7 - 2026-09-22
+
+- **Tropo**: doorzichtigheidsslider loopt nu van 0 tot 40 % (standaard 30); fijner canvas voor het grote veld van MeshManager 2.27.2 (heel ICON-EU, 23° W tot 62° O).
+
 ## 0.3.6 - 2026-09-22
 
 - **Tropo**: uitleg in de tooltip over de bron (ICON-EU via meshmanager.net), de kalibratie op de Hepburn-kaarten en de weging voor 868 MHz (grondinversie boven land telt voor de helft mee).

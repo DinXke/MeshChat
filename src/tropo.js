@@ -12,7 +12,8 @@ const TROPO_SCALE = [[0, 0, 0], [134, 3, 241], [1, 180, 239], [2, 208, 131], [16
 const TROPO_LEVEL_KEYS = ['nil', 'marginal', 'fair', 'moderate', 'high', 'strong', 'vstrong', 'intense', 'vintense', 'extreme', 'extreme'];
 const tropoSt = { key: null, busy: false, again: false, timer: null, canvas: null, modelTime: {}, cache: new Map(), retryAt: 0, pending: null };
 function tropoEnabled() { return !!(S.settings && S.settings.tropo); }
-function tropoOpacity() { const v = +(S.settings.tropoOp ?? 30); return Math.min(100, Math.max(10, v)) / 100; }
+// doorzichtigheid 0..40 %: de laag mag de kaart nooit overstemmen
+function tropoOpacity() { const v = +(S.settings.tropoOp ?? 30); return Math.min(40, Math.max(0, Number.isFinite(v) ? v : 30)) / 100; }
 function tropoN(T, RH, P) { const Tk = T + 273.15; const es = 6.112 * Math.exp(17.67 * T / (T + 243.5)); const e = Math.max(0, Math.min(100, RH)) / 100 * es; return 77.6 * P / Tk + 3.73e5 * e / (Tk * Tk); }
 function tropoGradient(h, ti) {
   let best = null;
@@ -149,7 +150,7 @@ const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
 const mercLat = (y) => (2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180 / Math.PI;
 function tropoDraw(grad, g) {
   // pixelrijen lopen lineair in Mercator-y (zo plaatst MapLibre de afbeelding), kolommen lineair in lengtegraad
-  const W = g.nx > 30 ? 1024 : 512, H = g.ny > 24 ? 768 : 384; const cv = tropoSt.canvas || (tropoSt.canvas = document.createElement('canvas')); cv.width = W; cv.height = H;
+  const W = g.nx > 200 ? 2048 : g.nx > 30 ? 1024 : 512, H = g.ny > 120 ? 1024 : g.ny > 24 ? 768 : 384; // groot veld (heel ICON-EU): fijner canvas const cv = tropoSt.canvas || (tropoSt.canvas = document.createElement('canvas')); cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d'); const img = ctx.createImageData(W, H); const px = img.data;
   const yN = mercY(g.n), yS = mercY(g.s);
   const at = (i, j) => grad[Math.min(g.ny - 1, Math.max(0, j)) * g.nx + Math.min(g.nx - 1, Math.max(0, i))];
@@ -184,7 +185,7 @@ function tropoEnsureLayer() {
   const before = mapObj.getLayer('packets-line') ? 'packets-line' : undefined;
   mapObj.addLayer({ id: 'tropo', type: 'raster', source: 'tropo', paint: { 'raster-opacity': tropoOpacity(), 'raster-resampling': 'linear', 'raster-fade-duration': 0 }, layout: { visibility: tropoEnabled() ? 'visible' : 'none' } }, before);
 }
-function tropoSetOpacity(pct) { S.settings.tropoOp = Math.min(100, Math.max(10, +pct || 30)); saveState(); const sl = $('#map-tropo-op'); if (sl) sl.value = String(S.settings.tropoOp); if (mapObj && mapObj.getLayer('tropo')) mapObj.setPaintProperty('tropo', 'raster-opacity', tropoOpacity()); }
+function tropoSetOpacity(pct) { const v = +pct; S.settings.tropoOp = Math.min(40, Math.max(0, Number.isFinite(v) ? v : 30)); saveState(); const sl = $('#map-tropo-op'); if (sl) sl.value = String(S.settings.tropoOp); if (mapObj && mapObj.getLayer('tropo')) mapObj.setPaintProperty('tropo', 'raster-opacity', tropoOpacity()); }
 // legenda: kleurbalk 1..10+ (tooltip met uitleg) + modeluur/max-niveau
 function tropoSetLegend(txt) {
   const el = $('#map-tropo-legend'); if (!el) return; el.hidden = !tropoEnabled();
