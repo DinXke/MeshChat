@@ -2,7 +2,7 @@
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const APP_BUILD = '__BUILD__'; // wordt door build.sh vervangen door datum+commit; basis van de updatecheck
-const APP_VERSION = '0.4.0', APP_REPO = 'https://github.com/DinXke/MeshChat', APP_AUTHOR = 'DinX';
+const APP_VERSION = '0.4.1', APP_REPO = 'https://github.com/DinXke/MeshChat', APP_AUTHOR = 'DinX';
 const LS_KEY = 'mcirc.v1';
 const MAX_HIST = 400;
 
@@ -21,7 +21,7 @@ const S = {
   deviceScopeKey: undefined,   // wat er nu op de node als verzendscope staat (null = zonder scope)
   extras: {},                  // pub -> {alias, note, fav}
   roomPw: {},                  // pub -> {pw, auto}
-  settings: { theme: 'auto', ts: true, compact: false, meta: true, notif: true, debug: false, showSensorsAsRepeaters: true, staleDays: 7, favOnly: true, regions: [], tropo: false, tropoH: 0, tropoOp: 30, statusPopup: 'manual' },
+  settings: { theme: 'auto', ts: true, compact: false, meta: true, notif: true, debug: false, showSensorsAsRepeaters: true, staleDays: 7, favOnly: true, regions: [], tropo: false, tropoH: 0, tropoOp: 30, tcpList: [], statusPopup: 'manual' },
   connecting: false, syncing: false, msgSeq: 0,
 };
 

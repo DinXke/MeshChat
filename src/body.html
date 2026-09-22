@@ -391,6 +391,20 @@
     <div class="dlg-foot"><button class="btn" value="cancel" formnovalidate data-i18n="h.cancel">Annuleren</button><button class="btn primary" value="ok" id="confirm-ok" data-i18n="ui.ok">OK</button></div>
   </form>
 </dialog>
+<dialog class="dlg" id="dlg-tcp" aria-labelledby="tcp-t">
+  <form method="dialog">
+    <div class="dlg-head"><h2 id="tcp-t" data-i18n="conn.tcpTitle">Verbinden via TCP/IP</h2><button class="btn icon ghost" value="cancel" aria-label="Sluiten" data-i18n-aria="h.close" formnovalidate><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="dlg-body">
+      <div class="field"><label for="tcp-list" data-i18n="tcp.saved">Bewaarde verbindingen</label><select id="tcp-list"></select></div>
+      <div class="grid2">
+        <div class="field"><label for="tcp-name" data-i18n="tcp.name">Naam</label><input id="tcp-name" maxlength="40" placeholder="bv. Node thuis" data-i18n-ph="tcp.namePh"></div>
+        <div class="field"><label for="tcp-url" data-i18n="tcp.url">Adres van de brug</label><input id="tcp-url" class="mono" placeholder="ws://127.0.0.1:5005" required></div>
+      </div>
+      <p class="help" style="margin:0;font-size:12px;color:var(--fg-dim)" data-i18n-html="tcp.help">Een browser kan niet rechtstreeks TCP. Draai op deze pc <code>python src/tools/meshchat-bridge.py &lt;ip-node&gt;</code> en gebruik ws://127.0.0.1:5005. Brug op een andere machine (bv. een Pi)? Vanaf https kan dat alleen met wss://: start de brug met <code>--tls cert.pem key.pem</code> en open eerst één keer https://&lt;brug&gt;:5005/ om het certificaat te aanvaarden.</p>
+    </div>
+    <div class="dlg-foot wrap"><button class="btn" type="button" id="tcp-del" data-i18n="tcp.delete">Verwijderen</button><button class="btn" type="button" id="tcp-save" data-i18n="tcp.save">Bewaren</button><span class="grow"></span><button class="btn" value="cancel" formnovalidate data-i18n="h.cancel">Annuleren</button><button class="btn primary" value="ok" data-i18n="tcp.connect">Verbinden</button></div>
+  </form>
+</dialog>
 <dialog class="dlg" id="dlg-prompt" aria-labelledby="prompt-t">
   <form method="dialog">
     <div class="dlg-head"><h2 id="prompt-t" data-i18n="h.input">Invoer</h2></div>

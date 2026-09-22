@@ -296,6 +296,31 @@ function msgContextItems(m, cv) {
     { label: t('ctx.deleteLocal'), danger: true, run: () => { cv.msgs = cv.msgs.filter(x => x.id !== m.id); renderMessages(cv, true); saveState(); } },
   ];
 }
+// ---------- TCP/IP: bewaarde verbindingen ----------
+function tcpList() { if (!Array.isArray(S.settings.tcpList)) S.settings.tcpList = []; return S.settings.tcpList; }
+function tcpNormalize(u) { u = (u || '').trim(); if (u && !/^wss?:\/\//i.test(u)) u = 'ws://' + u; return u; }
+function tcpRemember(url, name) {
+  // laatst gebruikte bovenaan; naam behouden als die er al was
+  const list = tcpList(); const i = list.findIndex(x => x.url === url); const old = i >= 0 ? list.splice(i, 1)[0] : null;
+  list.unshift({ url, name: (name || (old && old.name) || url.replace(/^wss?:\/\//i, '')).slice(0, 40) }); if (list.length > 20) list.length = 20;
+}
+function renderTcpList(selUrl) {
+  const sel = $('#tcp-list'); const list = tcpList();
+  sel.innerHTML = `<option value="">${esc(t('tcp.new'))}</option>` + list.map(x => `<option value="${esc(x.url)}"${x.url === selUrl ? ' selected' : ''}>${esc(x.name)}${x.name !== x.url ? ' · ' + esc(x.url) : ''}</option>`).join('');
+  $('#tcp-del').disabled = !selUrl || !list.some(x => x.url === selUrl);
+}
+function openTcpDlg() {
+  const d = $('#dlg-tcp'); const list = tcpList(); const last = S.settings.tcpUrl || (list[0] && list[0].url) || 'ws://127.0.0.1:5005';
+  const cur = list.find(x => x.url === last);
+  $('#tcp-url').value = last; $('#tcp-name').value = cur ? cur.name : ''; renderTcpList(cur ? cur.url : '');
+  return new Promise(res => { d.onclose = () => res(d.returnValue === 'ok' ? tcpNormalize($('#tcp-url').value) : null); d.showModal(); setTimeout(() => $('#tcp-url').focus(), 30); });
+}
+function initTcpDlg() {
+  on('#tcp-list', 'change', (e) => { const x = tcpList().find(y => y.url === e.target.value); if (x) { $('#tcp-url').value = x.url; $('#tcp-name').value = x.name; } else { $('#tcp-url').value = ''; $('#tcp-name').value = ''; } $('#tcp-del').disabled = !x; });
+  on('#tcp-save', 'click', () => { const url = tcpNormalize($('#tcp-url').value); if (!url) return; tcpRemember(url, $('#tcp-name').value.trim()); saveState(); renderTcpList(url); toast(t('tcp.savedToast'), 'ok'); });
+  on('#tcp-del', 'click', () => { const url = tcpNormalize($('#tcp-url').value); const list = tcpList(); const i = list.findIndex(x => x.url === url); if (i >= 0) list.splice(i, 1); saveState(); $('#tcp-url').value = ''; $('#tcp-name').value = ''; renderTcpList(''); });
+}
+
 // ---------- status/radio-venster voor repeaters en rooms ----------
 const RADIO_CMDS = [['radio', 'get radio'], ['tx', 'get tx'], ['af', 'get af'], ['repeat', 'get repeat'], ['flood.max', 'get flood.max'], ['advert.interval', 'get advert.interval'], ['flood.advert.interval', 'get flood.advert.interval'], ['rxdelay', 'get rxdelay'], ['txdelay', 'get txdelay'], ['direct.txdelay', 'get direct.txdelay'], ['lat', 'get lat'], ['lon', 'get lon'], ['ver', 'ver'], ['clock', 'clock']];
 function fmtRadioVal(k, v) {
@@ -356,7 +381,7 @@ function showMsgInfo(m, cv) {
 
 // ---------- wiring ----------
 function wire() {
-  on('#btn-usb', 'click', () => connect('usb')); on('#btn-bt', 'click', () => connect('ble')); on('#btn-tcp', 'click', () => connect('tcp')); on('#btn-disconnect', 'click', () => C.disconnect());
+  on('#btn-usb', 'click', () => connect('usb')); on('#btn-bt', 'click', () => connect('ble')); on('#btn-tcp', 'click', () => connect('tcp')); initTcpDlg(); on('#btn-disconnect', 'click', () => C.disconnect());
   on('#lang-sel', 'change', (e) => setLang(e.target.value)); on('#s-lang', 'change', (e) => setLang(e.target.value));
   on('#btn-theme', 'click', () => { const dark = matchMedia('(prefers-color-scheme:dark)').matches; const cur = document.documentElement.dataset.theme || (dark ? 'dark' : 'light'); setTheme(cur === 'dark' ? 'light' : 'dark'); });
   on('#btn-sidebar', 'click', () => document.body.classList.toggle('sidebar-open')); on('#btn-users', 'click', () => document.body.classList.toggle('users-open')); on('#backdrop', 'click', () => document.body.classList.remove('sidebar-open', 'users-open'));

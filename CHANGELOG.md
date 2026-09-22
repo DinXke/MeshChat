@@ -4,6 +4,11 @@ De versie staat in `src/app1.js` (`APP_VERSION`) en in het Over-venster van de a
 
 Elke release krijgt een git-tag `vX.Y.Z` en een GitHub-release met `meshchat.html` als bijlage. Schema: MINOR bij nieuwe functies, PATCH bij correcties, MAJOR bij een breuk in opslagformaat of protocol.
 
+## 0.4.1 - 2026-09-22
+
+- **TCP/IP-verbindingen bewaren**: eigen venster met een lijst van bewaarde bruggen (naam + adres), laatst gebruikte bovenaan, bewaren en verwijderen; verbinden onthoudt het adres automatisch.
+- **Brug met TLS**: `meshchat-bridge.py --tls cert.pem key.pem` luistert als `wss://`, zodat de brug ook op een andere machine (bv. een Pi) bruikbaar is vanaf de gehoste https-versie. Een gewone https-aanvraag op de brug geeft een pagina "MeshChat bridge OK", handig om het (zelfgetekende) certificaat één keer te aanvaarden. Certificaat maken: `openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 3650 -subj /CN=meshchat-bridge`.
+
 ## 0.4.0 - 2026-09-22
 
 - **TCP/IP-verbinding** met de WiFi-companion (ESP32-firmware met `WIFI_SSID`, poort 5000), zoals in de officiële app. Een browser kan geen ruwe TCP-socket openen, daarom gaat het via WebSocket: knop **TCP/IP** vraagt het adres van een brug (standaard `ws://127.0.0.1:5005`, onthouden). De brug is `src/tools/meshchat-bridge.py` (alleen standaardbibliotheek: `python meshchat-bridge.py <ip-node>`) of `websocat -b ws-l:127.0.0.1:5005 tcp:<ip-node>:5000`. Vanaf https staat de browser alleen `localhost` toe voor `ws://`; de app legt dat uit.

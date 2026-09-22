@@ -8,19 +8,24 @@ beide richtingen; de framing ('<'/'>' + lengte) blijft die van de companion zelf
 Alleen de standaardbibliotheek, geen pip nodig.
 
 Gebruik:
-    python meshchat-bridge.py <ip-van-de-node> [node-poort] [--listen 127.0.0.1:5005]
+    python meshchat-bridge.py <ip-van-de-node> [node-poort] [--listen 127.0.0.1:5005] [--tls cert.pem key.pem]
 
 Daarna in MeshChat: knop TCP/IP en als adres  ws://127.0.0.1:5005
 
 Standaard luistert de brug alleen op 127.0.0.1 (de eigen pc): de gehoste MeshChat (https)
 mag van de browser alleen naar 'localhost' een onbeveiligde ws://-verbinding openen. Wil je
 de brug op een andere machine draaien (bv. een Pi), gebruik dan --listen 0.0.0.0:5005 en
-open MeshChat als los bestand of via http; of zet er een reverse proxy met TLS (wss://) voor.
+open MeshChat als los bestand of via http; of geef --tls cert.pem key.pem mee: dan luistert de
+brug als wss:// en werkt hij ook vanaf de gehoste https-versie. Een zelfgetekend certificaat
+volstaat: openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 3650
+-subj /CN=meshchat-bridge ; open daarna één keer https://<brug>:5005/ in de browser en aanvaard
+het certificaat (de brug toont dan "MeshChat bridge OK"), en verbind met wss://<brug>:5005.
 """
 import argparse
 import asyncio
 import base64
 import hashlib
+import ssl
 import struct
 import sys
 
@@ -37,9 +42,11 @@ async def ws_handshake(reader, writer):
             headers[k.strip().lower()] = v.strip()
     key = headers.get("sec-websocket-key")
     if not key or "websocket" not in headers.get("upgrade", "").lower():
-        writer.write(b"HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n")
+        # Gewone browseraanvraag (bv. om het certificaat te aanvaarden): kort antwoord.
+        body = b"MeshChat bridge OK\n"
+        writer.write(b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\nConnection: close\r\n\r\n" % len(body) + body)
         await writer.drain()
-        raise ConnectionError("geen WebSocket-handshake")
+        raise ConnectionError("geen WebSocket-handshake (gewone HTTP-aanvraag beantwoord)")
     accept = base64.b64encode(hashlib.sha1(key.encode() + GUID).digest()).decode()
     writer.write(("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n"
                   "Connection: Upgrade\r\nSec-WebSocket-Accept: %s\r\n\r\n" % accept).encode())
@@ -143,11 +150,20 @@ async def main():
     ap.add_argument("node", help="IP-adres of hostnaam van de node")
     ap.add_argument("port", nargs="?", type=int, default=5000, help="TCP-poort van de node (standaard 5000)")
     ap.add_argument("--listen", default="127.0.0.1:5005", help="adres:poort waarop de brug luistert (standaard 127.0.0.1:5005)")
+    ap.add_argument("--tls", nargs=2, metavar=("CERT", "KEY"), help="TLS-certificaat en sleutel (PEM): luister als wss://")
     a = ap.parse_args()
     host, _, port = a.listen.rpartition(":")
-    server = await asyncio.start_server(lambda r, w: handle(r, w, a.node, a.port), host or "127.0.0.1", int(port))
-    print(f"[brug] luistert op ws://{host or '127.0.0.1'}:{port} -> node {a.node}:{a.port}", flush=True)
-    print("[brug] MeshChat: knop TCP/IP, adres ws://%s:%s" % ("127.0.0.1" if host in ("", "127.0.0.1", "0.0.0.0") else host, port), flush=True)
+    ctx = None
+    if a.tls:
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.load_cert_chain(a.tls[0], a.tls[1])
+    server = await asyncio.start_server(lambda r, w: handle(r, w, a.node, a.port), host or "127.0.0.1", int(port), ssl=ctx)
+    scheme = "wss" if ctx else "ws"
+    shown = "127.0.0.1" if host in ("", "127.0.0.1", "0.0.0.0") else host
+    print(f"[brug] luistert op {scheme}://{host or '127.0.0.1'}:{port} -> node {a.node}:{a.port}", flush=True)
+    print(f"[brug] MeshChat: knop TCP/IP, adres {scheme}://{shown}:{port}", flush=True)
+    if ctx:
+        print(f"[brug] zelfgetekend certificaat? Open eerst https://{shown}:{port}/ in de browser en aanvaard het.", flush=True)
     async with server:
         await server.serve_forever()
 
