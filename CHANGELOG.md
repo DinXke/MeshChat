@@ -4,6 +4,10 @@ De versie staat in `src/app1.js` (`APP_VERSION`) en in het Over-venster van de a
 
 Elke release krijgt een git-tag `vX.Y.Z` en een GitHub-release met `meshchat.html` als bijlage. Schema: MINOR bij nieuwe functies, PATCH bij correcties, MAJOR bij een breuk in opslagformaat of protocol.
 
+## 0.7.6 - 2026-09-22
+
+- **Bluetooth**: mislukt het verbinden via de node die je eerder koos, dan wordt die vergeten en toont de volgende klik weer de keuzelijst; de melding zegt dat er ook bij. Tussen twee pogingen wordt een half-open GATT-verbinding eerst netjes gesloten.
+
 ## 0.7.5 - 2026-09-22
 
 - **Bezoekcijfers op de gehoste versie**: chat.meshmanager.net laadt een klein telscript van diezelfde server (Matomo, zonder cookies, "Do Not Track" wordt gerespecteerd, eigen teller naast de hoofdsite). Het losse HTML-bestand en een offline PWA laden niets en sturen niets.

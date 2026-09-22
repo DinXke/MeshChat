@@ -7,6 +7,7 @@ async function connect(kind) {
   if (!Tr.supported()) { errorMsg(kind === 'ble' ? t('conn.noBle') : t('conn.noSerial'), S.convs.get('status')); return; }
   S.connecting = true; setStatusKey('st-busy', 'status.connecting');
   try {
+    if (kind === 'ble' && S.settings.debug) debugLog('ble: verbinden…');
     await C.connect(new Tr());
     setStatusKey('st-busy', 'status.syncing');
     await afterConnect();

@@ -7,6 +7,7 @@ let LANG = 'nl';
 const I18N = {};
 
 I18N.nl = {
+  'ble.hintReused': '{0} — dit ging via de node die je eerder koos; die is nu vergeten. Klik nog eens op Bluetooth: dan verschijnt de keuzelijst weer. Blijft het misgaan, verwijder de node in Windows (Instellingen › Bluetooth) en koppel opnieuw met de pincode (standaard 123456).',
   'ble.dups': 'Bluetooth leverde {0} frames dubbel af (Windows-eigenaardigheid bij een gekoppeld apparaat); de dubbelen zijn genegeerd.',
   'nb.heardAgo': 'gehoord {0} geleden',
   'sig.tip': 'SNR {0} dB · {1}{2}', 'sig.q0': 'amper signaal', 'sig.q1': 'zwak', 'sig.q2': 'matig', 'sig.q3': 'goed', 'sig.q4': 'uitstekend',
@@ -259,6 +260,7 @@ I18N.nl = {
 };
 
 I18N.en = {
+  'ble.hintReused': '{0} — this used the node you picked before; it has now been forgotten. Click Bluetooth again to get the picker back. If it keeps failing, remove the node in Windows (Settings › Bluetooth) and pair again with the PIN (default 123456).',
   'ble.dups': 'Bluetooth delivered {0} frames twice (a Windows quirk with a paired device); the duplicates were ignored.',
   'nb.heardAgo': 'heard {0} ago',
   'sig.tip': 'SNR {0} dB · {1}{2}', 'sig.q0': 'barely any signal', 'sig.q1': 'weak', 'sig.q2': 'fair', 'sig.q3': 'good', 'sig.q4': 'excellent',
@@ -490,6 +492,7 @@ I18N.en = {
 };
 
 I18N.fr = {
+  'ble.hintReused': '{0} — ceci passait par le nœud choisi précédemment ; il est maintenant oublié. Cliquez à nouveau sur Bluetooth pour retrouver la liste. Si l\'échec persiste, supprimez le nœud dans Windows (Paramètres › Bluetooth) et jumelez-le à nouveau avec le code (123456 par défaut).',
   'ble.dups': 'Le Bluetooth a livré {0} trames en double (particularité de Windows avec un appareil jumelé) ; les doublons ont été ignorés.',
   'nb.heardAgo': 'entendu il y a {0}',
   'sig.tip': 'SNR {0} dB · {1}{2}', 'sig.q0': 'signal à peine perceptible', 'sig.q1': 'faible', 'sig.q2': 'moyen', 'sig.q3': 'bon', 'sig.q4': 'excellent',

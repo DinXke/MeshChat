@@ -112,7 +112,11 @@ class BleTransport {
   static supported() { return 'bluetooth' in navigator; }
   // Eerder gekozen node hergebruiken zonder kiezer (Chrome: getDevices + watchAdvertisements); lukt dat niet binnen
   // ~2,5 s, dan de gewone kiezer (die moet binnen de gebruikersactie blijven, daarom kort).
+  static forgetDevice() { try { localStorage.removeItem('mcirc.bleId'); } catch (e) {} }
   static async pickDevice() {
+    // Na een mislukte verbinding via het onthouden apparaat wordt dat vergeten, zodat de
+    // volgende klik weer de kiezer toont: een apparaat dat Windows niet meer kent, komt
+    // anders elke keer terug zonder dat de gebruiker een ander kan aanwijzen.
     const wantId = (() => { try { return localStorage.getItem('mcirc.bleId'); } catch (e) { return null; } })();
     try {
       if (wantId && navigator.bluetooth.getDevices) {
@@ -125,7 +129,7 @@ class BleTransport {
             d.addEventListener('advertisementreceived', () => { clearTimeout(timer); ac.abort(); res(true); }, { once: true });
             d.watchAdvertisements({ signal: ac.signal }).catch(() => { clearTimeout(timer); res(false); });
           });
-          if (seen) return d;
+          if (seen) { d._reused = true; return d; }
         }
       }
     } catch (e) { /* kiezer */ }
@@ -133,19 +137,24 @@ class BleTransport {
   }
   async connect() {
     this.device = await BleTransport.pickDevice();
+    if (typeof debugLog === 'function') debugLog(this.device._reused ? 'ble: eerder gekozen node hergebruikt' : 'ble: node via de keuzelijst');
     // Windows laat de GATT-link tijdens het koppelen/versleutelen één of twee keer vallen ("GATT Server is disconnected").
     // Daarom: tot 6 pogingen met oplopende pauze, elke keer opnieuw verbinden, en na het verbinden even wachten voordat
     // de servicelijst gevraagd wordt (Windows heeft die dan nog niet altijd klaar).
     let svc = null, lastErr = null;
     for (let attempt = 0; attempt < 6 && !svc; attempt++) {
       try {
-        if (attempt) await sleep(500 + 500 * attempt);
+        if (attempt) { try { this.device.gatt.disconnect(); } catch (_) {} await sleep(500 + 500 * attempt); }
         const server = this.device.gatt.connected ? this.device.gatt : await this.device.gatt.connect();
         await sleep(attempt ? 500 : 200);
         svc = await server.getPrimaryService(UART_SVC);
-      } catch (e) { lastErr = e; try { this.device.gatt.disconnect(); } catch (_) {} }
+      } catch (e) { lastErr = e; if (typeof debugLog === 'function') debugLog(`ble: poging ${attempt + 1} mislukt: ${e.message || e}`); try { this.device.gatt.disconnect(); } catch (_) {} }
     }
-    if (!svc) { this.device = null; throw new Error(t('ble.hintConnect', lastErr && lastErr.message)); }
+    if (!svc) {
+      const reused = !!this.device._reused; this.device = null;
+      if (reused) { BleTransport.forgetDevice(); throw new Error(t('ble.hintReused', lastErr && lastErr.message)); }
+      throw new Error(t('ble.hintConnect', lastErr && lastErr.message));
+    }
     try { localStorage.setItem('mcirc.bleId', this.device.id); } catch (e) {}
     this._onDisc = () => this._closed(); this.device.addEventListener('gattserverdisconnected', this._onDisc);
     const step = async (name, fn) => {
