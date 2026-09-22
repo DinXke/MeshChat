@@ -119,7 +119,7 @@ function annotateNeighbourLines(html) {
   return html.split('\n').map(line => {
     const m = /^([0-9a-f]{6,64}(?: <span class="mute">\([^<]*\)<\/span>)?):(-?\d+):(-?\d+)\s*$/i.exec(line); if (!m) return line;
     const snr = +m[3] / 4, age = +m[2];
-    return `${m[1]} ${snrBars(snr)}<span class="mute">${snr.toFixed(1)} dB · ${esc(fmtAgo(nowSecs() - age))}</span>`;
+    return `${m[1]} ${snrBars(snr)}<span class="mute">${snr.toFixed(1)} dB</span> · <span class="mute">${esc(t('nb.heardAgo', fmtAgo(nowSecs() - age)))}</span>`;
   }).join('\n');
 }
 function renderMsg(m) {

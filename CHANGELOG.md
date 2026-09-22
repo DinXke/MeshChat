@@ -4,6 +4,10 @@ De versie staat in `src/app1.js` (`APP_VERSION`) en in het Over-venster van de a
 
 Elke release krijgt een git-tag `vX.Y.Z` en een GitHub-release met `meshchat.html` als bijlage. Schema: MINOR bij nieuwe functies, PATCH bij correcties, MAJOR bij een breuk in opslagformaat of protocol.
 
+## 0.7.2 - 2026-09-22
+
+- **Burenlijst**: achter elke buur staat nu voluit "gehoord 12 min geleden" (was alleen "12 min"), zoals in de officiële app.
+
 ## 0.7.1 - 2026-09-22
 
 - **Burengeheugen per repeater**: elk burenantwoord (knop Buren, `/neighbours` of het CLI-commando `neighbors`) wordt samengevoegd met eerdere antwoorden; dubbelen worden op sleutel herkend en de lijst en de kaart tonen alle buren van de laatste 7 dagen, nieuwste eerst. Nodig omdat een repeater per antwoord maar een deel van zijn buren kwijt kan en telkens een andere greep geeft. De kopregel toont hoeveel er in dit antwoord zaten, wat de repeater als totaal meldt en hoeveel het geheugen samen telt.

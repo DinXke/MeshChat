@@ -7,6 +7,7 @@ let LANG = 'nl';
 const I18N = {};
 
 I18N.nl = {
+  'nb.heardAgo': 'gehoord {0} geleden',
   'sig.tip': 'SNR {0} dB · {1}{2}', 'sig.q0': 'amper signaal', 'sig.q1': 'zwak', 'sig.q2': 'matig', 'sig.q3': 'goed', 'sig.q4': 'uitstekend',
   'nb.progress': 'Buren ophalen… {0} van {1}', 'nb.err': 'Buren ophalen mislukt: {0}', 'nb.timeout': 'geen antwoord van de repeater', 'nb.partial': 'Onvolledig: {0} van {1} buren ({2})', 'nb.header': '{0} buren in dit antwoord (repeater meldt {1}); samen met eerdere antwoorden {2} buren van de laatste 7 dagen:', 'nb.cliMerged': 'Burengeheugen: {0} in dit antwoord, samen {1} van de laatste 7 dagen (knop "Buren op kaart" toont ze allemaal).', 'nb.noTarget': 'Geef een repeater op, of open eerst zijn venster.', 'cmd.neighbours': 'Alle buren van een repeater ophalen en op de kaart tonen', 'state.histFail': 'Geschiedenis kon niet in IndexedDB bewaard worden; ze wordt beperkt in localStorage bewaard.',
   
@@ -257,6 +258,7 @@ I18N.nl = {
 };
 
 I18N.en = {
+  'nb.heardAgo': 'heard {0} ago',
   'sig.tip': 'SNR {0} dB · {1}{2}', 'sig.q0': 'barely any signal', 'sig.q1': 'weak', 'sig.q2': 'fair', 'sig.q3': 'good', 'sig.q4': 'excellent',
   'nb.progress': 'Fetching neighbours… {0} of {1}', 'nb.err': 'Fetching neighbours failed: {0}', 'nb.timeout': 'no answer from the repeater', 'nb.partial': 'Incomplete: {0} of {1} neighbours ({2})', 'nb.header': '{0} neighbours in this reply (repeater reports {1}); together with earlier replies {2} neighbours of the last 7 days:', 'nb.cliMerged': 'Neighbour memory: {0} in this reply, {1} in total over the last 7 days (the "Neighbours on map" button shows them all).', 'nb.noTarget': 'Name a repeater, or open its window first.', 'cmd.neighbours': 'Fetch all neighbours of a repeater and show them on the map', 'state.histFail': 'History could not be stored in IndexedDB; a limited history is kept in localStorage instead.',
   
@@ -486,6 +488,7 @@ I18N.en = {
 };
 
 I18N.fr = {
+  'nb.heardAgo': 'entendu il y a {0}',
   'sig.tip': 'SNR {0} dB · {1}{2}', 'sig.q0': 'signal à peine perceptible', 'sig.q1': 'faible', 'sig.q2': 'moyen', 'sig.q3': 'bon', 'sig.q4': 'excellent',
   'nb.progress': 'Récupération des voisins… {0} sur {1}', 'nb.err': 'Échec de la récupération des voisins : {0}', 'nb.timeout': 'pas de réponse du répéteur', 'nb.partial': 'Incomplet : {0} voisins sur {1} ({2})', 'nb.header': '{0} voisins dans cette réponse (le répéteur en annonce {1}) ; avec les réponses précédentes, {2} voisins sur les 7 derniers jours :', 'nb.cliMerged': 'Mémoire des voisins : {0} dans cette réponse, {1} au total sur 7 jours (le bouton « Voisins sur la carte » les affiche tous).', 'nb.noTarget': 'Indiquez un répéteur, ou ouvrez d\'abord sa fenêtre.', 'cmd.neighbours': 'Récupérer tous les voisins d\'un répéteur et les afficher sur la carte', 'state.histFail': 'L\'historique n\'a pu être enregistré dans IndexedDB ; un historique limité est conservé dans localStorage.',
   
