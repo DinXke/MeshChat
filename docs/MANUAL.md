@@ -59,7 +59,7 @@ Direct messages are acknowledged (✓). Delivery is retried automatically: "atte
 
 ![Repeater console](screenshots/repeater.png)
 
-Plain text in a repeater window is sent as a CLI command (`ver`, `get radio`, `neighbors`, `advert`, …). Log in first with the admin password. Quick-command chips sit above the input. The info panel offers **Status** (statistics), **Neighbours** (fetches the complete neighbour list through the binary request the official app uses, paged until the repeater reports the total, lists it in the window and draws it on the map; also `/neighbours [name]`), **Status window**, **Telemetry**, **Trace** (SNR per hop), **Find path**, **Set path** and **Reset path**.
+Plain text in a repeater window is sent as a CLI command (`ver`, `get radio`, `neighbors`, `advert`, …). Log in first with the admin password. Quick-command chips sit above the input. The info panel offers **Status** (statistics), **Neighbours** (fetches the complete neighbour list through the binary request the official app uses, paged until the repeater reports the total, merges it with earlier replies into a per-repeater neighbour memory of the last 7 days, lists it in the window and draws it on the map; also `/neighbours [name]`; plain `neighbors` CLI replies feed the same memory), **Status window**, **Telemetry**, **Trace** (SNR per hop), **Find path**, **Set path** and **Reset path**.
 
 ![Status window](screenshots/status.png)
 

@@ -227,7 +227,8 @@ function handleIncoming(m) {
       for (const w of (S.cliWaiters || []).filter(w => w.pub === c.pub)) { clearTimeout(w.timer); w.resolve(m.text); } S.cliWaiters = (S.cliWaiters || []).filter(w => w.pub !== c.pub);
       const pending = cv.msgs.slice(-20).reverse().find(x => x.kind === 'cli' && x.ack === 'pending');
       if (pending) { pending.text = (pending.text ? pending.text + '\n' : '') + m.text; pending.ack = null; pending.snr = m.snr; pending.pathLen = m.pathLen; clearTimeout(pending._timer); updateMsgDom(pending); if (cv.key !== S.active) { cv.unread++; renderTree(); } saveState();
-        if (S.autoNbFor === c.pub && /^neighbou?rs\b/i.test(pending.cmd || '')) { S.autoNbFor = null; const nb = parseNeighbors(pending.text); if (nb.length) mapShowNeighbors(c, nb); else toast(t('nb.none'), 'warn'); } }
+        if (/^neighbou?rs\b/i.test(pending.cmd || '')) { const nb = parseNeighbors(pending.text); if (nb.length) { const merged = nbMerge(c, nb); if (merged.length > nb.length) notice(t('nb.cliMerged', nb.length, merged.length), cv, false); } }
+        if (S.autoNbFor === c.pub && /^neighbou?rs\b/i.test(pending.cmd || '')) { S.autoNbFor = null; const nb = nbMerged(c); if (nb.length) mapShowNeighbors(c, nb); else toast(t('nb.none'), 'warn'); } }
       else addMsg(cv, { kind: 'cli', nick: displayName(c), cmd: '', text: m.text, t: saneTs(m.ts), snr: m.snr, pathLen: m.pathLen });
       return;
     }
@@ -280,7 +281,7 @@ function askCli(c, cmdText, timeoutMs = 20000) {
 // Verzoek: [6, versie 0, aantal, offset LE16, volgorde (0 = nieuwste eerst), prefixlengte, 4 willekeurige bytes].
 // Antwoord (na de tag): [totaal LE16][aantal LE16] dan per buur [prefix][seconden geleden LE32][snr×4 i8].
 // De repeater past hoogstens 130 bytes in één antwoord: met een prefix van 6 bytes zijn dat 11 buren per pagina.
-const NB_PREFIX = 6, NB_PER_PAGE = 11;
+const NB_PREFIX = 6, NB_PER_PAGE = 10; // 10 per pagina, zoals de officiële app ("10 van 27")
 function waitBinaryResp(tag, ms) {
   return new Promise((res, rej) => {
     const w = { tag, res, timer: setTimeout(() => { S.binWaiters = (S.binWaiters || []).filter(x => x !== w); rej(new Error(t('nb.timeout'))); }, ms) };
@@ -291,6 +292,22 @@ C.addEventListener('binaryResp', (e) => {
   const ws = S.binWaiters || []; const w = ws.find(x => x.tag === e.detail.tag);
   if (w) { clearTimeout(w.timer); S.binWaiters = ws.filter(x => x !== w); w.res(e.detail.data); } else debugLog('binair antwoord zonder wachter, tag ' + e.detail.tag);
 });
+// Burengeheugen per repeater (S.extras[pub].nb): elk antwoord, via knop of CLI, wordt samengevoegd met wat eerder binnenkwam.
+// Sleutel = eerste 4 bytes van de prefix (het CLI-antwoord geeft er 4, het binaire verzoek 6); ouder dan 7 dagen valt weg.
+function nbCache(c) { const x = S.extras[c.pub] || (S.extras[c.pub] = {}); if (!x.nb || typeof x.nb !== 'object') x.nb = {}; return x.nb; }
+function nbMerge(c, list) {
+  const nb = nbCache(c); const now = nowSecs();
+  for (const n of list || []) {
+    if (!n || !n.hex) continue; const k = n.hex.slice(0, 8).toLowerCase(); const heardAt = now - (n.age || 0); const old = nb[k];
+    if (!old || heardAt >= old.heardAt - 5) nb[k] = { heardAt, snr: n.snr, hex: (old && old.hex && old.hex.length > n.hex.length) ? old.hex : n.hex.toLowerCase() };
+  }
+  for (const k of Object.keys(nb)) if (now - nb[k].heardAt > 7 * 86400) delete nb[k];
+  saveState(); return nbMerged(c);
+}
+function nbMerged(c) {
+  const nb = nbCache(c); const now = nowSecs();
+  return Object.values(nb).map(v => ({ hex: v.hex, snr: v.snr, age: Math.max(0, now - v.heardAt), contact: contactByPrefix(v.hex) })).sort((a, b) => a.age - b.age);
+}
 async function fetchAllNeighbours(c) {
   const cv = convForContact(c); if (!requireConn(cv)) return null;
   const m = { kind: 'cli', nick: displayName(c), cmd: 'neighbours', text: '', ack: 'pending' }; addMsg(cv, m);
@@ -318,10 +335,11 @@ async function fetchAllNeighbours(c) {
     }
   } catch (e) { if (!all.length) { m.ack = 'fail'; m.text = t('nb.err', e.message || e); updateMsgDom(m); saveState(); return null; } toast(t('nb.partial', all.length, total ?? '?', e.message || e), 'warn'); }
   m.ack = null; m.nbTotal = total;
+  const merged = nbMerge(c, all);
   // Zelfde regelvorm als het CLI-antwoord (prefix:seconden:snr×4), zodat namen, kleuren en de kaartknop gewoon werken.
-  m.text = t('nb.header', all.length, total ?? all.length) + '\n' + all.map(x => `${x.hex}:${x.age}:${Math.round(x.snr * 4)}`).join('\n');
+  m.text = t('nb.header', all.length, total ?? all.length, merged.length) + '\n' + merged.map(x => `${x.hex}:${x.age}:${Math.round(x.snr * 4)}`).join('\n');
   updateMsgDom(m); saveState();
-  return all;
+  return merged;
 }
 async function neighboursToMap(c) { const list = await fetchAllNeighbours(c); if (!list) return; if (list.length) mapShowNeighbors(c, list); else toast(t('nb.none'), 'warn'); }
 // Buren uit het CLI-antwoord van 'neighbors': per regel een sleutelprefix, daarna SNR en ouderdom (seconden).

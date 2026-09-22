@@ -396,7 +396,7 @@ function wire() {
   on('#btn-chan-info', 'click', () => { const cv = activeConv(); const c = cv.pub ? S.contacts.get(cv.pub) : null; if (c) openContactDlg(c); else if (cv.kind === 'channel') { const ch = channelByConv(cv); if (ch) promptDlg(t('chkey.title', cv.name), t('chkey.label', b64(unhex(ch.secret))), ch.secret); } else fillSettings().then(() => $('#dlg-settings').showModal()); });
   // messages
   on('#messages', 'contextmenu', (e) => { const el = e.target.closest('.m'); if (!el) return; const m = msgFromEl(el); if (!m) return; e.preventDefault(); showCtx(e.clientX, e.clientY, msgContextItems(m, activeConv())); });
-  on('#messages', 'click', (e) => { const b = e.target.closest('.nb-btn'); if (!b) return; const cv = activeConv(); const m = cv.msgs.find(x => x.id === b.dataset.nb); const c = cv.pub ? S.contacts.get(cv.pub) : null; if (m && c) mapShowNeighbors(c, parseNeighbors(m.text)); });
+  on('#messages', 'click', (e) => { const b = e.target.closest('.nb-btn'); if (!b) return; const cv = activeConv(); const m = cv.msgs.find(x => x.id === b.dataset.nb); const c = cv.pub ? S.contacts.get(cv.pub) : null; if (m && c) mapShowNeighbors(c, (nbMerged(c).length ? nbMerged(c) : null) || parseNeighbors(m.text)); });
   on('#map-nb-clear', 'click', mapClearNeighbors);
   // tropo-overlay (standaard uit, alleen online)
   on('#map-tropo', 'change', (e) => tropoSetEnabled(e.target.checked));
