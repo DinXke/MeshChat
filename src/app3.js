@@ -33,6 +33,7 @@ async function afterConnect() {
   if (!S.convs.has(S.active) || S.active === 'status') { const pub = S.channels.find(c => c && c.secret === PUBLIC_KEY_HEX); if (pub) openConv(convKeyForChannel(pub)); }
   renderTree(); renderHead(activeConv()); renderUsers(activeConv());
   await drainMessages();
+  if (C.tr && C.tr.dups) notice(t('ble.dups', C.tr.dups), st, false);
   autoLogin();
   if (S.pendingUri) { const u = S.pendingUri; S.pendingUri = null; setTimeout(() => handleIncomingUri(u), 500); }
   if (S.settings.notif && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(() => {});

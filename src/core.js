@@ -154,9 +154,17 @@ class BleTransport {
     };
     this.rx = await step(t('ble.stepRx'), () => svc.getCharacteristic(UART_RX));
     this.tx = await step(t('ble.stepTx'), () => svc.getCharacteristic(UART_TX));
+    // Windows levert bij een gekoppeld apparaat soms élke notificatie twee keer af (Chromium-eigenaardigheid). Elk
+    // antwoord komt dan dubbel binnen en de client koppelt het tweede exemplaar aan het volgende commando, waardoor
+    // alles één plaats verschuift (verkeerde firmware-info, klok op 1970, "ongeldig argument", corrupte kanalen, halve
+    // burenlijsten). Een identiek frame binnen 200 ms na het vorige wordt daarom genegeerd; een echt antwoord komt
+    // nooit twee keer identiek zo snel achter elkaar.
     this._onValue = (ev) => {
       if (!this.device || ev.target !== this.tx) return; // stale listener of a closed transport
       const v = ev.target.value; const u8 = new Uint8Array(v.buffer, v.byteOffset, v.byteLength).slice();
+      const now = performance.now(); const key = hex(u8);
+      if (key === this._lastKey && now - this._lastAt < 200) { this._lastAt = now; this.dups = (this.dups || 0) + 1; return; }
+      this._lastKey = key; this._lastAt = now;
       try { this.onFrame && this.onFrame(u8); } catch (e) { console.error(e); }
     };
     if (BleTransport._lastTx && BleTransport._lastTx.tx) { try { BleTransport._lastTx.tx.removeEventListener('characteristicvaluechanged', BleTransport._lastTx.fn); } catch (e) {} }

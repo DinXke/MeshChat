@@ -4,6 +4,10 @@ De versie staat in `src/app1.js` (`APP_VERSION`) en in het Over-venster van de a
 
 Elke release krijgt een git-tag `vX.Y.Z` en een GitHub-release met `meshchat.html` als bijlage. Schema: MINOR bij nieuwe functies, PATCH bij correcties, MAJOR bij een breuk in opslagformaat of protocol.
 
+## 0.7.4 - 2026-09-22
+
+- **Fix Bluetooth op Windows**: bij een gekoppeld apparaat levert Windows soms élke notificatie twee keer af. Elk antwoord van de node kwam dan dubbel binnen en werd één commando verschoven verwerkt: verkeerde firmware-info, klok "op 1970", "ongeldig argument" bij het verbinden, corrupte kanaalnamen en halve burenlijsten (de 8 van 27 bij Jessa.VIR). Identieke frames binnen 200 ms worden nu genegeerd; het statusvenster meldt hoeveel dubbelen er waren.
+
 ## 0.7.3 - 2026-09-22
 
 - **Bluetooth taaier**: tot zes verbindingspogingen met oplopende pauze en een korte wachttijd na het verbinden voordat de servicelijst gevraagd wordt (Windows laat de link tijdens het versleutelen vaak één of twee keer vallen). De eerder gekozen node wordt hergebruikt zonder kiezer als de browser dat ondersteunt (Chrome: `getDevices`); anders verschijnt de kiezer zoals voorheen. De foutmelding legt uit wanneer Windows opnieuw moet koppelen: zodra Windows en de node niet meer dezelfde sleutels hebben (herstart of herflash van de node, pincodewijziging, koppeling met een ander toestel).
