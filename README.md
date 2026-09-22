@@ -19,7 +19,7 @@ Geen server, geen installatie, geen externe bronnen: open `meshchat.html` in Chr
 
 ## Functies
 
-- **Verbinding** via USB, Bluetooth of TCP/IP (WiFi-companion, via de meegeleverde WebSocket-brug) met het companion-protocol (frames `>`/`<` + lengte, v3-berichtformaten, alle push-codes).
+- **Verbinding** via USB of Bluetooth met het companion-protocol (frames `>`/`<` + lengte, v3-berichtformaten, alle push-codes).
 - **IRC-gevoel**: statusvenster, kanalen, rooms (`&naam`), privévensters en repeater-consoles; regels als `[tijd] <nick> tekst`, nick-kleuren, highlight bij vermelding, ongelezen-tellers, Tab-aanvulling, invoergeschiedenis, `/commando`'s met autocomplete.
 - **Kanalen**: `#public`, hashtag-kanalen (sleutel = SHA-256 van `#naam`, compatibel met de officiële app), privékanalen met gedeelde sleutel (hex/base64) of met wachtwoord.
 - **Rooms en repeaters**: login, posts met auteur-herkenning, CLI-commando's met snelknoppen, status, telemetrie (CayenneLPP), trace met SNR per hop, pad zoeken, pad reset.
@@ -35,7 +35,7 @@ Geen server, geen installatie, geen externe bronnen: open `meshchat.html` in Chr
 ## Gebruik
 
 1. Download `meshchat.html` en open het in Chrome of Edge (desktop of Android). Op iOS werkt alleen Bluetooth via de Bluefy-browser.
-2. Klik op **USB** en kies de COM-poort, of op **Bluetooth** en kies de node. Heeft je node WiFi (ESP32-firmware met `WIFI_SSID`), dan kan het ook via **TCP/IP**: draai op je pc `python src/tools/meshchat-bridge.py <ip-van-de-node>` (of `websocat -b ws-l:127.0.0.1:5005 tcp:<ip>:5000`) en geef in MeshChat `ws://127.0.0.1:5005` op. Een browser kan zelf geen TCP-verbinding openen, daarom die brug.
+2. Klik op **USB** en kies de COM-poort, of op **Bluetooth** en kies de node.
    Windows vraagt bij Bluetooth de eerste keer een pincode (standaard `123456`); mislukt de eerste poging, klik dan nog een keer. De node mag niet tegelijk met de telefoon-app verbonden zijn.
 3. Blokkeert de browser Web Serial/Bluetooth vanaf `file://`, host het bestand dan via https of `localhost`.
 

@@ -12,7 +12,6 @@ The hosted version, installable as an app, lives at **<https://chat.meshmanager.
 |---|---|
 | **USB** | Opens the browser's serial-port picker. Choose the COM port of your node. |
 | **Bluetooth** | Opens the Bluetooth picker. Choose your node. On Windows the first attempt asks for the pairing PIN (default `123456`); if that first attempt fails, simply click Bluetooth again. The node must not be connected to the phone app at the same time. |
-| **TCP/IP** | For a WiFi companion (ESP32 firmware built with `WIFI_SSID`, TCP port 5000), like the official app. Browsers cannot open raw TCP sockets, so a small bridge translates WebSocket to TCP: run `python src/tools/meshchat-bridge.py <node-ip>` on your PC (standard library only) or `websocat -b ws-l:127.0.0.1:5005 tcp:<node-ip>:5000`, then pick or enter the bridge in the TCP/IP window (saved connections with a name, last used on top). From an https page the browser only allows an insecure `ws://` to localhost. For a bridge on another machine (a Pi next to the node, say) start it with `--tls cert.pem key.pem` (self-signed is fine: `openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 3650 -subj /CN=meshchat-bridge`), open `https://<bridge>:5005/` once in the browser to accept the certificate, then connect to `wss://<bridge>:5005`. |
 | **Disconnect** | Closes the link. |
 | **Sync** | Drains the node's message queue immediately (normally this happens automatically). |
 

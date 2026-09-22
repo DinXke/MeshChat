@@ -4,6 +4,10 @@ De versie staat in `src/app1.js` (`APP_VERSION`) en in het Over-venster van de a
 
 Elke release krijgt een git-tag `vX.Y.Z` en een GitHub-release met `meshchat.html` als bijlage. Schema: MINOR bij nieuwe functies, PATCH bij correcties, MAJOR bij een breuk in opslagformaat of protocol.
 
+## 0.5.0 - 2026-09-22
+
+- **TCP/IP weer verwijderd** (uit 0.4.0 en 0.4.1): een browser kan geen TCP-verbinding openen, dus het kon alleen met een brug of een doorgeefluik op de server, en dat was niet wat gevraagd werd. Knop, venster, WebSocket-transport en `meshchat-bridge.py` zijn weg. De USB-framing-fix uit 0.4.0 blijft.
+
 ## 0.4.1 - 2026-09-22
 
 - **TCP/IP-verbindingen bewaren**: eigen venster met een lijst van bewaarde bruggen (naam + adres), laatst gebruikte bovenaan, bewaren en verwijderen; verbinden onthoudt het adres automatisch.
