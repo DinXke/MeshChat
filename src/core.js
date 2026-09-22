@@ -295,6 +295,7 @@ class MeshCoreClient extends EventTarget {
       case PUSH.LOGIN_FAIL: this.emit('login', { ok: false, prefix: hex(f.subarray(2, 8)) }); break;
       case PUSH.STATUS_RESPONSE: this.emit('status', { prefix: hex(f.subarray(2, 8)), stats: parseStatus(f), raw: f }); break;
       case PUSH.TELEMETRY_RESPONSE: this.emit('telemetry', { prefix: hex(f.subarray(2, 8)), lpp: parseLPP(f.subarray(8)) }); break;
+      case PUSH.BINARY_RESPONSE: this.emit('binaryResp', { tag: hex(f.subarray(2, 6)), data: f.subarray(6) }); break;
       case PUSH.TRACE_DATA: {
         const pathLen = f[2], flags = f[3], sz = flags & 3, n = pathLen >> sz;
         const hashes = []; for (let i = 0; i < n; i++) hashes.push(hex(f.subarray(12 + i * (1 << sz), 12 + (i + 1) * (1 << sz))));
@@ -353,6 +354,8 @@ class MeshCoreClient extends EventTarget {
   reboot() { return this.cmd(cat([CMD.REBOOT], te.encode('reboot')), { timeout: 1500 }).catch(() => {}); }
   async login(pubHex, password) { const f = await this.cmd(cat([CMD.SEND_LOGIN], unhex(pubHex), te.encode(password))); return { flood: f[1] === 1, timeoutMs: rdU32(f, 6) }; }
   logout(pubHex) { return this.cmd(cat([CMD.LOGOUT], unhex(pubHex))); }
+  // Binair verzoek (REQ_TYPE_*) naar een repeater/room; antwoord komt als push 0x8C met dezelfde tag.
+  async binaryReq(pubHex, req) { const f = await this.cmd(cat([CMD.SEND_BINARY_REQ], unhex(pubHex), req)); return { tag: hex(f.subarray(2, 6)), timeoutMs: rdU32(f, 6) }; }
   async statusReq(pubHex) { const f = await this.cmd(cat([CMD.SEND_STATUS_REQ], unhex(pubHex))); return { timeoutMs: rdU32(f, 6) }; }
   async telemetryReq(pubHex) { const f = await this.cmd(cat([CMD.SEND_TELEMETRY_REQ, 0, 0, 0], unhex(pubHex))); return { timeoutMs: rdU32(f, 6) }; }
   async pathDiscovery(pubHex) { const f = await this.cmd(cat([CMD.SEND_PATH_DISCOVERY_REQ, 0], unhex(pubHex))); return { timeoutMs: rdU32(f, 6) }; }

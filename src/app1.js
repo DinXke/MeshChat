@@ -2,9 +2,9 @@
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const APP_BUILD = '__BUILD__'; // wordt door build.sh vervangen door datum+commit; basis van de updatecheck
-const APP_VERSION = '0.5.0', APP_REPO = 'https://github.com/DinXke/MeshChat', APP_AUTHOR = 'DinX';
+const APP_VERSION = '0.6.0', APP_REPO = 'https://github.com/DinXke/MeshChat', APP_AUTHOR = 'DinX';
 const LS_KEY = 'mcirc.v1';
-const MAX_HIST = 400;
+const MAX_HIST = 2000;
 
 const S = {
   client: new MeshCoreClient(),
@@ -36,15 +36,56 @@ function loadState() {
     for (const [key, meta] of Object.entries(st.convs || {})) { const cv = mkConv(key, meta.kind, meta.name, meta.pub, meta.secret); cv.msgs = (st.history || {})[key] || []; cv.lastRead = meta.lastRead || 0; for (const m of cv.msgs) if ((m.kind === 'msg' || m.kind === 'action') && m.nick && !m.self) cv.users.set(m.nick, { nick: m.nick, last: m.t, snr: m.snr, pub: m.pub }); }
   } catch (e) { console.warn('state load', e); }
 }
+// Berichtgeschiedenis in IndexedDB (per gesprek één record). localStorage is beperkt tot ~5 MB en met honderden contacten
+// en ruwe pakketten per bericht liep het opslaan daar stil vast, waardoor de geschiedenis na een herstart weg leek.
+const HIST_DB = 'mcirc-hist', HIST_STORE = 'conv';
+function histDb() {
+  if (S._histDb) return S._histDb;
+  S._histDb = new Promise((res) => {
+    if (!('indexedDB' in globalThis)) return res(null);
+    try { const r = indexedDB.open(HIST_DB, 1); r.onupgradeneeded = () => r.result.createObjectStore(HIST_STORE); r.onsuccess = () => res(r.result); r.onerror = () => res(null); r.onblocked = () => res(null); }
+    catch (e) { res(null); }
+  });
+  return S._histDb;
+}
+async function histLoadAll() {
+  const db = await histDb(); if (!db) return null;
+  return new Promise((res) => { const out = new Map(); try { const rq = db.transaction(HIST_STORE, 'readonly').objectStore(HIST_STORE).openCursor(); rq.onsuccess = () => { const c = rq.result; if (c) { out.set(c.key, c.value); c.continue(); } else res(out); }; rq.onerror = () => res(out); } catch (e) { res(out); } });
+}
+function histStrip(msgs) { return msgs.slice(-MAX_HIST).map(m => { const { _timer, ...rest } = m; return rest; }); }
+async function histSaveAll() {
+  const db = await histDb(); if (!db) return false;
+  return new Promise((res) => {
+    try {
+      const tx = db.transaction(HIST_STORE, 'readwrite'); const st = tx.objectStore(HIST_STORE);
+      for (const [k, cv] of S.convs) { if (k === 'status' || k === 'map') continue; st.put(histStrip(cv.msgs), k); }
+      tx.oncomplete = () => res(true); tx.onerror = () => res(false); tx.onabort = () => res(false);
+    } catch (e) { res(false); }
+  });
+}
+async function histDeleteKey(k) { const db = await histDb(); if (!db) return; try { db.transaction(HIST_STORE, 'readwrite').objectStore(HIST_STORE).delete(k); } catch (e) {} }
+// Bij het opstarten: geschiedenis uit IndexedDB over die uit localStorage leggen (oudere versies bewaarden ze daar)
+async function histRestore() {
+  const map = await histLoadAll(); if (!map) return false; let changed = false;
+  for (const [k, msgs] of map) {
+    const cv = S.convs.get(k); if (!cv || !Array.isArray(msgs)) continue;
+    if (msgs.length >= cv.msgs.length) { cv.msgs = msgs; changed = true; for (const m of msgs) if ((m.kind === 'msg' || m.kind === 'action') && m.nick && !m.self) cv.users.set(m.nick, { nick: m.nick, last: m.t, snr: m.snr, pub: m.pub }); }
+  }
+  return changed;
+}
 let saveTimer = null;
 function saveState(now) {
   clearTimeout(saveTimer);
   const doSave = () => {
     try {
       const convs = {}, history = {};
-      for (const [k, cv] of S.convs) { if (k === 'status') continue; convs[k] = { kind: cv.kind, name: cv.name, pub: cv.pub, secret: cv.secret, lastRead: cv.lastRead }; history[k] = cv.msgs.slice(-MAX_HIST).map(m => { const { _timer, ...rest } = m; return rest; }); }
+      for (const [k, cv] of S.convs) { if (k === 'status') continue; convs[k] = { kind: cv.kind, name: cv.name, pub: cv.pub, secret: cv.secret, lastRead: cv.lastRead }; }
       const contacts = Array.from(S.contacts.values()).map(c => ({ ...c, loggedIn: false }));
-      localStorage.setItem(LS_KEY, JSON.stringify({ settings: S.settings, extras: S.extras, roomPw: S.roomPw, sendScope: S.sendScope, contactsSync: S.contactsSync, chanScope: S.chanScope, contacts, channels: S.channels, convs, history }));
+      // Geschiedenis gaat naar IndexedDB (histSaveAll); alleen als dat er niet is, blijft ze (beperkt) in localStorage.
+      const useIdb = 'indexedDB' in globalThis && !S._histFallback;
+      if (!useIdb) for (const [k, cv] of S.convs) { if (k !== 'status' && k !== 'map') history[k] = histStrip(cv.msgs).slice(-300); }
+      localStorage.setItem(LS_KEY, JSON.stringify({ settings: S.settings, extras: S.extras, roomPw: S.roomPw, sendScope: S.sendScope, contactsSync: S.contactsSync, chanScope: S.chanScope, contacts, channels: S.channels, convs, history: useIdb ? undefined : history }));
+      if (useIdb) histSaveAll().then(ok => { if (!ok && !S._histFallback) { S._histFallback = true; toast(t('state.histFail'), 'warn'); saveState(true); } });
     } catch (e) { console.warn('state save', e); toast(t('state.saveFail', e.message), 'err'); }
   };
   if (now) doSave(); else saveTimer = setTimeout(doSave, 800);

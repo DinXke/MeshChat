@@ -39,6 +39,16 @@
           break; }
         case 3: { reply([0]); setTimeout(() => { this.push(cat([0x88, 26, -95 & 255], P('15'), [0x01], P('a1'), te.encode('grp'))); queue.push(cat([17, 26, 0, 0], [p[2], 1, 0], u32le(now()), te.encode('Sofie: ' + 'ontvangen: ' + td.decode(p.subarray(7)) + ' — top Bjorn!'))); this.push([0x83]); }, 1500); break; }
         case 26: { reply(cat([6, 0], P('01020304'), u32le(3000))); const ct = contacts.find(x => x.pub === hex(p.subarray(1, 33))); setTimeout(() => this.push(cat([td.decode(p.subarray(33)) === 'password' ? 0x85 : 0x86, 1], P(ct.pub).subarray(0, 6), u32le(now()), [7, 3])), 900); break; }
+        case 50: { // SEND_BINARY_REQ: [50][pub 32][req...]; alleen REQ_TYPE_GET_NEIGHBOURS (6) nagebootst
+          const req = p.subarray(33); const tag = P('0b0c0d0e'); reply(cat([6, 0], tag, u32le(3000)));
+          if (req[0] === 6) {
+            const cnt = req[2], off = req[3] | (req[4] << 8), plen = req[6];
+            const known = ['7f3311aa2222', '5d21aabb6666', 'c07e55663333'];
+            const fake = Array.from({ length: 25 }, (_, i) => known[i] || (i.toString(16).padStart(2, '0') + 'facade' + i.toString(16).padStart(4, '0')));
+            const rows = []; for (let i = off; i < Math.min(fake.length, off + cnt) && rows.length * (plen + 5) + plen + 5 <= 126; i++) rows.push(cat(P(fake[i].padEnd(plen * 2, '0').slice(0, plen * 2)), u32le(30 + i * 97), [(20 - i) & 255]));
+            setTimeout(() => this.push(cat([0x8C, 0], tag, [fake.length & 255, fake.length >> 8], [rows.length & 255, rows.length >> 8], ...rows)), 400);
+          }
+          break; }
         case 27: { reply(cat([6, 0], P('0a0b0c0d'), u32le(3000))); const ct = contacts.find(x => x.pub === hex(p.subarray(1, 33))); setTimeout(() => this.push(cat([0x87, 0], P(ct.pub).subarray(0, 6), [0x14, 0x10], [2, 0], i32le(-104).slice(0, 2), i32le(-98).slice(0, 2), u32le(18420), u32le(4070), u32le(3600 * 3), u32le(86400 * 3 + 3600 * 14), u32le(3000), u32le(1070), u32le(15000), u32le(3420), [1, 0], [26, 0], [5, 0], [9, 0], u32le(5000))), 800); break; }
         case 39: { reply(cat([6, 0], P('0e0f1011'), u32le(3000))); const ct = contacts.find(x => x.pub === hex(p.subarray(4, 36))); setTimeout(() => this.push(cat([0x8B, 0], P((ct || { pub: selfPub }).pub).subarray(0, 6), [1, 0x74, 0x01, 0x9B, 1, 0x67, 0x00, 0xB6, 1, 0x68, 0x8E])), 700); break; }
         case 52: { reply(cat([6, 1], P('12131415'), u32le(5000))); const ct = contacts.find(x => x.pub === hex(p.subarray(2, 34))); setTimeout(() => this.push(cat([0x8D, 0], P(ct.pub).subarray(0, 6), [2], P('a17f'), [2], P('7fa1'))), 1000); break; }

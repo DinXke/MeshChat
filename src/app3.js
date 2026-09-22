@@ -276,6 +276,48 @@ function askCli(c, cmdText, timeoutMs = 20000) {
     (S.cliWaiters = S.cliWaiters || []).push(w); sendCli(cv, c, cmdText).catch(e => { clearTimeout(w.timer); reject(e); });
   });
 }
+// ---------- buren: volledige lijst via REQ_TYPE_GET_NEIGHBOURS (0x06), gepagineerd zoals de officiële app ----------
+// Verzoek: [6, versie 0, aantal, offset LE16, volgorde (0 = nieuwste eerst), prefixlengte, 4 willekeurige bytes].
+// Antwoord (na de tag): [totaal LE16][aantal LE16] dan per buur [prefix][seconden geleden LE32][snr×4 i8].
+// De repeater past hoogstens 130 bytes in één antwoord: met een prefix van 6 bytes zijn dat 11 buren per pagina.
+const NB_PREFIX = 6, NB_PER_PAGE = 11;
+function waitBinaryResp(tag, ms) {
+  return new Promise((res, rej) => {
+    const w = { tag, res, timer: setTimeout(() => { S.binWaiters = (S.binWaiters || []).filter(x => x !== w); rej(new Error(t('nb.timeout'))); }, ms) };
+    (S.binWaiters = S.binWaiters || []).push(w);
+  });
+}
+C.addEventListener('binaryResp', (e) => {
+  const ws = S.binWaiters || []; const w = ws.find(x => x.tag === e.detail.tag);
+  if (w) { clearTimeout(w.timer); S.binWaiters = ws.filter(x => x !== w); w.res(e.detail.data); } else debugLog('binair antwoord zonder wachter, tag ' + e.detail.tag);
+});
+async function fetchAllNeighbours(c) {
+  const cv = convForContact(c); if (!requireConn(cv)) return null;
+  const m = { kind: 'cli', nick: displayName(c), cmd: 'neighbours', text: '', ack: 'pending' }; addMsg(cv, m);
+  const all = []; let total = null, offset = 0;
+  try {
+    for (let page = 0; page < 60; page++) {
+      const blob = new Uint8Array(4); crypto.getRandomValues(blob);
+      const req = Uint8Array.from([6, 0, NB_PER_PAGE, offset & 255, offset >> 8, 0, NB_PREFIX, ...blob]);
+      const r = await C.binaryReq(c.pub, req);
+      const d = await waitBinaryResp(r.tag, Math.max(r.timeoutMs || 0, 6000) + 4000);
+      if (d.length < 4) break;
+      total = rdU16(d, 0); const n = rdU16(d, 2); let o = 4;
+      for (let i = 0; i < n && o + NB_PREFIX + 5 <= d.length; i++) {
+        const hx = hex(d.subarray(o, o + NB_PREFIX)); o += NB_PREFIX; const age = rdU32(d, o); o += 4; const snr = rdI8(d[o]) / 4; o += 1;
+        if (!all.some(x => x.hex === hx)) all.push({ hex: hx, age, snr, contact: contactByPrefix(hx) });
+      }
+      offset += n; if (n === 0 || offset >= total) break;
+      m.text = t('nb.progress', all.length, total); updateMsgDom(m);
+    }
+  } catch (e) { if (!all.length) { m.ack = 'fail'; m.text = t('nb.err', e.message || e); updateMsgDom(m); saveState(); return null; } toast(t('nb.partial', all.length, total ?? '?', e.message || e), 'warn'); }
+  m.ack = null; m.nbTotal = total;
+  // Zelfde regelvorm als het CLI-antwoord (prefix:seconden:snr×4), zodat namen, kleuren en de kaartknop gewoon werken.
+  m.text = t('nb.header', all.length, total ?? all.length) + '\n' + all.map(x => `${x.hex}:${x.age}:${Math.round(x.snr * 4)}`).join('\n');
+  updateMsgDom(m); saveState();
+  return all;
+}
+async function neighboursToMap(c) { const list = await fetchAllNeighbours(c); if (!list) return; if (list.length) mapShowNeighbors(c, list); else toast(t('nb.none'), 'warn'); }
 // Buren uit het CLI-antwoord van 'neighbors': per regel een sleutelprefix, daarna SNR en ouderdom (seconden).
 function parseNeighbors(text) {
   const out = [];
@@ -359,6 +401,7 @@ async function handleInput(raw) {
       case '/connect': connect(/bl|bt/i.test(arg) ? 'ble' : 'usb'); break;
       case '/disconnect': case '/quit': await C.disconnect(); break;
       case '/join': await joinChannel(argv[0], argv.slice(1).join(' ')); break;
+      case '/neighbours': case '/neighbors': case '/buren': { const c = targetContact(argv[0]); if (!c) break; if (!requireConn(cv)) break; neighboursToMap(c); break; }
       case '/part': case '/leave': await leaveChannel(arg ? S.channels.find(c => c && (c.name.toLowerCase() === arg.toLowerCase() || (arg.toLowerCase() === '#public' && c.secret === PUBLIC_KEY_HEX))) : channelByConv(cv)); break;
       case '/msg': { const c = targetContact(argv[0]); if (!c) break; const t = argv.slice(1).join(' '); const cv2 = convForContact(c); cv2.open = true; openConv(cv2.key); if (t) await sendToConv(cv2, t); break; }
       case '/query': { const c = targetContact(argv[0]); if (!c) break; const cv2 = convForContact(c); cv2.open = true; openConv(cv2.key); break; }

@@ -4,6 +4,11 @@ De versie staat in `src/app1.js` (`APP_VERSION`) en in het Over-venster van de a
 
 Elke release krijgt een git-tag `vX.Y.Z` en een GitHub-release met `meshchat.html` als bijlage. Schema: MINOR bij nieuwe functies, PATCH bij correcties, MAJOR bij een breuk in opslagformaat of protocol.
 
+## 0.6.0 - 2026-09-22
+
+- **Alle buren van een repeater**: de knop "Buren" en het commando `/neighbours [naam]` halen nu de volledige lijst op via het binaire verzoek van de officiële app (`REQ_TYPE_GET_NEIGHBOURS`, per 11 gepagineerd tot de repeater zegt dat het alles is) in plaats van het CLI-antwoord, dat door de pakketgrootte na een handvol regels afgekapt werd. De lijst komt in het venster (met namen achter de sleutels) en meteen op de kaart.
+- **Geschiedenis blijft bewaard**: berichten gaan nu naar IndexedDB in plaats van localStorage. Dat laatste is beperkt tot ~5 MB; met honderden contacten en het ruwe pakket per bericht liep het opslaan daar vast en leek de geschiedenis na een herstart of update weg. Bestaande geschiedenis wordt overgenomen; per gesprek worden nu 2000 berichten bewaard (was 400).
+
 ## 0.5.0 - 2026-09-22
 
 - **TCP/IP weer verwijderd** (uit 0.4.0 en 0.4.1): een browser kan geen TCP-verbinding openen, dus het kon alleen met een brug of een doorgeefluik op de server, en dat was niet wat gevraagd werd. Knop, venster, WebSocket-transport en `meshchat-bridge.py` zijn weg. De USB-framing-fix uit 0.4.0 blijft.

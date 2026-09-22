@@ -59,7 +59,7 @@ Direct messages are acknowledged (✓). Delivery is retried automatically: "atte
 
 ![Repeater console](screenshots/repeater.png)
 
-Plain text in a repeater window is sent as a CLI command (`ver`, `get radio`, `neighbors`, `advert`, …). Log in first with the admin password. Quick-command chips sit above the input. The info panel offers **Status** (statistics), **Neighbours** (sends `neighbors` and draws them on the map), **Status window**, **Telemetry**, **Trace** (SNR per hop), **Find path**, **Set path** and **Reset path**.
+Plain text in a repeater window is sent as a CLI command (`ver`, `get radio`, `neighbors`, `advert`, …). Log in first with the admin password. Quick-command chips sit above the input. The info panel offers **Status** (statistics), **Neighbours** (fetches the complete neighbour list through the binary request the official app uses, paged until the repeater reports the total, lists it in the window and draws it on the map; also `/neighbours [name]`), **Status window**, **Telemetry**, **Trace** (SNR per hop), **Find path**, **Set path** and **Reset path**.
 
 ![Status window](screenshots/status.png)
 
@@ -128,6 +128,9 @@ Type `/` to see the list with explanations. The most used:
 | `/nick` · `/whois` · `/names` · `/list` · `/time` · `/battery` · `/stats` · `/debug` · `/clear` | misc |
 
 ## 9. Offline and updates
+
+Message history is stored in the browser's IndexedDB (2000 messages per window), settings and contacts in localStorage; nothing leaves the device. Export or clear it under **Settings › Data**.
+
 
 Nothing in MeshChat needs the network to function: the node link is local, history and settings live in the browser, and map tiles are served from the cache once loaded. The network is only used to fetch updates and new tiles.
 
