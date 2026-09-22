@@ -4,6 +4,11 @@ De versie staat in `src/app1.js` (`APP_VERSION`) en in het Over-venster van de a
 
 Elke release krijgt een git-tag `vX.Y.Z` en een GitHub-release met `meshchat.html` als bijlage. Schema: MINOR bij nieuwe functies, PATCH bij correcties, MAJOR bij een breuk in opslagformaat of protocol.
 
+## 0.3.3 - 2026-09-22
+
+- **Tropo offline**: de laatst opgehaalde rasterpunten worden lokaal bewaard; zonder internet (of bij een netwerkfout) toont de overlay de laatst bekende situatie met in de legenda "offline · laatst bekend: model … UTC". Zonder eerdere gegevens blijft de melding dat internet nodig is.
+- **Tropo**: standaard-doorzichtigheid 30 %.
+
 ## 0.3.2 - 2026-09-22
 
 - **Tropo-overlay**: kleurschaal zoals de Hepburn-kaarten (dxinfocentre.com) met 11 niveaus, van paars (marginaal) via blauw, groen, geel en oranje naar rood (zeer intens, ducting) en roze (extreem); kleurbalk in de legenda met uitleg als tooltip; opacity-slider in de kaartbalk (lokaal bewaard).

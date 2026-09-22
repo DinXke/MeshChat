@@ -402,7 +402,7 @@ function wire() {
   on('#map-tropo', 'change', (e) => tropoSetEnabled(e.target.checked));
   on('#map-tropo-h', 'change', (e) => { S.settings.tropoH = +e.target.value; saveState(); tropoRefresh(true); });
   $('#map-tropo').checked = !!S.settings.tropo; $('#map-tropo-h').value = String(S.settings.tropoH || 0); $('#map-tropo-h').hidden = !S.settings.tropo;
-  $('#map-tropo-op').value = String(S.settings.tropoOp ?? 75); $('#map-tropo-op').hidden = !S.settings.tropo;
+  $('#map-tropo-op').value = String(S.settings.tropoOp ?? 30); $('#map-tropo-op').hidden = !S.settings.tropo;
   on('#map-tropo-op', 'input', (e) => tropoSetOpacity(e.target.value));
   // status-popup: knop onder een status-antwoord, en de knoppen in het venster zelf
   on('#messages', 'click', (e) => { const b = e.target.closest('.st-btn'); if (!b) return; const cv = activeConv(); const c = cv.pub ? S.contacts.get(cv.pub) : null; if (c) openStatusDlg(c); });

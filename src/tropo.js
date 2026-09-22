@@ -12,7 +12,7 @@ const TROPO_SCALE = [[0, 0, 0], [134, 3, 241], [1, 180, 239], [2, 208, 131], [16
 const TROPO_LEVEL_KEYS = ['nil', 'marginal', 'fair', 'moderate', 'high', 'strong', 'vstrong', 'intense', 'vintense', 'extreme', 'extreme'];
 const tropoSt = { key: null, busy: false, again: false, timer: null, canvas: null, modelTime: {}, cache: new Map(), retryAt: 0, pending: null };
 function tropoEnabled() { return !!(S.settings && S.settings.tropo); }
-function tropoOpacity() { const v = +(S.settings.tropoOp ?? 75); return Math.min(100, Math.max(10, v)) / 100; }
+function tropoOpacity() { const v = +(S.settings.tropoOp ?? 30); return Math.min(100, Math.max(10, v)) / 100; }
 function tropoN(T, RH, P) { const Tk = T + 273.15; const es = 6.112 * Math.exp(17.67 * T / (T + 243.5)); const e = Math.max(0, Math.min(100, RH)) / 100 * es; return 77.6 * P / Tk + 3.73e5 * e / (Tk * Tk); }
 function tropoGradient(h, ti) {
   let best = null;
@@ -53,10 +53,29 @@ function tropoHourIndex(times, hoursAhead) {
   if (idx < 0) idx = Math.max(0, Math.min(times.length - 1, hoursAhead)); return idx;
 }
 const tropoPtKey = (stamp, hours, lat, lon) => stamp + '|' + hours + '|' + lat.toFixed(2) + '|' + lon.toFixed(2);
+// Laatst opgehaalde punten lokaal bewaren, zodat de overlay offline de laatst bekende situatie kan tonen (met modeluur).
+const TROPO_LS = 'mcirc.tropo.v1';
+function tropoPersist() {
+  try { const o = { modelTime: tropoSt.modelTime, pts: Array.from(tropoSt.cache.entries()).slice(-2500) }; localStorage.setItem(TROPO_LS, JSON.stringify(o)); } catch (e) {}
+}
+function tropoRestore() {
+  if (tropoSt.restored) return; tropoSt.restored = true;
+  try { const o = JSON.parse(localStorage.getItem(TROPO_LS) || 'null'); if (o && o.pts) { for (const [k, v] of o.pts) tropoSt.cache.set(k, v); Object.assign(tropoSt.modelTime, o.modelTime || {}); } } catch (e) {}
+}
+// offline: laatst bekende punten (meest recente modeluur in de cache) voor dit raster tekenen
+function tropoDrawStale(g, hours) {
+  const stamps = new Set(); for (const k of tropoSt.cache.keys()) if (k.split('|')[1] === String(hours)) stamps.add(k.split('|')[0]);
+  const stamp = Array.from(stamps).sort().pop(); if (!stamp) return false;
+  const grad = []; for (let j = 0; j < g.ny; j++) for (let i = 0; i < g.nx; i++) grad.push(tropoSt.cache.get(tropoPtKey(stamp, hours, g.n - j * g.step, g.w + i * g.step)) ?? null);
+  if (!grad.some(v => v != null)) return false;
+  tropoDraw(grad, g); tropoSt.key = null; const mt = tropoSt.modelTime[stamp + '|' + hours] || stamp;
+  tropoSetLegend(t('tropo.stale', mt.replace('T', ' '))); return true;
+}
 async function tropoRefresh(force) {
   if (!mapObj || !tropoEnabled()) return;
-  if (!navigator.onLine) { tropoSetLegend(t('tropo.offline')); toast(t('tropo.offline'), 'warn'); return; }
+  tropoRestore();
   const g = tropoGrid(); const hours = +(S.settings.tropoH || 0); const stamp = new Date().toISOString().slice(0, 13);
+  if (!navigator.onLine) { if (!tropoDrawStale(g, hours)) { tropoSetLegend(t('tropo.offline')); if (force) toast(t('tropo.offline'), 'warn'); } return; }
   const key = [g.step, g.w, g.s, g.e, g.n, hours, stamp].join('|');
   if (!force && key === tropoSt.key) return;
   if (tropoSt.busy) { tropoSt.again = true; return; }
@@ -77,6 +96,7 @@ async function tropoRefresh(force) {
       const ti = tropoHourIndex(data[0].hourly.time, hours); tropoSt.modelTime[stamp + '|' + hours] = data[0].hourly.time[ti];
       chunk.forEach((p, i) => tropoSt.cache.set(tropoPtKey(stamp, hours, p.lat, p.lon), tropoGradient(data[i].hourly, ti)));
     }
+    if (missing.length && tropoSt.cache.size) tropoPersist();
     if (tropoSt.cache.size > 4000) for (const k of tropoSt.cache.keys()) if (!k.startsWith(stamp)) tropoSt.cache.delete(k); // oude modeluren opruimen
     const grad = pts.map(p => tropoSt.cache.get(tropoPtKey(stamp, hours, p.lat, p.lon)) ?? null);
     if (grad.some(v => v != null)) {
@@ -85,7 +105,7 @@ async function tropoRefresh(force) {
       const mt = tropoSt.modelTime[stamp + '|' + hours] || '';
       tropoSetLegend(t('tropo.data', mt.replace('T', ' ')) + (minG < Infinity ? ' · max ' + tropoLevel(minG) + ' (' + Math.round(minG) + ' N/km)' : ''));
     }
-  } catch (e) { tropoSetLegend(''); toast(t('tropo.err', e.message || e), 'warn'); }
+  } catch (e) { if (!tropoDrawStale(g, hours)) { tropoSetLegend(''); toast(t('tropo.err', e.message || e), 'warn'); } }
   finally { tropoSt.busy = false; if (tropoSt.again) { tropoSt.again = false; tropoRefresh(false); } }
 }
 const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
@@ -127,7 +147,7 @@ function tropoEnsureLayer() {
   const before = mapObj.getLayer('packets-line') ? 'packets-line' : undefined;
   mapObj.addLayer({ id: 'tropo', type: 'raster', source: 'tropo', paint: { 'raster-opacity': tropoOpacity(), 'raster-resampling': 'linear', 'raster-fade-duration': 0 }, layout: { visibility: tropoEnabled() ? 'visible' : 'none' } }, before);
 }
-function tropoSetOpacity(pct) { S.settings.tropoOp = Math.min(100, Math.max(10, +pct || 75)); saveState(); const sl = $('#map-tropo-op'); if (sl) sl.value = String(S.settings.tropoOp); if (mapObj && mapObj.getLayer('tropo')) mapObj.setPaintProperty('tropo', 'raster-opacity', tropoOpacity()); }
+function tropoSetOpacity(pct) { S.settings.tropoOp = Math.min(100, Math.max(10, +pct || 30)); saveState(); const sl = $('#map-tropo-op'); if (sl) sl.value = String(S.settings.tropoOp); if (mapObj && mapObj.getLayer('tropo')) mapObj.setPaintProperty('tropo', 'raster-opacity', tropoOpacity()); }
 // legenda: kleurbalk 1..10+ (tooltip met uitleg) + modeluur/max-niveau
 function tropoSetLegend(txt) {
   const el = $('#map-tropo-legend'); if (!el) return; el.hidden = !tropoEnabled();
