@@ -150,7 +150,7 @@ const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
 const mercLat = (y) => (2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180 / Math.PI;
 function tropoDraw(grad, g) {
   // pixelrijen lopen lineair in Mercator-y (zo plaatst MapLibre de afbeelding), kolommen lineair in lengtegraad
-  const W = g.nx > 200 ? 2048 : g.nx > 30 ? 1024 : 512, H = g.ny > 120 ? 1024 : g.ny > 24 ? 768 : 384; // groot veld (heel ICON-EU): fijner canvas const cv = tropoSt.canvas || (tropoSt.canvas = document.createElement('canvas')); cv.width = W; cv.height = H;
+  /* groot veld (heel ICON-EU): fijner canvas */ const W = g.nx > 200 ? 2048 : g.nx > 30 ? 1024 : 512, H = g.ny > 120 ? 1024 : g.ny > 24 ? 768 : 384; const cv = tropoSt.canvas || (tropoSt.canvas = document.createElement('canvas')); cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d'); const img = ctx.createImageData(W, H); const px = img.data;
   const yN = mercY(g.n), yS = mercY(g.s);
   const at = (i, j) => grad[Math.min(g.ny - 1, Math.max(0, j)) * g.nx + Math.min(g.nx - 1, Math.max(0, i))];
