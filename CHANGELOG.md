@@ -4,6 +4,10 @@ De versie staat in `src/app1.js` (`APP_VERSION`) en in het Over-venster van de a
 
 Elke release krijgt een git-tag `vX.Y.Z` en een GitHub-release met `meshchat.html` als bijlage. Schema: MINOR bij nieuwe functies, PATCH bij correcties, MAJOR bij een breuk in opslagformaat of protocol.
 
+## 0.7.0 - 2026-09-22
+
+- **Signaalbalkjes**: bij elk ontvangen bericht, bij elke deelnemer in het rechterpaneel en achter elke regel van een burenlijst staan nu vier balkjes op basis van de SNR (≥ 5 dB uitstekend, ≥ 0 goed, ≥ -7,5 matig, ≥ -15 zwak), in de kleuren van de kaart; zweven toont SNR, RSSI en de beoordeling. Burenregels tonen de SNR in dB en de ouderdom leesbaar.
+
 ## 0.6.1 - 2026-09-22
 
 - **Buren**: per pagina tot drie pogingen als een antwoord uitblijft, en met debugweergave aan (Instellingen) een regel per pagina in het statusvenster (offset, bytes, aantal), om afgekapte lijsten op te sporen.

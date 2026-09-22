@@ -86,6 +86,13 @@ function linkify(text) {
 }
 // hops + (bij 2/3-byte hashes) de hash-grootte waarmee de afzender het pad opbouwde
 function hopsText(b) { const n = b & 63, sz = (b >> 6) + 1; return (n === 0 ? '0 hops' : n + ' hop' + (n > 1 ? 's' : '')) + (sz > 1 ? ' (' + sz + ' B)' : ''); }
+// Signaalbalkjes op SNR (LoRa ontvangt tot ca. -20 dB): 4 balkjes ≥ 5, 3 ≥ 0, 2 ≥ -7,5, 1 ≥ -15, anders 0; kleur zoals op de kaart.
+function snrBarsN(snr) { return snr == null ? 0 : snr >= 5 ? 4 : snr >= 0 ? 3 : snr >= -7.5 ? 2 : snr >= -15 ? 1 : 0; }
+function snrBars(snr, rssi) {
+  if (snr == null) return ''; const n = snrBarsN(snr); const col = snrColor(snr);
+  const tip = t('sig.tip', snr.toFixed(1), rssi != null ? rssi + ' dBm · ' : '', t('sig.q' + n));
+  return `<span class="sig" style="color:${col}" title="${esc(tip)}" aria-label="${esc(tip)}">${[1, 2, 3, 4].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`;
+}
 function metaText(m) {
   const parts = [];
   if (m.snr != null && !m.self) parts.push('SNR ' + m.snr.toFixed(1));
@@ -107,16 +114,24 @@ function annotateKeys(text) {
     return hexs + ' <span class="mute">(' + esc(cname(c)) + ')</span>';
   });
 }
+// Burenregels 'prefix(:naam):seconden:snr×4' → balkjes + SNR in dB + ouderdom leesbaar
+function annotateNeighbourLines(html) {
+  return html.split('\n').map(line => {
+    const m = /^([0-9a-f]{6,64}(?: <span class="mute">\([^<]*\)<\/span>)?):(-?\d+):(-?\d+)\s*$/i.exec(line); if (!m) return line;
+    const snr = +m[3] / 4, age = +m[2];
+    return `${m[1]} ${snrBars(snr)}<span class="mute">${snr.toFixed(1)} dB · ${esc(fmtAgo(nowSecs() - age))}</span>`;
+  }).join('\n');
+}
 function renderMsg(m) {
   const cls = ['m', 'm-' + m.kind]; if (m.self) cls.push('m-self'); if (m.hl) cls.push('m-hl');
   if (m.ack === 'pending') cls.push('m-pending'); else if (m.ack === 'ok') cls.push('m-acked'); else if (m.ack === 'fail') cls.push('m-failed');
   const ts = S.settings.ts ? `<span class="t">${fmtTime(m.t)}</span>` : '<span class="t" hidden></span>';
-  const meta = S.settings.meta || m.self ? `<span class="meta">${esc(metaText(m))}${m.self ? `<span class="ack" aria-label="${esc(m.ack === 'ok' ? t('ack.ok') : m.ack === 'fail' ? t('ack.fail') : m.ack === 'pending' ? t('ack.pending') : '')}">${m.ack === 'ok' ? '✓' : m.ack === 'fail' ? '✗' : ''}</span>` : ''}</span>` : '';
+  const meta = S.settings.meta || m.self ? `<span class="meta">${!m.self ? snrBars(m.snr, m.rssi) : ''}${esc(metaText(m))}${m.self ? `<span class="ack" aria-label="${esc(m.ack === 'ok' ? t('ack.ok') : m.ack === 'fail' ? t('ack.fail') : m.ack === 'pending' ? t('ack.pending') : '')}">${m.ack === 'ok' ? '✓' : m.ack === 'fail' ? '✗' : ''}</span>` : ''}</span>` : '';
   let body;
   switch (m.kind) {
     case 'notice': case 'error': body = `<span class="x">${linkify(m.text)}</span>`; break;
     case 'action': body = `<span class="x"><b class="${m.self ? '' : nickColor(m.nick)}">${esc(m.nick)}</b> ${linkify(m.text)}</span>`; break;
-    case 'cli': body = `<span class="n">${esc(m.nick)}</span><span class="x">${m.cmd ? `<span class="cmd">${esc(m.cmd)}</span>` : ''}${m.text ? `<pre>${annotateKeys(m.text)}</pre>${m.stats ? `<button class=\"btn sm st-btn\" data-st=\"${m.id}\">${esc(t('stat.details'))}</button>` : ''}${/^neighbou?rs\b/i.test(m.cmd || '') && /[0-9a-f]{6}/i.test(m.text) ? `<button class="btn sm nb-btn" data-nb="${m.id}">${esc(t('nb.btn'))}</button>` : ''}` : (m.ack === 'pending' ? `<span class="dim">${esc(t('msg.waitingReply'))}</span>` : '')}</span>`; break;
+    case 'cli': body = `<span class="n">${esc(m.nick)}</span><span class="x">${m.cmd ? `<span class="cmd">${esc(m.cmd)}</span>` : ''}${m.text ? `<pre>${/^neighbou?rs\b/i.test(m.cmd || '') ? annotateNeighbourLines(annotateKeys(m.text)) : annotateKeys(m.text)}</pre>${m.stats ? `<button class=\"btn sm st-btn\" data-st=\"${m.id}\">${esc(t('stat.details'))}</button>` : ''}${/^neighbou?rs\b/i.test(m.cmd || '') && /[0-9a-f]{6}/i.test(m.text) ? `<button class="btn sm nb-btn" data-nb="${m.id}">${esc(t('nb.btn'))}</button>` : ''}` : (m.ack === 'pending' ? `<span class="dim">${esc(t('msg.waitingReply'))}</span>` : '')}</span>`; break;
     default: body = `<span class="n ${m.self ? '' : nickColor(m.nick)}">${esc(m.nick)}</span><span class="x">${linkify(m.text)}</span>`;
   }
   return `<div class="${cls.join(' ')}" data-id="${m.id}">${ts}${body}${meta}</div>`;
@@ -214,7 +229,7 @@ function renderUsers(cv) {
   if (cv.kind === 'channel') {
     const users = Array.from(cv.users.values()).sort((a, b) => (b.last || 0) - (a.last || 0));
     const me = myNick(); html += me ? `<div class="user me" data-nick="${esc(me)}"><span class="dot on"></span>${icon('user')}<span class="nm">${esc(me)}</span></div>` : '';
-    for (const u of users) { if (u.nick === me) continue; const c = contactByName(u.nick); const age = nowSecs() - (u.last || 0); html += `<div class="user" data-nick="${esc(u.nick)}" ${c ? `data-pub="${c.pub}"` : ''} title="${esc(t('users.lastAgo', fmtAgo(u.last)))}${c ? '' : ' · ' + esc(t('users.noContact'))}"><span class="dot ${age < 3600 ? 'on' : age < 86400 ? 'busy' : 'off'}"></span>${icon(c ? TYPE_ICON[c.type] || 'user' : 'user')}<span class="nm ${nickColor(u.nick)}">${esc(u.nick)}</span>${u.snr != null ? `<span class="snr">${u.snr.toFixed(1)}</span>` : ''}</div>`; }
+    for (const u of users) { if (u.nick === me) continue; const c = contactByName(u.nick); const age = nowSecs() - (u.last || 0); html += `<div class="user" data-nick="${esc(u.nick)}" ${c ? `data-pub="${c.pub}"` : ''} title="${esc(t('users.lastAgo', fmtAgo(u.last)))}${c ? '' : ' · ' + esc(t('users.noContact'))}"><span class="dot ${age < 3600 ? 'on' : age < 86400 ? 'busy' : 'off'}"></span>${icon(c ? TYPE_ICON[c.type] || 'user' : 'user')}<span class="nm ${nickColor(u.nick)}">${esc(u.nick)}</span>${u.snr != null ? `${snrBars(u.snr)}<span class="snr">${u.snr.toFixed(1)}</span>` : ''}</div>`; }
     $('#users-count').textContent = `(${users.length + (me ? 1 : 0)})`;
   } else if (cv.kind === 'status' || cv.kind === 'map') {
     const cs = Array.from(S.contacts.values()).sort((a, b) => (b.lastAdvert || 0) - (a.lastAdvert || 0)).slice(0, 60);
