@@ -4,6 +4,10 @@ De versie staat in `src/app1.js` (`APP_VERSION`) en in het Over-venster van de a
 
 Elke release krijgt een git-tag `vX.Y.Z` en een GitHub-release met `meshchat.html` als bijlage. Schema: MINOR bij nieuwe functies, PATCH bij correcties, MAJOR bij een breuk in opslagformaat of protocol.
 
+## 0.3.5 - 2026-09-22
+
+- **Tropo**: de legenda toont de bron van het veld (bv. "ICON-EU 2026-09-22 00 UTC"); het veld van meshmanager.net komt vanaf MeshManager 2.27.0 uit ICON-EU (DWD) op 0,25° met vijf drukniveaus.
+
 ## 0.3.4 - 2026-09-22
 
 - **Tropo via de server**: MeshChat haalt het tropo-veld nu als één JSON van meshmanager.net (`/api/tropo`, MeshManager 2.26.0), dat de server één keer per uur voor heel West-Europa berekent. Eén aanvraag per client per uur, geen 429 meer, en pannen of zoomen haalt niets meer op. Het losse HTML-bestand haalt het cross-origin; is de server onbereikbaar, dan rekent de client zelf via Open-Meteo zoals voorheen. Het laatste veld wordt lokaal bewaard voor offline gebruik.

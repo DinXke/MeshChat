@@ -78,7 +78,7 @@ function tropoDrawField(f, stale) {
   tropoDraw(f.grad, g);
   let minG = Infinity; for (const v of f.grad) if (v != null && v < minG) minG = v;
   const mt = String(f.model_time || '').replace('T', ' ');
-  tropoSetLegend((stale ? t('tropo.stale', mt) : t('tropo.data', mt)) + (minG < Infinity ? ' · max ' + tropoLevel(minG) + ' (' + Math.round(minG) + ' N/km)' : ''));
+  tropoSetLegend((stale ? t('tropo.stale', mt) : t('tropo.data', mt)) + (f.source ? ' · ' + f.source : '') + (minG < Infinity ? ' · max ' + tropoLevel(minG) + ' (' + Math.round(minG) + ' N/km)' : ''));
 }
 // Laatst opgehaalde punten lokaal bewaren, zodat de overlay offline de laatst bekende situatie kan tonen (met modeluur).
 const TROPO_LS = 'mcirc.tropo.v1';
