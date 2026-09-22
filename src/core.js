@@ -110,18 +110,43 @@ class SerialTransport {
 class BleTransport {
   constructor() { this.kind = 'Bluetooth'; this.onFrame = null; this.onClose = null; this.device = null; this._q = Promise.resolve(); }
   static supported() { return 'bluetooth' in navigator; }
+  // Eerder gekozen node hergebruiken zonder kiezer (Chrome: getDevices + watchAdvertisements); lukt dat niet binnen
+  // ~2,5 s, dan de gewone kiezer (die moet binnen de gebruikersactie blijven, daarom kort).
+  static async pickDevice() {
+    const wantId = (() => { try { return localStorage.getItem('mcirc.bleId'); } catch (e) { return null; } })();
+    try {
+      if (wantId && navigator.bluetooth.getDevices) {
+        const devs = await navigator.bluetooth.getDevices(); const d = devs.find(x => x.id === wantId);
+        if (d && d.gatt) {
+          if (d.gatt.connected) return d;
+          if (!d.watchAdvertisements) return d;
+          const seen = await new Promise((res) => {
+            const ac = new AbortController(); const timer = setTimeout(() => { ac.abort(); res(false); }, 2500);
+            d.addEventListener('advertisementreceived', () => { clearTimeout(timer); ac.abort(); res(true); }, { once: true });
+            d.watchAdvertisements({ signal: ac.signal }).catch(() => { clearTimeout(timer); res(false); });
+          });
+          if (seen) return d;
+        }
+      }
+    } catch (e) { /* kiezer */ }
+    return navigator.bluetooth.requestDevice({ filters: [{ services: [UART_SVC] }, { namePrefix: 'MeshCore' }], optionalServices: [UART_SVC] });
+  }
   async connect() {
-    this.device = await navigator.bluetooth.requestDevice({ filters: [{ services: [UART_SVC] }, { namePrefix: 'MeshCore' }], optionalServices: [UART_SVC] });
-    // Windows drops the GATT link once during pairing/bonding; retry service discovery a few times.
+    this.device = await BleTransport.pickDevice();
+    // Windows laat de GATT-link tijdens het koppelen/versleutelen één of twee keer vallen ("GATT Server is disconnected").
+    // Daarom: tot 6 pogingen met oplopende pauze, elke keer opnieuw verbinden, en na het verbinden even wachten voordat
+    // de servicelijst gevraagd wordt (Windows heeft die dan nog niet altijd klaar).
     let svc = null, lastErr = null;
-    for (let attempt = 0; attempt < 4 && !svc; attempt++) {
+    for (let attempt = 0; attempt < 6 && !svc; attempt++) {
       try {
-        if (attempt) await sleep(600 * attempt);
+        if (attempt) await sleep(500 + 500 * attempt);
         const server = this.device.gatt.connected ? this.device.gatt : await this.device.gatt.connect();
+        await sleep(attempt ? 500 : 200);
         svc = await server.getPrimaryService(UART_SVC);
       } catch (e) { lastErr = e; try { this.device.gatt.disconnect(); } catch (_) {} }
     }
     if (!svc) { this.device = null; throw new Error(t('ble.hintConnect', lastErr && lastErr.message)); }
+    try { localStorage.setItem('mcirc.bleId', this.device.id); } catch (e) {}
     this._onDisc = () => this._closed(); this.device.addEventListener('gattserverdisconnected', this._onDisc);
     const step = async (name, fn) => {
       let err; for (let i = 0; i < 3; i++) { try { return await fn(); } catch (e) { err = e; await sleep(400 * (i + 1)); } }

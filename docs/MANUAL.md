@@ -11,7 +11,7 @@ The hosted version, installable as an app, lives at **<https://chat.meshmanager.
 | Button | What it does |
 |---|---|
 | **USB** | Opens the browser's serial-port picker. Choose the COM port of your node. |
-| **Bluetooth** | Opens the Bluetooth picker. Choose your node. On Windows the first attempt asks for the pairing PIN (default `123456`); if that first attempt fails, simply click Bluetooth again. The node must not be connected to the phone app at the same time. |
+| **Bluetooth** | Opens the Bluetooth picker. Choose your node. On Windows the first attempt asks for the pairing PIN (default `123456`); if that first attempt fails, simply click Bluetooth again (the app itself retries up to six times and reuses the node you chose before without showing the picker when the browser allows it). If Windows keeps refusing, remove the node in Windows Bluetooth settings and pair again; that is needed whenever Windows and the node no longer share the same keys (node rebooted or reflashed, PIN changed, paired with another device). The node must not be connected to the phone app at the same time. |
 | **Disconnect** | Closes the link. |
 | **Sync** | Drains the node's message queue immediately (normally this happens automatically). |
 
