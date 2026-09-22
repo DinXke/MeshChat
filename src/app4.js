@@ -524,6 +524,15 @@ function tabComplete(inp) {
 }
 
 // ---------- init ----------
+// Bezoekcijfers, maar alleen op de gehoste versie: het losse HTML-bestand en een offline PWA
+// laden niets en praten met niemand. Het script komt van dezelfde server (zie app/analytics.py in
+// MeshManager) en telt zonder cookies; wie "Do Not Track" aanzet wordt niet geteld.
+function initAnalytics() {
+  if (!/^https?:$/.test(location.protocol) || !/(^|\.)meshmanager\.net$/i.test(location.hostname)) return;
+  const s = document.createElement('script'); s.src = '/analytics.js'; s.defer = true;
+  s.onerror = () => debugLog('bezoekcijfers niet geladen (offline of uitgeschakeld)');
+  document.head.appendChild(s);
+}
 function init() {
   if (/[?&]fresh=1/.test(location.search)) { try { localStorage.removeItem(LS_KEY); indexedDB.deleteDatabase(HIST_DB); } catch (e) {} } // ontwikkelhulp: schone start voor schermafbeeldingen
   COMMANDS.push(['/neighbours', '[naam]', 'cmd.neighbours'], ['/setpath', '[naam]', 'cmd.setpath'], ['/sync', '', 'cmd.sync'], ['/resync', '', 'cmd.resync'], ['/map', '[naam]', 'cmd.map']);
@@ -539,6 +548,7 @@ function init() {
   if (!S.self && !S.client.connected) { const lastNick = localStorage.getItem('mcirc.nick'); if (lastNick) $('#nick').textContent = lastNick; }
   if (!S.settings.compact) document.body.classList.remove('compact');
   setInterval(() => { if (S.client.connected) renderTree(); }, 60000);
+  initAnalytics();
   initPwa();
   devHooks();
   const incomingUri = pickUriFromUrl(); if (incomingUri) setTimeout(() => handleIncomingUri(incomingUri), 800);

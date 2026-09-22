@@ -129,6 +129,8 @@ Type `/` to see the list with explanations. The most used:
 
 ## 9. Offline and updates
 
+The hosted version at chat.meshmanager.net counts page views with the site's own Matomo: no cookies, Do Not Track respected, nothing personal stored. The standalone file and an offline PWA load nothing and send nothing.
+
 Message history is stored in the browser's IndexedDB (2000 messages per window), settings and contacts in localStorage; nothing leaves the device. Export or clear it under **Settings › Data**.
 
 
