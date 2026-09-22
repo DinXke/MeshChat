@@ -2,10 +2,17 @@
 // Bron: Open-Meteo (gratis, CORS, geen sleutel). Per drukniveau: refractiviteit N = 77.6·P/T + 3.73e5·e/T²;
 // verticale gradiënt dN/dh (N-eenheden per km) tussen opeenvolgende niveaus onder ~1,5 km. Normaal ≈ -40 N/km,
 // -79..-157 = superrefractie (verlengd bereik), < -157 = ducting (het signaal blijft in een laag gevangen).
-const TROPO_LEVELS = [1000, 975, 950, 925, 900, 850];
-const TROPO_NX = 10, TROPO_NY = 8;
-const tropoSt = { key: null, busy: false, again: false, timer: null, canvas: null, modelTime: null };
+// Bemonstering op een VAST geografisch raster (veelvouden van de stap), met cache per punt: dezelfde plek houdt
+// dezelfde kleur bij pannen en zoomen; alleen ontbrekende punten worden opgehaald.
+// 3 niveaus x 3 variabelen = 9 variabelen: telt bij Open-Meteo als 1 aanvraag per punt (tot 10 variabelen).
+const TROPO_LEVELS = [1000, 925, 850];
+const TROPO_MAX_POINTS = 220, TROPO_CHUNK = 110;
+// Kleurschaal zoals de Hepburn-kaarten (dxinfocentre.com): 0 = niets (doorzichtig), 1 marginaal … 8 zeer intens, 9-10 extreem.
+const TROPO_SCALE = [[0, 0, 0], [134, 3, 241], [1, 180, 239], [2, 208, 131], [165, 235, 1], [239, 222, 5], [233, 177, 12], [255, 128, 0], [255, 0, 0], [255, 128, 192], [255, 180, 220]];
+const TROPO_LEVEL_KEYS = ['nil', 'marginal', 'fair', 'moderate', 'high', 'strong', 'vstrong', 'intense', 'vintense', 'extreme', 'extreme'];
+const tropoSt = { key: null, busy: false, again: false, timer: null, canvas: null, modelTime: {}, cache: new Map(), retryAt: 0, pending: null };
 function tropoEnabled() { return !!(S.settings && S.settings.tropo); }
+function tropoOpacity() { const v = +(S.settings.tropoOp ?? 75); return Math.min(100, Math.max(10, v)) / 100; }
 function tropoN(T, RH, P) { const Tk = T + 273.15; const es = 6.112 * Math.exp(17.67 * T / (T + 243.5)); const e = Math.max(0, Math.min(100, RH)) / 100 * es; return 77.6 * P / Tk + 3.73e5 * e / (Tk * Tk); }
 function tropoGradient(h, ti) {
   let best = null;
@@ -21,56 +28,78 @@ function tropoGradient(h, ti) {
   }
   return best;
 }
-// kleur: doorzichtig tot ca. -60, geel → oranje tot -157, rood daaronder
-function tropoRGBA(g) {
-  if (g == null || g > -60) return [0, 0, 0, 0];
-  if (g > -79) { const f = (-60 - g) / 19; return [255, 230, 90, Math.round(55 * f)]; }
-  if (g > -157) { const f = (-79 - g) / 78; return [255, Math.round(215 - 120 * f), 60, Math.round(95 + 70 * f)]; }
-  const f = Math.min(1, (-157 - g) / 100); return [Math.round(255 - 60 * f), 50, 50, Math.round(175 + 50 * f)];
+// gradiënt → niveau 0..10: vanaf -50 N/km (1, marginaal) in stappen van ~13,4 tot -157 (8, ducting); -200 → 9, daaronder 10
+function tropoLevel(g) {
+  if (g == null || g > -50) return 0;
+  if (g > -157) return Math.min(8, 1 + Math.floor((-50 - g) / 13.4));
+  return g > -200 ? 9 : 10;
 }
+function tropoRGBA(g) { const lv = tropoLevel(g); if (!lv) return [0, 0, 0, 0]; const c = TROPO_SCALE[lv]; return [c[0], c[1], c[2], 230]; }
+// rasterstap naar kaartbreedte; ruim rondom het beeld (35 %) en uitgelijnd op veelvouden van de stap
 function tropoGrid() {
-  const b = mapObj.getBounds(); const w = b.getWest(), e = b.getEast(), s = b.getSouth(), n = b.getNorth();
-  // ruim rondom het beeld (15 %, minstens 0,1°) en naar buiten afronden op 0,25°, zodat de laag altijd het hele beeld dekt
-  const pw = Math.max(0.1, (e - w) * 0.15), ph = Math.max(0.1, (n - s) * 0.15); const fl = (v) => Math.floor(v * 4) / 4, ce = (v) => Math.ceil(v * 4) / 4;
-  return { w: fl(w - pw), e: ce(e + pw), s: Math.max(-85, fl(s - ph)), n: Math.min(85, ce(n + ph)) };
+  const b = mapObj.getBounds(); const w = b.getWest(), e = b.getEast(), s = Math.max(-80, b.getSouth()), n = Math.min(80, b.getNorth());
+  const span = e - w; let step = span <= 2.5 ? 0.25 : span <= 5 ? 0.5 : span <= 10 ? 1 : 2;
+  const pw = Math.max(0.2, span * 0.35), ph = Math.max(0.2, (n - s) * 0.35);
+  for (;;) {
+    const g = { step, w: Math.floor((w - pw) / step) * step, e: Math.ceil((e + pw) / step) * step, s: Math.max(-80, Math.floor((s - ph) / step) * step), n: Math.min(80, Math.ceil((n + ph) / step) * step) };
+    g.nx = Math.round((g.e - g.w) / step) + 1; g.ny = Math.round((g.n - g.s) / step) + 1;
+    if (g.nx * g.ny <= TROPO_MAX_POINTS || step >= 4) return g;
+    step *= 2;
+  }
 }
 function tropoHourIndex(times, hoursAhead) {
   const target = new Date(); target.setUTCMinutes(0, 0, 0); target.setUTCHours(target.getUTCHours() + hoursAhead);
   const iso = target.toISOString().slice(0, 13); let idx = times.findIndex(x => x.slice(0, 13) === iso);
   if (idx < 0) idx = Math.max(0, Math.min(times.length - 1, hoursAhead)); return idx;
 }
+const tropoPtKey = (stamp, hours, lat, lon) => stamp + '|' + hours + '|' + lat.toFixed(2) + '|' + lon.toFixed(2);
 async function tropoRefresh(force) {
   if (!mapObj || !tropoEnabled()) return;
   if (!navigator.onLine) { tropoSetLegend(t('tropo.offline')); toast(t('tropo.offline'), 'warn'); return; }
   const g = tropoGrid(); const hours = +(S.settings.tropoH || 0); const stamp = new Date().toISOString().slice(0, 13);
-  const key = [g.w, g.s, g.e, g.n, hours, stamp].join('|');
+  const key = [g.step, g.w, g.s, g.e, g.n, hours, stamp].join('|');
   if (!force && key === tropoSt.key) return;
   if (tropoSt.busy) { tropoSt.again = true; return; }
-  tropoSt.busy = true; tropoSetLegend(t('tropo.loading'));
+  const pts = []; for (let j = 0; j < g.ny; j++) for (let i = 0; i < g.nx; i++) pts.push({ lat: g.n - j * g.step, lon: g.w + i * g.step });
+  const missing = pts.filter(p => !tropoSt.cache.has(tropoPtKey(stamp, hours, p.lat, p.lon)));
+  if (missing.length && Date.now() < tropoSt.retryAt) { tropoSetLegend(t('tropo.rateLimited', Math.ceil((tropoSt.retryAt - Date.now()) / 1000))); clearTimeout(tropoSt.timer); tropoSt.timer = setTimeout(() => tropoRefresh(false), tropoSt.retryAt - Date.now() + 200); return; }
+  tropoSt.busy = true; if (missing.length) tropoSetLegend(t('tropo.loading'));
   try {
-    const lats = [], lons = [];
-    for (let j = 0; j < TROPO_NY; j++) for (let i = 0; i < TROPO_NX; i++) { lats.push((g.n - (g.n - g.s) * j / (TROPO_NY - 1)).toFixed(3)); lons.push((g.w + (g.e - g.w) * i / (TROPO_NX - 1)).toFixed(3)); }
     const vars = TROPO_LEVELS.flatMap(p => ['temperature_' + p + 'hPa', 'relative_humidity_' + p + 'hPa', 'geopotential_height_' + p + 'hPa']).join(',');
-    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lats.join(',') + '&longitude=' + lons.join(',') + '&hourly=' + vars + '&forecast_days=2&timezone=UTC';
-    const res = await fetch(url); if (!res.ok) throw new Error('HTTP ' + res.status);
-    let data = await res.json(); if (!Array.isArray(data)) data = [data];
-    if (data.length !== lats.length || !data[0].hourly) throw new Error(data.reason || 'unexpected reply');
-    const ti = tropoHourIndex(data[0].hourly.time, hours);
-    const grad = data.map(d => tropoGradient(d.hourly, ti));
-    tropoDraw(grad, g); tropoSt.key = key; tropoSt.modelTime = data[0].hourly.time[ti];
-    let minG = Infinity; for (const v of grad) if (v != null && v < minG) minG = v;
-    tropoSetLegend(t('tropo.data', tropoSt.modelTime.replace('T', ' ')) + (minG < Infinity ? ' · min ' + Math.round(minG) + ' N/km' : ''));
+    for (let o = 0; o < missing.length; o += TROPO_CHUNK) {
+      const chunk = missing.slice(o, o + TROPO_CHUNK);
+      const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + chunk.map(p => p.lat.toFixed(2)).join(',') + '&longitude=' + chunk.map(p => p.lon.toFixed(2)).join(',') + '&hourly=' + vars + '&forecast_days=2&timezone=UTC';
+      const res = await fetch(url);
+      if (res.status === 429) { tropoSt.retryAt = Date.now() + 60000; tropoSetLegend(t('tropo.rateLimited', 60)); clearTimeout(tropoSt.timer); tropoSt.timer = setTimeout(() => tropoRefresh(true), 60200); break; }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      let data = await res.json(); if (!Array.isArray(data)) data = [data];
+      if (data.length !== chunk.length || !data[0].hourly) throw new Error(data.reason || 'unexpected reply');
+      const ti = tropoHourIndex(data[0].hourly.time, hours); tropoSt.modelTime[stamp + '|' + hours] = data[0].hourly.time[ti];
+      chunk.forEach((p, i) => tropoSt.cache.set(tropoPtKey(stamp, hours, p.lat, p.lon), tropoGradient(data[i].hourly, ti)));
+    }
+    if (tropoSt.cache.size > 4000) for (const k of tropoSt.cache.keys()) if (!k.startsWith(stamp)) tropoSt.cache.delete(k); // oude modeluren opruimen
+    const grad = pts.map(p => tropoSt.cache.get(tropoPtKey(stamp, hours, p.lat, p.lon)) ?? null);
+    if (grad.some(v => v != null)) {
+      tropoDraw(grad, g); tropoSt.key = key;
+      let minG = Infinity; for (const v of grad) if (v != null && v < minG) minG = v;
+      const mt = tropoSt.modelTime[stamp + '|' + hours] || '';
+      tropoSetLegend(t('tropo.data', mt.replace('T', ' ')) + (minG < Infinity ? ' · max ' + tropoLevel(minG) + ' (' + Math.round(minG) + ' N/km)' : ''));
+    }
   } catch (e) { tropoSetLegend(''); toast(t('tropo.err', e.message || e), 'warn'); }
   finally { tropoSt.busy = false; if (tropoSt.again) { tropoSt.again = false; tropoRefresh(false); } }
 }
+const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
+const mercLat = (y) => (2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180 / Math.PI;
 function tropoDraw(grad, g) {
-  const W = 320, H = 256; const cv = tropoSt.canvas || (tropoSt.canvas = document.createElement('canvas')); cv.width = W; cv.height = H;
+  // pixelrijen lopen lineair in Mercator-y (zo plaatst MapLibre de afbeelding), kolommen lineair in lengtegraad
+  const W = 512, H = 384; const cv = tropoSt.canvas || (tropoSt.canvas = document.createElement('canvas')); cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d'); const img = ctx.createImageData(W, H); const px = img.data;
-  const at = (i, j) => grad[Math.min(TROPO_NY - 1, Math.max(0, j)) * TROPO_NX + Math.min(TROPO_NX - 1, Math.max(0, i))];
+  const yN = mercY(g.n), yS = mercY(g.s);
+  const at = (i, j) => grad[Math.min(g.ny - 1, Math.max(0, j)) * g.nx + Math.min(g.nx - 1, Math.max(0, i))];
   for (let y = 0; y < H; y++) {
-    const fy = y / (H - 1) * (TROPO_NY - 1), j0 = Math.floor(fy), ty = fy - j0;
+    const lat = mercLat(yN + (yS - yN) * y / (H - 1)); const fy = (g.n - lat) / g.step, j0 = Math.floor(fy), ty = fy - j0;
     for (let x = 0; x < W; x++) {
-      const fx = x / (W - 1) * (TROPO_NX - 1), i0 = Math.floor(fx), tx = fx - i0;
+      const fx = x / (W - 1) * (g.nx - 1), i0 = Math.floor(fx), tx = fx - i0;
       const a = at(i0, j0), b = at(i0 + 1, j0), c = at(i0, j0 + 1), d = at(i0 + 1, j0 + 1);
       let v; if (a != null && b != null && c != null && d != null) v = (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty; else v = a ?? b ?? c ?? d;
       const rgba = tropoRGBA(v); const o = (y * W + x) * 4; px[o] = rgba[0]; px[o + 1] = rgba[1]; px[o + 2] = rgba[2]; px[o + 3] = rgba[3];
@@ -80,7 +109,7 @@ function tropoDraw(grad, g) {
   tropoApply([[g.w, g.n], [g.e, g.n], [g.e, g.s], [g.w, g.s]]);
 }
 // Canvas-bron (geen fetch, dus geen CSP- of offline-probleem); bij elke verversing bron en laag opnieuw zetten,
-// want een niet-geanimeerde canvas-bron leest het canvas maar één keer. Pas als de stijl geladen is.
+// want een niet-geanimeerde canvas-bron leest het canvas maar één keer.
 function tropoApply(coords) {
   // isStyleLoaded() wacht ook op alle tegels; hier is alleen de stijl zelf nodig (anders gooit addSource)
   const defer = (ev) => { tropoSt.pending = coords; mapObj.once(ev, () => { const p = tropoSt.pending; if (p) { tropoSt.pending = null; tropoApply(p); } }); };
@@ -94,20 +123,26 @@ function tropoApply(coords) {
 }
 function tropoEnsureLayer() {
   if (!mapObj || !mapObj.getSource('tropo')) return;
-  if (mapObj.getLayer('tropo')) { mapObj.setLayoutProperty('tropo', 'visibility', tropoEnabled() ? 'visible' : 'none'); return; }
+  if (mapObj.getLayer('tropo')) { mapObj.setLayoutProperty('tropo', 'visibility', tropoEnabled() ? 'visible' : 'none'); mapObj.setPaintProperty('tropo', 'raster-opacity', tropoOpacity()); return; }
   const before = mapObj.getLayer('packets-line') ? 'packets-line' : undefined;
-  mapObj.addLayer({ id: 'tropo', type: 'raster', source: 'tropo', paint: { 'raster-opacity': 0.8, 'raster-resampling': 'linear', 'raster-fade-duration': 0 }, layout: { visibility: tropoEnabled() ? 'visible' : 'none' } }, before);
+  mapObj.addLayer({ id: 'tropo', type: 'raster', source: 'tropo', paint: { 'raster-opacity': tropoOpacity(), 'raster-resampling': 'linear', 'raster-fade-duration': 0 }, layout: { visibility: tropoEnabled() ? 'visible' : 'none' } }, before);
 }
-function tropoSetLegend(txt) { const el = $('#map-tropo-legend'); if (!el) return; el.hidden = !tropoEnabled(); const ts = $('#map-tropo-ts'); if (ts) ts.textContent = txt || ''; }
+function tropoSetOpacity(pct) { S.settings.tropoOp = Math.min(100, Math.max(10, +pct || 75)); saveState(); const sl = $('#map-tropo-op'); if (sl) sl.value = String(S.settings.tropoOp); if (mapObj && mapObj.getLayer('tropo')) mapObj.setPaintProperty('tropo', 'raster-opacity', tropoOpacity()); }
+// legenda: kleurbalk 1..10+ (tooltip met uitleg) + modeluur/max-niveau
+function tropoSetLegend(txt) {
+  const el = $('#map-tropo-legend'); if (!el) return; el.hidden = !tropoEnabled();
+  const bar = $('#map-tropo-bar'); if (bar && !bar.childElementCount) bar.innerHTML = TROPO_SCALE.map((c, i) => i ? `<i style="background:rgb(${c.join(',')})" title="${i === 10 ? '10+' : i} · ${esc(t('tropo.lv.' + TROPO_LEVEL_KEYS[i]))}"></i>` : '').join('');
+  const ts = $('#map-tropo-ts'); if (ts) ts.textContent = txt || '';
+}
 function tropoSetEnabled(on) {
-  S.settings.tropo = !!on; saveState(); const sel = $('#map-tropo-h'); if (sel) sel.hidden = !on; const cb = $('#map-tropo'); if (cb) cb.checked = !!on;
+  S.settings.tropo = !!on; saveState(); for (const id of ['#map-tropo-h', '#map-tropo-op']) { const x = $(id); if (x) x.hidden = !on; } const cb = $('#map-tropo'); if (cb) cb.checked = !!on;
   if (!on) { if (mapObj && mapObj.getLayer('tropo')) mapObj.setLayoutProperty('tropo', 'visibility', 'none'); tropoSetLegend(''); return; }
   if (mapObj && mapObj.getLayer('tropo')) mapObj.setLayoutProperty('tropo', 'visibility', 'visible');
   tropoSetLegend(''); if (mapObj) tropoRefresh(true);
 }
 function tropoBind() {
   if (!mapObj) return;
-  mapObj.on('moveend', () => { if (!tropoEnabled()) return; clearTimeout(tropoSt.timer); tropoSt.timer = setTimeout(() => tropoRefresh(false), 1200); });
+  mapObj.on('moveend', () => { if (!tropoEnabled()) return; clearTimeout(tropoSt.timer); tropoSt.timer = setTimeout(() => tropoRefresh(false), 1500); });
   mapObj.on('style.load', () => { tropoSt.key = null; if (tropoEnabled()) setTimeout(() => tropoRefresh(true), 600); }); // bij themawissel gaan bron en laag verloren
   if (tropoEnabled()) mapObj.once('load', () => tropoRefresh(true));
 }

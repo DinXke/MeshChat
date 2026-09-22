@@ -4,6 +4,11 @@ De versie staat in `src/app1.js` (`APP_VERSION`) en in het Over-venster van de a
 
 Elke release krijgt een git-tag `vX.Y.Z` en een GitHub-release met `meshchat.html` als bijlage. Schema: MINOR bij nieuwe functies, PATCH bij correcties, MAJOR bij een breuk in opslagformaat of protocol.
 
+## 0.3.2 - 2026-09-22
+
+- **Tropo-overlay**: kleurschaal zoals de Hepburn-kaarten (dxinfocentre.com) met 11 niveaus, van paars (marginaal) via blauw, groen, geel en oranje naar rood (zeer intens, ducting) en roze (extreem); kleurbalk in de legenda met uitleg als tooltip; opacity-slider in de kaartbalk (lokaal bewaard).
+- **Tropo-overlay**: vast geografisch raster (0,25°–2° naargelang de zoom) met cache per punt en uur, zodat dezelfde plek dezelfde kleur houdt bij pannen en zoomen en er alleen ontbrekende punten worden opgehaald; drie drukniveaus (1000/925/850 hPa) zodat een aanvraag bij Open-Meteo licht blijft; bij HTTP 429 een minuut wachten en automatisch opnieuw proberen; afbeelding in Mercator-projectie getekend.
+
 ## 0.3.1 - 2026-09-22
 
 - **Tropo-overlay**: tekent nu via een canvas-bron in plaats van een data-URL (die werd op de gehoste versie door de CSP geblokkeerd en gaf de melding "kaartdelen niet in de cache"); raster wordt naar buiten afgerond zodat de laag altijd het hele beeld dekt; laag verschijnt zodra de stijl er is, zonder op alle tegels te wachten; uren-kiezer compact in de kaartbalk, ook op smartphones.
