@@ -297,17 +297,23 @@ async function fetchAllNeighbours(c) {
   const all = []; let total = null, offset = 0;
   try {
     for (let page = 0; page < 60; page++) {
-      const blob = new Uint8Array(4); crypto.getRandomValues(blob);
-      const req = Uint8Array.from([6, 0, NB_PER_PAGE, offset & 255, offset >> 8, 0, NB_PREFIX, ...blob]);
-      const r = await C.binaryReq(c.pub, req);
-      const d = await waitBinaryResp(r.tag, Math.max(r.timeoutMs || 0, 6000) + 4000);
+      // per pagina tot 3 pogingen: een repeater die druk is of via flood bereikt wordt, laat weleens één antwoord vallen
+      let d = null, lastErr = null;
+      for (let attempt = 0; attempt < 3 && !d; attempt++) {
+        const blob = new Uint8Array(4); crypto.getRandomValues(blob);
+        const req = Uint8Array.from([6, 0, NB_PER_PAGE, offset & 255, offset >> 8, 0, NB_PREFIX, ...blob]);
+        try { const r = await C.binaryReq(c.pub, req); d = await waitBinaryResp(r.tag, Math.max(r.timeoutMs || 0, 8000) + 4000); }
+        catch (e) { lastErr = e; debugLog(`buren ${displayName(c)}: pagina offset ${offset} poging ${attempt + 1} mislukt: ${e.message || e}`); }
+      }
+      if (!d) throw lastErr || new Error(t('nb.timeout'));
+      debugLog(`buren ${displayName(c)}: offset ${offset} → ${d.length} bytes: ${hex(d.subarray(0, Math.min(d.length, 24)))}${d.length > 24 ? '…' : ''}`);
       if (d.length < 4) break;
       total = rdU16(d, 0); const n = rdU16(d, 2); let o = 4;
       for (let i = 0; i < n && o + NB_PREFIX + 5 <= d.length; i++) {
         const hx = hex(d.subarray(o, o + NB_PREFIX)); o += NB_PREFIX; const age = rdU32(d, o); o += 4; const snr = rdI8(d[o]) / 4; o += 1;
         if (!all.some(x => x.hex === hx)) all.push({ hex: hx, age, snr, contact: contactByPrefix(hx) });
       }
-      offset += n; if (n === 0 || offset >= total) break;
+      offset += n; debugLog(`buren ${displayName(c)}: ${all.length} van ${total} na deze pagina (${n} in antwoord)`); if (n === 0 || offset >= total) break;
       m.text = t('nb.progress', all.length, total); updateMsgDom(m);
     }
   } catch (e) { if (!all.length) { m.ack = 'fail'; m.text = t('nb.err', e.message || e); updateMsgDom(m); saveState(); return null; } toast(t('nb.partial', all.length, total ?? '?', e.message || e), 'warn'); }

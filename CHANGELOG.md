@@ -4,6 +4,10 @@ De versie staat in `src/app1.js` (`APP_VERSION`) en in het Over-venster van de a
 
 Elke release krijgt een git-tag `vX.Y.Z` en een GitHub-release met `meshchat.html` als bijlage. Schema: MINOR bij nieuwe functies, PATCH bij correcties, MAJOR bij een breuk in opslagformaat of protocol.
 
+## 0.6.1 - 2026-09-22
+
+- **Buren**: per pagina tot drie pogingen als een antwoord uitblijft, en met debugweergave aan (Instellingen) een regel per pagina in het statusvenster (offset, bytes, aantal), om afgekapte lijsten op te sporen.
+
 ## 0.6.0 - 2026-09-22
 
 - **Alle buren van een repeater**: de knop "Buren" en het commando `/neighbours [naam]` halen nu de volledige lijst op via het binaire verzoek van de officiële app (`REQ_TYPE_GET_NEIGHBOURS`, per 11 gepagineerd tot de repeater zegt dat het alles is) in plaats van het CLI-antwoord, dat door de pakketgrootte na een handvol regels afgekapt werd. De lijst komt in het venster (met namen achter de sleutels) en meteen op de kaart.
